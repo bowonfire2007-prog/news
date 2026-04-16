@@ -206,7 +206,8 @@ const CACHE_TTL_MS = 10*60*1000;
 const FEED_TIMEOUT_MS = 8000;
 const STOCKS_CACHE_TTL_MS = 60*1000;
 const WEATHER_CACHE_TTL_MS = 15*60*1000;
-const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY"];
+const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","GME","TSM","WMT","LLY","BTC-USD","XRP-USD"];
+const WATCHLIST_VERSION = 2;
 
 // ========== STATE ==========
 let activeCat = localStorage.getItem("news.activeCat") || "top";
@@ -416,8 +417,19 @@ async function fetchFeed(feed) {
 
 // ========== STOCKS ==========
 function getWatchlist() {
-  try { const raw = localStorage.getItem("news.watchlist"); if (raw) return JSON.parse(raw); } catch {}
-  return DEFAULT_TICKERS.slice();
+  let list = null;
+  try { const raw = localStorage.getItem("news.watchlist"); if (raw) list = JSON.parse(raw); } catch {}
+  if (!list) list = DEFAULT_TICKERS.slice();
+  // Migration: if default list has grown, append any new default tickers to existing watchlists
+  const savedVersion = parseInt(localStorage.getItem("news.watchlist.version") || "1", 10);
+  if (savedVersion < WATCHLIST_VERSION) {
+    DEFAULT_TICKERS.forEach(t => { if (!list.includes(t)) list.push(t); });
+    try {
+      localStorage.setItem("news.watchlist", JSON.stringify(list));
+      localStorage.setItem("news.watchlist.version", String(WATCHLIST_VERSION));
+    } catch {}
+  }
+  return list;
 }
 function setWatchlist(list) { localStorage.setItem("news.watchlist", JSON.stringify(list)); }
 async function fetchTextThroughProxies(targetUrl) {

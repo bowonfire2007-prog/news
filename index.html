@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-<title>Daily Read</title>
+<title>Matt's Daily Read</title>
 <style>
   :root { --bg:#ffffff; --text:#0a0a0a; --text-muted:#6b6b6b; --text-soft:#9a9a9a; --border:#ececec; --accent:#b8331a; --card-hover:#f5f4f2; }
   [data-theme="dark"] { --bg:#0f0f10; --text:#f5f5f4; --text-muted:#a3a3a3; --text-soft:#6b6b6b; --border:#27272a; --accent:#ff6b4a; --card-hover:#1c1c1f; }
@@ -22,14 +22,22 @@
   .icon-btn { width:38px; height:38px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--border); color:var(--text); cursor:pointer; }
   .icon-btn:hover { background:var(--card-hover); }
   .icon-btn svg { width:18px; height:18px; }
-  .weather { max-width:760px; margin:10px auto 0; padding:10px 14px; background:var(--card-hover); border-radius:12px; display:flex; align-items:center; gap:10px; font-size:14px; flex-wrap:wrap; }
+  .weather { max-width:760px; margin:10px auto 0; padding:10px 14px; background:var(--card-hover); border-radius:12px; display:flex; flex-direction:column; gap:8px; font-size:14px; }
   .weather.loading { opacity:0.5; }
+  .w-current { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .w-temp { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
   .w-icon { font-size:22px; }
   .w-cond { color:var(--text); font-weight:500; }
   .w-sep { color:var(--text-soft); }
   .w-meta { color:var(--text-muted); font-size:12px; margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
   .w-meta span { white-space:nowrap; }
+  .w-forecast { display:flex; align-items:center; gap:10px; padding-top:6px; border-top:1px solid var(--border); font-size:13px; color:var(--text-muted); flex-wrap:wrap; }
+  .w-day { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .w-day-name { color:var(--text); font-weight:600; }
+  .w-radar { margin-left:auto; color:var(--accent); font-weight:600; white-space:nowrap; text-decoration:none; }
+  .w-radar:hover { text-decoration:underline; }
+  .w-truman { color:var(--text-muted); white-space:nowrap; text-decoration:none; }
+  .w-truman strong { color:var(--text); font-weight:600; }
   .tabs { max-width:760px; margin:10px auto 0; padding:0 20px; display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
   .tabs::-webkit-scrollbar { display:none; }
   .tab { flex-shrink:0; padding:8px 14px; border-radius:999px; font-size:14px; font-weight:500; cursor:pointer; border:1px solid var(--border); background:transparent; color:var(--text-muted); white-space:nowrap; }
@@ -73,7 +81,7 @@
 <body>
 <header>
   <div class="header-row">
-    <div class="brand">Daily<span>.</span>Read</div>
+    <div class="brand">Matt's Daily<span>.</span>Read</div>
     <div class="header-actions">
       <button class="icon-btn" id="refreshBtn" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button>
       <button class="icon-btn" id="themeBtn" aria-label="Toggle theme"><svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></button>
@@ -107,6 +115,10 @@ const CATEGORIES = [
     { source:"DW (Germany)", url:"https://rss.dw.com/rdf/rss-en-all" }
   ]},
   { id:"local", label:"Local (MO)", feeds:[
+    { source:"Clinton Daily Democrat (Google)", url:"https://news.google.com/rss/search?q=site%3Aclintondailydem.com+OR+%22Clinton+Daily+Democrat%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"KDKD (Google)", url:"https://news.google.com/rss/search?q=%22KDKD%22+Clinton+Missouri&hl=en-US&gl=US&ceid=US:en" },
+    { source:"West Central MO (Google)", url:"https://news.google.com/rss/search?q=%22West+Central+Missouri%22+OR+%22Henry+County%22+OR+%22Benton+County+Missouri%22+OR+%22Warsaw+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Truman Lake (Google)", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+OR+%22Harry+S+Truman+Reservoir%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"Clinton, MO (Google)", url:"https://news.google.com/rss/search?q=%22Clinton%2C+Missouri%22+OR+%22Henry+County%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"Missouri (Google)", url:"https://news.google.com/rss/search?q=Missouri+news&hl=en-US&gl=US&ceid=US:en" },
     { source:"Kansas City (Google)", url:"https://news.google.com/rss/search?q=%22Kansas+City%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
@@ -189,6 +201,33 @@ const CATEGORIES = [
     { source:"NPR Arts", url:"https://feeds.npr.org/1008/rss.xml" },
     { source:"The Atlantic", url:"https://www.theatlantic.com/feed/channel/entertainment/" },
     { source:"Variety", url:"https://variety.com/feed/" }
+  ]},
+  { id:"philippines", label:"Philippines", feeds:[
+    { source:"Panay News", url:"https://www.panaynews.net/feed/" },
+    { source:"Iloilo (Google)", url:"https://news.google.com/rss/search?q=Iloilo+Panay&hl=en-PH&gl=PH&ceid=PH:en" },
+    { source:"Panay Island (Google)", url:"https://news.google.com/rss/search?q=%22Panay+Island%22+OR+%22Western+Visayas%22&hl=en-PH&gl=PH&ceid=PH:en" },
+    { source:"Aklan/Kalibo (Google)", url:"https://news.google.com/rss/search?q=Aklan+OR+Kalibo+OR+Antique+OR+Capiz&hl=en-PH&gl=PH&ceid=PH:en" },
+    { source:"Inquirer", url:"https://www.inquirer.net/fullfeed" },
+    { source:"Rappler", url:"https://www.rappler.com/feed/" },
+    { source:"Philippine Star", url:"https://www.philstar.com/rss/headlines" },
+    { source:"Manila Bulletin", url:"https://mb.com.ph/feed/" },
+    { source:"ABS-CBN News", url:"https://news.abs-cbn.com/rss/news" },
+    { source:"GMA News", url:"https://data.gmanetwork.com/gno/rss/news/nation/feed.xml" },
+    { source:"SunStar Iloilo (Google)", url:"https://news.google.com/rss/search?q=site%3Asunstar.com.ph+Iloilo&hl=en-PH&gl=PH&ceid=PH:en" }
+  ]},
+  { id:"cannabis", label:"Cannabis", feeds:[
+    { source:"Marijuana Moment", url:"https://www.marijuanamoment.net/feed/" },
+    { source:"MJBizDaily", url:"https://mjbizdaily.com/feed/" },
+    { source:"Leafly", url:"https://www.leafly.com/news/feed" },
+    { source:"High Times", url:"https://hightimes.com/feed/" },
+    { source:"Ganjapreneur", url:"https://www.ganjapreneur.com/feed/" },
+    { source:"NORML", url:"https://norml.org/feed/" },
+    { source:"Cannabis Business Times", url:"https://www.cannabisbusinesstimes.com/rss/feed/" },
+    { source:"Competitions (Google)", url:"https://news.google.com/rss/search?q=%22Cannabis+Cup%22+OR+%22Emerald+Cup%22+OR+cannabis+competition&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Legalization (Google)", url:"https://news.google.com/rss/search?q=marijuana+OR+cannabis+legalization&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Cultivation (Google)", url:"https://news.google.com/rss/search?q=cannabis+cultivation+OR+growing+techniques+research&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Science (Google)", url:"https://news.google.com/rss/search?q=cannabis+science+study+OR+cannabinoid+research&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Research (Google)", url:"https://news.google.com/rss/search?q=cannabinoid+OR+THC+OR+CBD+research+study&hl=en-US&gl=US&ceid=US:en" }
   ]}
 ];
 
@@ -206,8 +245,9 @@ const CACHE_TTL_MS = 10*60*1000;
 const FEED_TIMEOUT_MS = 8000;
 const STOCKS_CACHE_TTL_MS = 60*1000;
 const WEATHER_CACHE_TTL_MS = 15*60*1000;
-const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","GME","TSM","WMT","LLY","BTC-USD","XRP-USD"];
-const WATCHLIST_VERSION = 2;
+const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F"];
+const WATCHLIST_VERSION = 3;
+const TICKER_DISPLAY = { "BZ=F":"BRENT", "CL=F":"WTI", "BTC-USD":"BITCOIN", "XRP-USD":"XRP" };
 
 // ========== STATE ==========
 let activeCat = localStorage.getItem("news.activeCat") || "top";
@@ -291,36 +331,63 @@ const WEATHER_CODE_MAP = {
   85:["Snow Showers","🌨️"], 86:["Heavy Snow Showers","❄️"],
   95:["Thunderstorm","⛈️"], 96:["Thunderstorm + Hail","⛈️"], 99:["Severe Thunderstorm","⛈️"]
 };
+async function fetchTrumanLake() {
+  try {
+    const res = await fetchWithTimeout("https://api.water.noaa.gov/nwps/v1/gauges/TUMM7/stageflow/observed", 5000);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const rows = (data && data.data) || [];
+    if (!rows.length) throw new Error("no rows");
+    const last = rows[rows.length - 1];
+    const stage = last.primary;
+    if (stage === undefined || stage === null) throw new Error("no stage");
+    return { stage: parseFloat(stage), time: last.validTime };
+  } catch (e) {
+    console.warn("Truman lake fetch failed:", e);
+    return null;
+  }
+}
 async function loadWeather(force) {
   const cacheKey = "news.weather";
+  const lakeCacheKey = "news.truman";
+  let data, lake;
   if (!force) {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      try { const p = JSON.parse(cached); if (Date.now() - p.ts < WEATHER_CACHE_TTL_MS) { renderWeather(p.data); return; } } catch {}
-    }
+    try { const p = JSON.parse(localStorage.getItem(cacheKey) || "null"); if (p && Date.now() - p.ts < WEATHER_CACHE_TTL_MS) data = p.data; } catch {}
+    try { const p = JSON.parse(localStorage.getItem(lakeCacheKey) || "null"); if (p && Date.now() - p.ts < WEATHER_CACHE_TTL_MS) lake = p.data; } catch {}
   }
+  if (data && lake !== undefined) { renderWeather(data, lake); return; }
   weatherEl.className = "weather loading";
   weatherEl.innerHTML = '<span class="spinner"></span><span>Loading weather…</span>';
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + WEATHER_LOCATION.lat +
     "&longitude=" + WEATHER_LOCATION.lon +
     "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m" +
-    "&daily=temperature_2m_max,temperature_2m_min,weather_code" +
+    "&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max" +
     "&temperature_unit=fahrenheit&wind_speed_unit=mph" +
     "&timezone=" + encodeURIComponent(WEATHER_LOCATION.tz) +
-    "&forecast_days=1";
+    "&forecast_days=3";
   try {
-    const res = await fetchWithTimeout(url, FEED_TIMEOUT_MS);
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
+    const [wRes, lakeData] = await Promise.all([
+      fetchWithTimeout(url, FEED_TIMEOUT_MS),
+      fetchTrumanLake()
+    ]);
+    if (!wRes.ok) throw new Error("HTTP " + wRes.status);
+    data = await wRes.json();
+    lake = lakeData;
     try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data })); } catch {}
-    renderWeather(data);
+    try { localStorage.setItem(lakeCacheKey, JSON.stringify({ ts: Date.now(), data: lake })); } catch {}
+    renderWeather(data, lake);
   } catch (err) {
     console.warn("Weather failed:", err);
     weatherEl.className = "weather";
-    weatherEl.innerHTML = '<span class="w-icon">⚠️</span><span>Weather unavailable · ' + WEATHER_LOCATION.name + '</span>';
+    weatherEl.innerHTML = '<div class="w-current"><span class="w-icon">⚠️</span><span>Weather unavailable · ' + WEATHER_LOCATION.name + '</span></div>';
   }
 }
-function renderWeather(data) {
+function dayLabel(dateStr, idx) {
+  if (idx === 0) return "Today";
+  if (idx === 1) return "Tomorrow";
+  try { return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" }); } catch { return ""; }
+}
+function renderWeather(data, lake) {
   const c = data.current || {};
   const d = data.daily || {};
   const code = c.weather_code;
@@ -331,19 +398,43 @@ function renderWeather(data) {
   const lo = d.temperature_2m_min && Math.round(d.temperature_2m_min[0]);
   const wind = Math.round(c.wind_speed_10m);
   const hum = c.relative_humidity_2m;
+  const dates = d.time || [];
+  const maxes = d.temperature_2m_max || [];
+  const mins = d.temperature_2m_min || [];
+  const codes = d.weather_code || [];
+  const pops = d.precipitation_probability_max || [];
+  let forecastHtml = "";
+  for (let i = 0; i < Math.min(3, dates.length); i++) {
+    const e = WEATHER_CODE_MAP[codes[i]] || ["", "🌡️"];
+    const pop = pops[i];
+    forecastHtml += '<span class="w-day"><span class="w-day-name">' + dayLabel(dates[i], i) + '</span> ' + e[1] + ' ' +
+      Math.round(maxes[i]) + '° / ' + Math.round(mins[i]) + '°' +
+      (isFinite(pop) && pop > 0 ? ' <span style="color:var(--text-soft)">💧' + pop + '%</span>' : '') + '</span>';
+  }
+  const radarHref = "https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My43NzgsMzguMzY4Nl0sImxvY2F0aW9uIjpudWxsLCJ6b29tIjo4LCJmaWx0ZXJpbmciOnRydWUsImxheWVyIjoiYnJlZiIsInN0YXRpb24iOiJLRUFYIn19";
+  const trumanHtml = lake && isFinite(lake.stage)
+    ? '<span class="w-truman">🌊 Truman <strong>' + lake.stage.toFixed(1) + ' ft</strong></span>'
+    : '<a class="w-truman" target="_blank" href="https://water.noaa.gov/gauges/tumm7">🌊 Truman Lake →</a>';
   weatherEl.className = "weather";
   weatherEl.innerHTML =
-    '<span class="w-icon">' + entry[1] + '</span>' +
-    '<span class="w-temp">' + temp + '°F</span>' +
-    '<span class="w-cond">' + entry[0] + '</span>' +
-    '<span class="w-sep">·</span>' +
-    '<span class="w-cond">' + escapeHtml(WEATHER_LOCATION.name) + '</span>' +
-    '<span class="w-meta">' +
-      '<span>H ' + (isFinite(hi) ? hi : "—") + '° L ' + (isFinite(lo) ? lo : "—") + '°</span>' +
-      '<span>Feels ' + feels + '°</span>' +
-      '<span>💨 ' + wind + ' mph</span>' +
-      '<span>💧 ' + hum + '%</span>' +
-    '</span>';
+    '<div class="w-current">' +
+      '<span class="w-icon">' + entry[1] + '</span>' +
+      '<span class="w-temp">' + temp + '°F</span>' +
+      '<span class="w-cond">' + entry[0] + '</span>' +
+      '<span class="w-sep">·</span>' +
+      '<span class="w-cond">' + escapeHtml(WEATHER_LOCATION.name) + '</span>' +
+      '<span class="w-meta">' +
+        '<span>H ' + (isFinite(hi) ? hi : "—") + '° L ' + (isFinite(lo) ? lo : "—") + '°</span>' +
+        '<span>Feels ' + feels + '°</span>' +
+        '<span>💨 ' + wind + ' mph</span>' +
+        '<span>💧 ' + hum + '%</span>' +
+        trumanHtml +
+      '</span>' +
+    '</div>' +
+    '<div class="w-forecast">' +
+      forecastHtml +
+      '<a class="w-radar" target="_blank" href="' + radarHref + '">📡 Live Radar →</a>' +
+    '</div>';
 }
 
 // ========== NEWS FEEDS ==========
@@ -558,8 +649,9 @@ async function loadStocks(force) {
       const row = document.createElement("div");
       row.className = "stock-row stock-loading";
       row.id = "stock-row-" + t;
+      const displayTicker = TICKER_DISPLAY[t] || t;
       row.innerHTML =
-        '<div class="stock-main"><div class="stock-ticker">' + escapeHtml(t) + '</div><div class="stock-name">Loading…</div></div>' +
+        '<div class="stock-main"><div class="stock-ticker">' + escapeHtml(displayTicker) + '</div><div class="stock-name">Loading…</div></div>' +
         '<div class="stock-spark"></div>' +
         '<div class="stock-price"><div class="price">—</div><div class="change">—</div></div>' +
         '<button class="stock-remove" data-ticker="' + escapeHtml(t) + '" title="Remove">×</button>';
@@ -569,7 +661,7 @@ async function loadStocks(force) {
   const input = document.getElementById("stockInput");
   const addBtn = document.getElementById("stockAddBtn");
   const addTicker = () => {
-    const v = (input.value || "").trim().toUpperCase().replace(/[^A-Z0-9.\-]/g, "");
+    const v = (input.value || "").trim().toUpperCase().replace(/[^A-Z0-9.\-=]/g, "");
     if (!v) return;
     const wl = getWatchlist();
     if (wl.includes(v)) { input.value = ""; return; }

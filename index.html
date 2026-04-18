@@ -14,15 +14,57 @@
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html,body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.5; -webkit-font-smoothing:antialiased; transition:background-color .25s ease,color .25s ease; }
   a { color:inherit; text-decoration:none; }
-  header { position:sticky; top:0; z-index:10; background:color-mix(in srgb,var(--bg) 88%,transparent); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:1px solid var(--border); padding:max(env(safe-area-inset-top),12px) 20px 12px; }
-  .header-row { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+
+  /* ── ALERT BANNER ── */
+  #alertBanner { width:100%; display:none; flex-direction:column; gap:0; }
+  #alertBanner.has-alerts { display:flex; }
+  .alert-item { padding:10px 20px; display:flex; align-items:flex-start; gap:10px; font-size:13px; line-height:1.4; color:#fff; }
+  .alert-item.extreme  { background:#7f1d1d; }
+  .alert-item.severe   { background:#92400e; }
+  .alert-item.moderate { background:#1e3a5f; }
+  .alert-item.minor    { background:#374151; }
+  .alert-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+  .alert-body { flex:1; min-width:0; }
+  .alert-event { font-weight:700; letter-spacing:0.02em; }
+  .alert-headline { opacity:.9; margin-top:2px; }
+  .alert-link { color:#fff; text-decoration:underline; white-space:nowrap; font-weight:600; margin-left:8px; flex-shrink:0; }
+
+  /* ── DRAWER OVERLAY ── */
+  .drawer-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50; opacity:0; pointer-events:none; transition:opacity .25s ease; }
+  .drawer-overlay.open { opacity:1; pointer-events:auto; }
+
+  /* ── SIDEBAR DRAWER ── */
+  .drawer { position:fixed; top:0; left:0; bottom:0; width:min(300px,85vw); background:var(--bg); border-right:1px solid var(--border); z-index:60; transform:translateX(-100%); transition:transform .28s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; overflow:hidden; }
+  .drawer.open { transform:translateX(0); }
+  .drawer-header { padding:20px 20px 14px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); flex-shrink:0; }
+  .drawer-brand { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:18px; font-weight:700; letter-spacing:-0.01em; }
+  .drawer-brand span { color:var(--accent); }
+  .drawer-close { width:36px; height:36px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; font-size:20px; line-height:1; display:flex; align-items:center; justify-content:center; }
+  .drawer-close:hover { background:var(--card-hover); color:var(--text); }
+  .drawer-list { flex:1; overflow-y:auto; padding:10px 0; }
+  .drawer-item { display:flex; align-items:center; gap:12px; padding:12px 20px; cursor:pointer; font-size:15px; font-weight:500; color:var(--text-muted); border-left:3px solid transparent; transition:background .15s,color .15s; }
+  .drawer-item:hover { background:var(--card-hover); color:var(--text); }
+  .drawer-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--card-hover); font-weight:700; }
+  .drawer-item-icon { font-size:18px; width:24px; text-align:center; flex-shrink:0; }
+
+  /* ── HEADER ── */
+  header { position:sticky; top:0; z-index:10; background:color-mix(in srgb,var(--bg) 88%,transparent); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:1px solid var(--border); padding:max(env(safe-area-inset-top),12px) 20px 0; }
+  .header-row { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:12px; }
   .brand { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:22px; font-weight:700; letter-spacing:-0.01em; }
   .brand span { color:var(--accent); }
   .header-actions { display:flex; align-items:center; gap:6px; }
   .icon-btn { width:38px; height:38px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--border); color:var(--text); cursor:pointer; }
   .icon-btn:hover { background:var(--card-hover); }
   .icon-btn svg { width:18px; height:18px; }
-  .weather { max-width:760px; margin:10px auto 0; padding:10px 14px; background:var(--card-hover); border-radius:12px; display:flex; flex-direction:column; gap:8px; font-size:14px; }
+
+  /* ── SECTION BAR ── */
+  .section-bar { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:8px 0 10px; }
+  .section-label { font-size:13px; font-weight:700; color:var(--text); letter-spacing:0.02em; text-transform:uppercase; }
+  .section-menu-btn { font-size:13px; font-weight:600; color:var(--accent); background:transparent; border:none; cursor:pointer; padding:4px 0; display:flex; align-items:center; gap:5px; }
+  .section-menu-btn svg { width:14px; height:14px; }
+
+  /* ── WEATHER ── */
+  .weather { max-width:760px; margin:0 auto 2px; padding:10px 0; display:flex; flex-direction:column; gap:8px; font-size:14px; }
   .weather.loading { opacity:0.5; }
   .w-current { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .w-temp { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
@@ -36,17 +78,16 @@
   .w-day-name { color:var(--text); font-weight:600; }
   .w-radar { margin-left:auto; color:var(--accent); font-weight:600; white-space:nowrap; text-decoration:none; }
   .w-radar:hover { text-decoration:underline; }
-  .w-truman { color:var(--text-muted); white-space:nowrap; text-decoration:none; }
-  .w-truman strong { color:var(--text); font-weight:600; }
-  .tabs { max-width:760px; margin:10px auto 0; padding:0 20px; display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
-  .tabs::-webkit-scrollbar { display:none; }
-  .tab { flex-shrink:0; padding:8px 14px; border-radius:999px; font-size:14px; font-weight:500; cursor:pointer; border:1px solid var(--border); background:transparent; color:var(--text-muted); white-space:nowrap; }
-  .tab:hover { color:var(--text); }
-  .tab.active { background:var(--text); color:var(--bg); border-color:var(--text); }
+  .w-lake { display:inline-flex; align-items:center; gap:5px; padding:3px 10px 3px 8px; background:color-mix(in srgb,var(--accent) 12%,transparent); border-radius:999px; font-weight:700; color:var(--accent); font-size:13px; white-space:nowrap; text-decoration:none; }
+  .w-lake:hover { text-decoration:underline; }
+
+  /* ── MAIN ── */
   main { max-width:760px; margin:0 auto; padding:8px 20px max(env(safe-area-inset-bottom),40px); }
   .status { padding:40px 20px; text-align:center; color:var(--text-muted); font-size:14px; line-height:1.6; }
   .spinner { display:inline-block; width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; vertical-align:middle; margin-right:8px; }
   @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── NEWS ITEMS ── */
   article.item { display:flex; gap:16px; padding:20px 0; border-bottom:1px solid var(--border); cursor:pointer; }
   article.item:hover .title { color:var(--accent); }
   .item-text { flex:1; min-width:0; }
@@ -56,8 +97,8 @@
   .title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:19px; font-weight:700; line-height:1.3; letter-spacing:-0.01em; color:var(--text); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
   .desc { margin-top:6px; font-size:14px; color:var(--text-muted); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .thumb { width:110px; height:110px; flex-shrink:0; border-radius:8px; background:var(--card-hover); object-fit:cover; }
-  footer { max-width:760px; margin:40px auto 0; padding:20px; text-align:center; color:var(--text-soft); font-size:12px; border-top:1px solid var(--border); }
-  .retry-btn { margin-top:14px; padding:8px 18px; border-radius:999px; background:var(--accent); color:white; border:none; font-size:14px; font-weight:500; cursor:pointer; }
+
+  /* ── STOCKS ── */
   .stock-input-row { display:flex; gap:8px; padding:20px 0 12px; border-bottom:1px solid var(--border); }
   .stock-input { flex:1; padding:10px 14px; border-radius:999px; border:1px solid var(--border); background:var(--card-hover); color:var(--text); font-size:14px; outline:none; font-family:inherit; text-transform:uppercase; letter-spacing:0.03em; }
   .stock-input:focus { border-color:var(--accent); }
@@ -75,29 +116,90 @@
   .stock-remove { width:28px; height:28px; border-radius:50%; border:none; background:transparent; color:var(--text-soft); cursor:pointer; font-size:18px; line-height:1; padding:0; flex-shrink:0; }
   .stock-remove:hover { background:var(--card-hover); color:var(--accent); }
   .stock-loading { opacity:0.5; }
-  @media (max-width:520px) { .brand { font-size:20px; } .title { font-size:17px; } .thumb { width:84px; height:84px; } article.item { padding:16px 0; gap:12px; } .tabs,main,.header-row,header,.weather { padding-left:16px; padding-right:16px; } .w-temp { font-size:20px; } .w-meta { font-size:11px; gap:6px; } }
+
+  /* ── STOCK NEWS ── */
+  .stock-news-header { display:flex; align-items:center; gap:8px; padding:24px 0 4px; border-top:2px solid var(--border); margin-top:8px; }
+  .stock-news-title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:18px; font-weight:700; color:var(--text); }
+  .stock-news-sub { font-size:12px; color:var(--text-muted); margin-left:auto; }
+  .stock-news-loading { padding:20px 0; text-align:center; color:var(--text-muted); font-size:13px; }
+
+  /* ── FOOTER ── */
+  footer { max-width:760px; margin:40px auto 0; padding:20px; text-align:center; color:var(--text-soft); font-size:12px; border-top:1px solid var(--border); }
+  .retry-btn { margin-top:14px; padding:8px 18px; border-radius:999px; background:var(--accent); color:white; border:none; font-size:14px; font-weight:500; cursor:pointer; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width:520px) {
+    .brand { font-size:20px; }
+    .title { font-size:17px; }
+    .thumb { width:84px; height:84px; }
+    article.item { padding:16px 0; gap:12px; }
+    main, .header-row, header, .weather, .section-bar { padding-left:16px; padding-right:16px; }
+    .weather, .section-bar { padding-left:0; padding-right:0; }
+    .w-temp { font-size:20px; }
+    .w-meta { font-size:11px; gap:6px; }
+  }
 </style>
 </head>
 <body>
+
+<!-- NWS ALERT BANNER -->
+<div id="alertBanner"></div>
+
+<!-- DRAWER OVERLAY -->
+<div id="drawerOverlay" class="drawer-overlay"></div>
+
+<!-- SIDEBAR DRAWER -->
+<nav id="drawer" class="drawer" aria-label="Navigation">
+  <div class="drawer-header">
+    <div class="drawer-brand">Matt's Daily<span>.</span>Read</div>
+    <button id="drawerClose" class="drawer-close" aria-label="Close menu">×</button>
+  </div>
+  <div id="drawerList" class="drawer-list"></div>
+</nav>
+
 <header>
   <div class="header-row">
+    <button class="icon-btn" id="menuBtn" aria-label="Open navigation">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
     <div class="brand">Matt's Daily<span>.</span>Read</div>
     <div class="header-actions">
-      <button class="icon-btn" id="refreshBtn" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button>
-      <button class="icon-btn" id="themeBtn" aria-label="Toggle theme"><svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></button>
+      <button class="icon-btn" id="refreshBtn" aria-label="Refresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+      </button>
+      <button class="icon-btn" id="themeBtn" aria-label="Toggle theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
     </div>
   </div>
   <div class="weather loading" id="weather"><span class="spinner"></span><span>Loading weather…</span></div>
-  <div class="tabs" id="tabs"></div>
+  <div class="section-bar">
+    <span class="section-label" id="sectionLabel">Top Stories</span>
+    <button class="section-menu-btn" id="sectionMenuBtn">
+      All Sections
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </button>
+  </div>
 </header>
+
 <main>
   <div id="status" class="status"><span class="spinner"></span>Loading…</div>
   <div id="list"></div>
 </main>
-<footer>Built for Matt · Pull-to-refresh or tap the refresh icon.</footer>
+
+<footer>Built for Matt · Pull-to-refresh or tap ↺ to refresh.</footer>
+
 <script>
 // ========== CONFIG ==========
 const WEATHER_LOCATION = { name:"Clinton, MO", lat:38.3686, lon:-93.7780, tz:"America/Chicago" };
+
+const CATEGORY_ICONS = {
+  stocks:"📈", top:"🌍", local:"📍", ukraine:"🇺🇦", iran:"🕌",
+  scs:"⚓", tech:"💻", business:"💼", science:"🔬", sports:"🏆",
+  culture:"🎭", philippines:"🇵🇭", cannabis:"🌿"
+};
 
 const CATEGORIES = [
   { id:"stocks", label:"Stocks", isStocks:true, feeds:[] },
@@ -115,19 +217,19 @@ const CATEGORIES = [
     { source:"DW (Germany)", url:"https://rss.dw.com/rdf/rss-en-all" }
   ]},
   { id:"local", label:"Local (MO)", feeds:[
-    { source:"Clinton Daily Democrat (Google)", url:"https://news.google.com/rss/search?q=site%3Aclintondailydem.com+OR+%22Clinton+Daily+Democrat%22&hl=en-US&gl=US&ceid=US:en" },
-    { source:"KDKD (Google)", url:"https://news.google.com/rss/search?q=%22KDKD%22+Clinton+Missouri&hl=en-US&gl=US&ceid=US:en" },
-    { source:"West Central MO (Google)", url:"https://news.google.com/rss/search?q=%22West+Central+Missouri%22+OR+%22Henry+County%22+OR+%22Benton+County+Missouri%22+OR+%22Warsaw+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Truman Lake (Google)", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+OR+%22Harry+S+Truman+Reservoir%22&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Clinton, MO (Google)", url:"https://news.google.com/rss/search?q=%22Clinton%2C+Missouri%22+OR+%22Henry+County%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Missouri (Google)", url:"https://news.google.com/rss/search?q=Missouri+news&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Kansas City (Google)", url:"https://news.google.com/rss/search?q=%22Kansas+City%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
-    { source:"St. Louis (Google)", url:"https://news.google.com/rss/search?q=%22St.+Louis%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Clinton Daily Democrat", url:"https://news.google.com/rss/search?q=site%3Aclintondailydem.com+OR+%22Clinton+Daily+Democrat%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Henry County MO", url:"https://news.google.com/rss/search?q=%22Henry+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Clinton MO News", url:"https://news.google.com/rss/search?q=%22Clinton%2C+Missouri%22+OR+%22Clinton+MO%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Truman Lake", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+OR+%22Harry+S+Truman+Reservoir%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"West Central MO", url:"https://news.google.com/rss/search?q=%22West+Central+Missouri%22+OR+%22Benton+County+Missouri%22+OR+%22Warsaw+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"KDKD Clinton", url:"https://news.google.com/rss/search?q=%22KDKD%22+Clinton+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Missouri Independent", url:"https://missouriindependent.com/feed/" },
     { source:"KCUR", url:"https://www.kcur.org/news.rss" },
+    { source:"Kansas City Star (Google)", url:"https://news.google.com/rss/search?q=%22Kansas+City%22+Missouri+news+site:kansascity.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Kansas City (Google)", url:"https://news.google.com/rss/search?q=%22Kansas+City%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"St. Louis Public Radio", url:"https://news.stlpublicradio.org/rss" },
-    { source:"Springfield (Google)", url:"https://news.google.com/rss/search?q=Springfield+Missouri+news&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Columbia Missourian", url:"https://www.columbiamissourian.com/search/?f=rss&t=article&c=news&l=25&s=start_time&sd=desc" }
+    { source:"Columbia Missourian", url:"https://www.columbiamissourian.com/search/?f=rss&t=article&c=news&l=25&s=start_time&sd=desc" },
+    { source:"Springfield (Google)", url:"https://news.google.com/rss/search?q=Springfield+Missouri+news&hl=en-US&gl=US&ceid=US:en" }
   ]},
   { id:"ukraine", label:"Ukraine War", feeds:[
     { source:"Google News", url:"https://news.google.com/rss/search?q=ukraine+war+russia&hl=en-US&gl=US&ceid=US:en" },
@@ -218,17 +320,31 @@ const CATEGORIES = [
   { id:"cannabis", label:"Cannabis", feeds:[
     { source:"Marijuana Moment", url:"https://www.marijuanamoment.net/feed/" },
     { source:"MJBizDaily", url:"https://mjbizdaily.com/feed/" },
-    { source:"Leafly", url:"https://www.leafly.com/news/feed" },
     { source:"High Times", url:"https://hightimes.com/feed/" },
     { source:"Ganjapreneur", url:"https://www.ganjapreneur.com/feed/" },
     { source:"NORML", url:"https://norml.org/feed/" },
     { source:"Cannabis Business Times", url:"https://www.cannabisbusinesstimes.com/rss/feed/" },
-    { source:"Competitions (Google)", url:"https://news.google.com/rss/search?q=%22Cannabis+Cup%22+OR+%22Emerald+Cup%22+OR+cannabis+competition&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Legalization (Google)", url:"https://news.google.com/rss/search?q=marijuana+OR+cannabis+legalization&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Cultivation (Google)", url:"https://news.google.com/rss/search?q=cannabis+cultivation+OR+growing+techniques+research&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Science (Google)", url:"https://news.google.com/rss/search?q=cannabis+science+study+OR+cannabinoid+research&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Research (Google)", url:"https://news.google.com/rss/search?q=cannabinoid+OR+THC+OR+CBD+research+study&hl=en-US&gl=US&ceid=US:en" }
+    { source:"Leafly News", url:"https://consumer-api.leafly.com/api/strain_playlists/v2?strain_slug=&strain_page=1&sort=latest" },
+    { source:"Legalization News", url:"https://news.google.com/rss/search?q=marijuana+OR+cannabis+legalization+law&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Grow Techniques", url:"https://news.google.com/rss/search?q=cannabis+cultivation+growing+techniques+indoor+outdoor&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Cannabis Science", url:"https://news.google.com/rss/search?q=cannabis+science+study+cannabinoid+research&hl=en-US&gl=US&ceid=US:en" },
+    { source:"THC/CBD Research", url:"https://news.google.com/rss/search?q=THC+OR+CBD+OR+cannabinoid+research+study+2025+2026&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Cannabis Competitions", url:"https://news.google.com/rss/search?q=%22Cannabis+Cup%22+OR+%22Emerald+Cup%22+OR+cannabis+award&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Missouri Cannabis", url:"https://news.google.com/rss/search?q=Missouri+cannabis+marijuana&hl=en-US&gl=US&ceid=US:en" }
   ]}
+];
+
+// Stock news feeds — Google News for each default ticker group
+const STOCK_NEWS_FEEDS = [
+  { source:"Market News", url:"https://news.google.com/rss/search?q=AAPL+OR+MSFT+OR+NVDA+OR+GOOGL+stock+earnings&hl=en-US&gl=US&ceid=US:en" },
+  { source:"Tesla / EV", url:"https://news.google.com/rss/search?q=TSLA+Tesla+stock&hl=en-US&gl=US&ceid=US:en" },
+  { source:"Chips / Semi", url:"https://news.google.com/rss/search?q=AMD+OR+INTC+OR+TSM+semiconductor+stock&hl=en-US&gl=US&ceid=US:en" },
+  { source:"Meme Stocks", url:"https://news.google.com/rss/search?q=GME+OR+AMC+stock+news&hl=en-US&gl=US&ceid=US:en" },
+  { source:"Crypto", url:"https://news.google.com/rss/search?q=Bitcoin+OR+XRP+crypto+price&hl=en-US&gl=US&ceid=US:en" },
+  { source:"Oil / Commodities", url:"https://news.google.com/rss/search?q=crude+oil+WTI+Brent+price&hl=en-US&gl=US&ceid=US:en" },
+  { source:"SPY / Market", url:"https://news.google.com/rss/search?q=S%26P+500+OR+SPY+stock+market&hl=en-US&gl=US&ceid=US:en" },
+  { source:"Yahoo Finance", url:"https://finance.yahoo.com/news/rssindex" },
+  { source:"MarketWatch", url:"https://feeds.content.dowjones.io/public/rss/mw_topstories" }
 ];
 
 const PROXIES = [
@@ -245,6 +361,7 @@ const CACHE_TTL_MS = 10*60*1000;
 const FEED_TIMEOUT_MS = 8000;
 const STOCKS_CACHE_TTL_MS = 60*1000;
 const WEATHER_CACHE_TTL_MS = 15*60*1000;
+const ALERTS_CACHE_TTL_MS = 5*60*1000;
 const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F"];
 const WATCHLIST_VERSION = 3;
 const TICKER_DISPLAY = { "BZ=F":"BRENT", "CL=F":"WTI", "BTC-USD":"BITCOIN", "XRP-USD":"XRP" };
@@ -253,8 +370,11 @@ const TICKER_DISPLAY = { "BZ=F":"BRENT", "CL=F":"WTI", "BTC-USD":"BITCOIN", "XRP
 let activeCat = localStorage.getItem("news.activeCat") || "top";
 const listEl = document.getElementById("list");
 const statusEl = document.getElementById("status");
-const tabsEl = document.getElementById("tabs");
 const weatherEl = document.getElementById("weather");
+const alertBannerEl = document.getElementById("alertBanner");
+const drawerEl = document.getElementById("drawer");
+const overlayEl = document.getElementById("drawerOverlay");
+const sectionLabelEl = document.getElementById("sectionLabel");
 
 // ========== THEME ==========
 const themeBtn = document.getElementById("themeBtn");
@@ -271,22 +391,46 @@ themeBtn.addEventListener("click", () => {
   applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
 });
 
-// ========== TABS ==========
-function renderTabs() {
-  tabsEl.innerHTML = "";
+// ========== DRAWER ==========
+function openDrawer() {
+  drawerEl.classList.add("open");
+  overlayEl.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeDrawer() {
+  drawerEl.classList.remove("open");
+  overlayEl.classList.remove("open");
+  document.body.style.overflow = "";
+}
+document.getElementById("menuBtn").addEventListener("click", openDrawer);
+document.getElementById("sectionMenuBtn").addEventListener("click", openDrawer);
+document.getElementById("drawerClose").addEventListener("click", closeDrawer);
+overlayEl.addEventListener("click", closeDrawer);
+
+function renderDrawer() {
+  const drawerList = document.getElementById("drawerList");
+  drawerList.innerHTML = "";
   CATEGORIES.forEach(cat => {
-    const btn = document.createElement("button");
-    btn.className = "tab" + (cat.id === activeCat ? " active" : "");
-    btn.textContent = cat.label;
-    btn.addEventListener("click", () => {
-      if (activeCat === cat.id) return;
+    const item = document.createElement("div");
+    item.className = "drawer-item" + (cat.id === activeCat ? " active" : "");
+    item.innerHTML =
+      '<span class="drawer-item-icon">' + (CATEGORY_ICONS[cat.id] || "•") + '</span>' +
+      '<span>' + cat.label + '</span>';
+    item.addEventListener("click", () => {
+      if (activeCat === cat.id) { closeDrawer(); return; }
       activeCat = cat.id;
       localStorage.setItem("news.activeCat", activeCat);
-      renderTabs();
+      closeDrawer();
+      renderDrawer();
+      updateSectionLabel();
       loadCategory();
     });
-    tabsEl.appendChild(btn);
+    drawerList.appendChild(item);
   });
+}
+function updateSectionLabel() {
+  const cat = CATEGORIES.find(c => c.id === activeCat);
+  sectionLabelEl.textContent = cat ? cat.label : "";
 }
 
 // ========== UTILS ==========
@@ -314,10 +458,69 @@ function relativeTime(ts) {
   return new Date(ts).toLocaleDateString(undefined, { month:"short", day:"numeric" });
 }
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 }
 
-// ========== WEATHER (Open-Meteo, native CORS) ==========
+// ========== NWS ALERTS ==========
+async function fetchNWSAlerts() {
+  const cacheKey = "news.nws.alerts";
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const p = JSON.parse(cached);
+      if (Date.now() - p.ts < ALERTS_CACHE_TTL_MS) { renderAlerts(p.data); return; }
+    }
+  } catch {}
+  try {
+    const res = await fetchWithTimeout(
+      "https://api.weather.gov/alerts/active?point=" + WEATHER_LOCATION.lat + "," + WEATHER_LOCATION.lon,
+      6000
+    );
+    if (!res.ok) throw new Error("NWS HTTP " + res.status);
+    const data = await res.json();
+    const alerts = (data.features || []).map(f => ({
+      event: f.properties.event || "",
+      headline: f.properties.headline || f.properties.description || "",
+      severity: (f.properties.severity || "").toLowerCase(),
+      url: f.properties["@id"] || ""
+    }));
+    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: alerts })); } catch {}
+    renderAlerts(alerts);
+  } catch (e) {
+    console.warn("NWS alerts failed:", e);
+  }
+}
+function severityClass(sev) {
+  if (sev === "extreme") return "extreme";
+  if (sev === "severe") return "severe";
+  if (sev === "moderate") return "moderate";
+  return "minor";
+}
+function severityIcon(sev) {
+  if (sev === "extreme" || sev === "severe") return "🚨";
+  if (sev === "moderate") return "⚠️";
+  return "ℹ️";
+}
+function renderAlerts(alerts) {
+  if (!alerts || alerts.length === 0) {
+    alertBannerEl.classList.remove("has-alerts");
+    alertBannerEl.innerHTML = "";
+    return;
+  }
+  alertBannerEl.classList.add("has-alerts");
+  alertBannerEl.innerHTML = alerts.map(a =>
+    '<div class="alert-item ' + severityClass(a.severity) + '">' +
+      '<span class="alert-icon">' + severityIcon(a.severity) + '</span>' +
+      '<div class="alert-body">' +
+        '<div class="alert-event">' + escapeHtml(a.event) + ' — Clinton, MO</div>' +
+        '<div class="alert-headline">' + escapeHtml((a.headline || "").slice(0, 180)) + '</div>' +
+      '</div>' +
+      (a.url ? '<a class="alert-link" href="' + escapeHtml(a.url) + '" target="_blank" rel="noopener">Details →</a>' : '') +
+    '</div>'
+  ).join("");
+}
+
+// ========== WEATHER (Open-Meteo) ==========
 const WEATHER_CODE_MAP = {
   0:["Clear","☀️"], 1:["Mostly Clear","🌤️"], 2:["Partly Cloudy","⛅"], 3:["Overcast","☁️"],
   45:["Fog","🌫️"], 48:["Icy Fog","🌫️"],
@@ -331,22 +534,33 @@ const WEATHER_CODE_MAP = {
   85:["Snow Showers","🌨️"], 86:["Heavy Snow Showers","❄️"],
   95:["Thunderstorm","⛈️"], 96:["Thunderstorm + Hail","⛈️"], 99:["Severe Thunderstorm","⛈️"]
 };
+
 async function fetchTrumanLake() {
-  try {
-    const res = await fetchWithTimeout("https://api.water.noaa.gov/nwps/v1/gauges/TUMM7/stageflow/observed", 5000);
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
-    const rows = (data && data.data) || [];
-    if (!rows.length) throw new Error("no rows");
-    const last = rows[rows.length - 1];
-    const stage = last.primary;
-    if (stage === undefined || stage === null) throw new Error("no stage");
-    return { stage: parseFloat(stage), time: last.validTime };
-  } catch (e) {
-    console.warn("Truman lake fetch failed:", e);
-    return null;
+  // Try NOAA Water Resources API for Truman Lake / Warsaw gauge
+  const endpoints = [
+    "https://api.water.noaa.gov/nwps/v1/gauges/TUMM7/stageflow/observed",
+    "https://api.water.noaa.gov/nwps/v1/gauges/WRSM7/stageflow/observed"
+  ];
+  for (const ep of endpoints) {
+    try {
+      const res = await fetchWithTimeout(ep, 5000);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const rows = (data && data.data) || [];
+      if (!rows.length) continue;
+      // Find the last non-null reading
+      const last = [...rows].reverse().find(r => r.primary !== null && r.primary !== undefined);
+      if (!last) continue;
+      const stage = parseFloat(last.primary);
+      if (!isFinite(stage)) continue;
+      return { stage, time: last.validTime, gauge: ep.includes("WRSM7") ? "Warsaw" : "Truman" };
+    } catch (e) {
+      console.warn("Lake endpoint failed:", ep, e);
+    }
   }
+  return null;
 }
+
 async function loadWeather(force) {
   const cacheKey = "news.weather";
   const lakeCacheKey = "news.truman";
@@ -412,9 +626,9 @@ function renderWeather(data, lake) {
       (isFinite(pop) && pop > 0 ? ' <span style="color:var(--text-soft)">💧' + pop + '%</span>' : '') + '</span>';
   }
   const radarHref = "https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My43NzgsMzguMzY4Nl0sImxvY2F0aW9uIjpudWxsLCJ6b29tIjo4LCJmaWx0ZXJpbmciOnRydWUsImxheWVyIjoiYnJlZiIsInN0YXRpb24iOiJLRUFYIn19";
-  const trumanHtml = lake && isFinite(lake.stage)
-    ? '<span class="w-truman">🌊 Truman <strong>' + lake.stage.toFixed(1) + ' ft</strong></span>'
-    : '<a class="w-truman" target="_blank" href="https://water.noaa.gov/gauges/tumm7">🌊 Truman Lake →</a>';
+  const lakeHtml = lake && isFinite(lake.stage)
+    ? '<a class="w-lake" href="https://water.noaa.gov/gauges/tumm7" target="_blank" rel="noopener">🌊 Truman <strong>' + lake.stage.toFixed(1) + ' ft</strong></a>'
+    : '<a class="w-lake" href="https://water.usace.army.mil/overview/nwk/locations/hast" target="_blank" rel="noopener">🌊 Truman Lake →</a>';
   weatherEl.className = "weather";
   weatherEl.innerHTML =
     '<div class="w-current">' +
@@ -428,12 +642,12 @@ function renderWeather(data, lake) {
         '<span>Feels ' + feels + '°</span>' +
         '<span>💨 ' + wind + ' mph</span>' +
         '<span>💧 ' + hum + '%</span>' +
-        trumanHtml +
+        lakeHtml +
       '</span>' +
     '</div>' +
     '<div class="w-forecast">' +
       forecastHtml +
-      '<a class="w-radar" target="_blank" href="' + radarHref + '">📡 Live Radar →</a>' +
+      '<a class="w-radar" target="_blank" href="' + radarHref + '">📡 Radar →</a>' +
     '</div>';
 }
 
@@ -511,7 +725,6 @@ function getWatchlist() {
   let list = null;
   try { const raw = localStorage.getItem("news.watchlist"); if (raw) list = JSON.parse(raw); } catch {}
   if (!list) list = DEFAULT_TICKERS.slice();
-  // Migration: if default list has grown, append any new default tickers to existing watchlists
   const savedVersion = parseInt(localStorage.getItem("news.watchlist.version") || "1", 10);
   if (savedVersion < WATCHLIST_VERSION) {
     DEFAULT_TICKERS.forEach(t => { if (!list.includes(t)) list.push(t); });
@@ -552,8 +765,7 @@ async function fetchQuoteYahoo(ticker) {
   const prevClose = (meta.chartPreviousClose !== undefined && meta.chartPreviousClose !== null) ? meta.chartPreviousClose : (meta.previousClose || closes[closes.length - 2]);
   const change = price - prevClose;
   return {
-    ticker,
-    name: meta.shortName || meta.longName || ticker,
+    ticker, name: meta.shortName || meta.longName || ticker,
     price, change,
     changePct: (change / prevClose) * 100,
     currency: meta.currency || "USD",
@@ -629,19 +841,75 @@ function fmtChange(abs, pct) {
   const sign = abs >= 0 ? "+" : "";
   return sign + abs.toFixed(2) + " (" + sign + pct.toFixed(2) + "%)";
 }
+
+async function loadStockNews(force) {
+  const newsSection = document.getElementById("stockNewsSection");
+  if (!newsSection) return;
+  newsSection.innerHTML =
+    '<div class="stock-news-header">' +
+      '<div class="stock-news-title">📰 Stock News</div>' +
+      '<div class="stock-news-sub">Live market headlines</div>' +
+    '</div>' +
+    '<div class="stock-news-loading"><span class="spinner"></span>Loading stock news…</div>';
+
+  if (force) STOCK_NEWS_FEEDS.forEach(f => localStorage.removeItem("news.cache." + f.url));
+
+  const results = await Promise.all(STOCK_NEWS_FEEDS.map(f => fetchFeed(f)));
+  const all = results.flatMap(r => r).sort((a, b) => b.pubDate - a.pubDate);
+
+  // Deduplicate by title
+  const seen = new Set();
+  const deduped = all.filter(item => {
+    const key = item.title.toLowerCase().slice(0, 60);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  if (deduped.length === 0) {
+    newsSection.querySelector(".stock-news-loading").textContent = "No stock news loaded — proxies may be slow.";
+    return;
+  }
+  newsSection.querySelector(".stock-news-loading").remove();
+  const frag = document.createDocumentFragment();
+  deduped.slice(0, 40).forEach(item => {
+    const a = document.createElement("a");
+    a.className = "item";
+    a.href = item.link;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.setAttribute("role","article");
+    const hasImg = item.thumbnail && /^https?:\/\//.test(item.thumbnail);
+    a.innerHTML =
+      '<div class="item-text">' +
+        '<div class="meta"><span class="source">' + escapeHtml(item.source) + '</span><span class="dot">·</span><span>' + relativeTime(item.pubDate) + '</span></div>' +
+        '<div class="title">' + escapeHtml(item.title) + '</div>' +
+        (item.description ? '<div class="desc">' + escapeHtml(item.description) + '</div>' : '') +
+      '</div>' +
+      (hasImg ? '<img class="thumb" src="' + escapeHtml(item.thumbnail) + '" alt="" loading="lazy" onerror="this.remove()">' : '');
+    frag.appendChild(a);
+  });
+  newsSection.appendChild(frag);
+}
+
 async function loadStocks(force) {
   listEl.innerHTML = "";
   statusEl.style.display = "none";
   const watchlist = getWatchlist();
+
+  // Input row
   const inputRow = document.createElement("div");
   inputRow.className = "stock-input-row";
   inputRow.innerHTML =
     '<input class="stock-input" id="stockInput" placeholder="Add ticker (e.g. NVDA)" maxlength="10" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">' +
     '<button class="stock-add-btn" id="stockAddBtn">Add</button>';
   listEl.appendChild(inputRow);
+
+  // Stock price rows
   const rowsContainer = document.createElement("div");
   rowsContainer.id = "stockRows";
   listEl.appendChild(rowsContainer);
+
   if (watchlist.length === 0) {
     rowsContainer.innerHTML = '<div class="status">Your watchlist is empty. Add a ticker above.</div>';
   } else {
@@ -658,6 +926,13 @@ async function loadStocks(force) {
       rowsContainer.appendChild(row);
     });
   }
+
+  // Stock news section placeholder
+  const newsSection = document.createElement("div");
+  newsSection.id = "stockNewsSection";
+  listEl.appendChild(newsSection);
+
+  // Wire up input
   const input = document.getElementById("stockInput");
   const addBtn = document.getElementById("stockAddBtn");
   const addTicker = () => {
@@ -679,24 +954,29 @@ async function loadStocks(force) {
       loadStocks();
     });
   });
-  await Promise.all(watchlist.map(async t => {
-    const q = await fetchQuote(t, force);
-    const row = document.getElementById("stock-row-" + t);
-    if (!row) return;
-    row.classList.remove("stock-loading");
-    if (!q) {
-      row.querySelector(".stock-name").textContent = "Couldn't load — proxies rate-limited";
-      return;
-    }
-    const up = q.change >= 0;
-    row.querySelector(".stock-name").textContent = q.name + (q.source ? " · " + q.source : "");
-    const oldSpark = row.querySelector(".stock-spark");
-    if (oldSpark) oldSpark.outerHTML = sparklineSvg(q.closes);
-    const priceEl = row.querySelector(".stock-price");
-    priceEl.innerHTML =
-      '<div class="price">' + fmtMoney(q.price, q.currency) + '</div>' +
-      '<div class="change ' + (up ? "up" : "down") + '">' + fmtChange(q.change, q.changePct) + '</div>';
-  }));
+
+  // Load prices and news in parallel
+  await Promise.all([
+    Promise.all(watchlist.map(async t => {
+      const q = await fetchQuote(t, force);
+      const row = document.getElementById("stock-row-" + t);
+      if (!row) return;
+      row.classList.remove("stock-loading");
+      if (!q) {
+        row.querySelector(".stock-name").textContent = "Couldn't load — proxies rate-limited";
+        return;
+      }
+      const up = q.change >= 0;
+      row.querySelector(".stock-name").textContent = q.name + (q.source ? " · " + q.source : "");
+      const oldSpark = row.querySelector(".stock-spark");
+      if (oldSpark) oldSpark.outerHTML = sparklineSvg(q.closes);
+      const priceEl = row.querySelector(".stock-price");
+      priceEl.innerHTML =
+        '<div class="price">' + fmtMoney(q.price, q.currency) + '</div>' +
+        '<div class="change ' + (up ? "up" : "down") + '">' + fmtChange(q.change, q.changePct) + '</div>';
+    })),
+    loadStockNews(force)
+  ]);
 }
 
 // ========== LOAD CATEGORY ==========
@@ -719,12 +999,22 @@ async function loadCategory(force) {
     return { source: f.source, items };
   }));
   const all = results.flatMap(r => r.items).sort((a, b) => b.pubDate - a.pubDate);
-  if (all.length === 0) {
+
+  // Deduplicate
+  const seen = new Set();
+  const deduped = all.filter(item => {
+    const key = item.title.toLowerCase().slice(0, 60);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  if (deduped.length === 0) {
     statusEl.innerHTML = "Couldn't load any stories. The RSS proxies may be slow or down.<br><span style=\"opacity:.6\">Tried: " + cat.feeds.map(f => f.source).join(", ") + "</span><br><button class=\"retry-btn\" onclick=\"loadCategory(true)\">Try again</button>";
     return;
   }
   statusEl.style.display = "none";
-  renderNews(all);
+  renderNews(deduped);
 }
 window.loadCategory = loadCategory;
 
@@ -736,9 +1026,15 @@ function renderNews(items) {
     a.href = item.link;
     a.target = "_blank";
     a.rel = "noopener noreferrer";
-    a.setAttribute("role", "article");
+    a.setAttribute("role","article");
     const hasImg = item.thumbnail && /^https?:\/\//.test(item.thumbnail);
-    a.innerHTML = '<div class="item-text"><div class="meta"><span class="source">' + escapeHtml(item.source) + '</span><span class="dot">·</span><span>' + relativeTime(item.pubDate) + '</span></div><div class="title">' + escapeHtml(item.title) + '</div>' + (item.description ? '<div class="desc">' + escapeHtml(item.description) + '</div>' : '') + '</div>' + (hasImg ? '<img class="thumb" src="' + escapeHtml(item.thumbnail) + '" alt="" loading="lazy" onerror="this.remove()">' : '');
+    a.innerHTML =
+      '<div class="item-text">' +
+        '<div class="meta"><span class="source">' + escapeHtml(item.source) + '</span><span class="dot">·</span><span>' + relativeTime(item.pubDate) + '</span></div>' +
+        '<div class="title">' + escapeHtml(item.title) + '</div>' +
+        (item.description ? '<div class="desc">' + escapeHtml(item.description) + '</div>' : '') +
+      '</div>' +
+      (hasImg ? '<img class="thumb" src="' + escapeHtml(item.thumbnail) + '" alt="" loading="lazy" onerror="this.remove()">' : '');
     frag.appendChild(a);
   });
   listEl.innerHTML = "";
@@ -747,15 +1043,33 @@ function renderNews(items) {
 
 // ========== INIT ==========
 document.getElementById("refreshBtn").addEventListener("click", () => {
+  localStorage.removeItem("news.nws.alerts");
+  fetchNWSAlerts();
   loadWeather(true);
   loadCategory(true);
 });
+
+// Pull-to-refresh
 let startY = 0, pulling = false;
 document.addEventListener("touchstart", e => { if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; } }, { passive: true });
-document.addEventListener("touchend", e => { if (!pulling) return; const dy = e.changedTouches[0].clientY - startY; if (dy > 80) { loadWeather(true); loadCategory(true); } pulling = false; });
-renderTabs();
+document.addEventListener("touchend", e => {
+  if (!pulling) return;
+  const dy = e.changedTouches[0].clientY - startY;
+  if (dy > 80) { fetchNWSAlerts(); loadWeather(true); loadCategory(true); }
+  pulling = false;
+});
+
+// Keyboard: Escape closes drawer
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+
+renderDrawer();
+updateSectionLabel();
+fetchNWSAlerts();
 loadWeather();
 loadCategory();
+
+// Re-poll alerts every 5 minutes
+setInterval(() => { localStorage.removeItem("news.nws.alerts"); fetchNWSAlerts(); }, ALERTS_CACHE_TTL_MS);
 </script>
 </body>
 </html>

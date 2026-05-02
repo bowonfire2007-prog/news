@@ -128,7 +128,11 @@
   .retry-btn { margin-top:14px; padding:8px 18px; border-radius:999px; background:var(--accent); color:white; border:none; font-size:14px; font-weight:500; cursor:pointer; }
 
   /* ── RESPONSIVE ── */
-  @media (max-width:520px) {
+  .w-fishing { display:flex; flex-direction:column; gap:5px; padding-top:8px; border-top:1px solid var(--border); font-size:13px; }
+  .w-fish-title { font-weight:700; color:var(--text); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:2px; }
+  .w-fish-label { font-weight:600; color:var(--text); margin-right:4px; }
+  .w-fish-item { color:var(--text-muted); line-height:1.5; }
+    @media (max-width:520px) {
     .brand { font-size:20px; }
     .title { font-size:17px; }
     .thumb { width:84px; height:84px; }
@@ -362,7 +366,7 @@ const FEED_TIMEOUT_MS = 8000;
 const STOCKS_CACHE_TTL_MS = 60*1000;
 const WEATHER_CACHE_TTL_MS = 15*60*1000;
 const ALERTS_CACHE_TTL_MS = 5*60*1000;
-const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F"];
+const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F","LRCX"];
 const WATCHLIST_VERSION = 3;
 const TICKER_DISPLAY = { "BZ=F":"BRENT", "CL=F":"WTI", "BTC-USD":"BITCOIN", "XRP-USD":"XRP" };
 
@@ -535,30 +539,31 @@ const WEATHER_CODE_MAP = {
   95:["Thunderstorm","⛈️"], 96:["Thunderstorm + Hail","⛈️"], 99:["Severe Thunderstorm","⛈️"]
 };
 
+const TRUMAN_NORMAL_POOL_FT = 706.0; // Normal pool elevation, ft above sea level (NAVD88)
 async function fetchTrumanLake() {
-  // Try NOAA Water Resources API for Truman Lake / Warsaw gauge
-  const endpoints = [
-    "https://api.water.noaa.gov/nwps/v1/gauges/TUMM7/stageflow/observed",
-    "https://api.water.noaa.gov/nwps/v1/gauges/WRSM7/stageflow/observed"
-  ];
-  for (const ep of endpoints) {
-    try {
-      const res = await fetchWithTimeout(ep, 5000);
-      if (!res.ok) continue;
-      const data = await res.json();
-      const rows = (data && data.data) || [];
-      if (!rows.length) continue;
-      // Find the last non-null reading
-      const last = [...rows].reverse().find(r => r.primary !== null && r.primary !== undefined);
-      if (!last) continue;
-      const stage = parseFloat(last.primary);
-      if (!isFinite(stage)) continue;
-      return { stage, time: last.validTime, gauge: ep.includes("WRSM7") ? "Warsaw" : "Truman" };
-    } catch (e) {
-      console.warn("Lake endpoint failed:", ep, e);
-    }
+  try {
+    // USGS site 06922440 = Harry S. Truman Dam and Res. at Warsaw, MO
+    // parameterCd 00065 = Gage height (pool elevation), feet — period=P1D gives 24h of readings
+    const res = await fetchWithTimeout(
+      "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=06922440&parameterCd=00065&siteStatus=active&period=P1D",
+      6000
+    );
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const series = data && data.value && data.value.timeSeries && data.value.timeSeries[0];
+    if (!series) throw new Error("no series");
+    const vals = series.values && series.values[0] && series.values[0].value;
+    if (!vals || !vals.length) throw new Error("no values");
+    const last  = vals[vals.length - 1];
+    const first = vals[0];
+    const stage = parseFloat(last.value);
+    if (!isFinite(stage)) throw new Error("bad stage");
+    const change24h = isFinite(parseFloat(first.value)) ? stage - parseFloat(first.value) : null;
+    return { stage, time: last.dateTime, change24h };
+  } catch (e) {
+    console.warn("Truman lake fetch failed:", e);
+    return null;
   }
-  return null;
 }
 
 async function loadWeather(force) {
@@ -627,8 +632,67 @@ function renderWeather(data, lake) {
   }
   const radarHref = "https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My43NzgsMzguMzY4Nl0sImxvY2F0aW9uIjpudWxsLCJ6b29tIjo4LCJmaWx0ZXJpbmciOnRydWUsImxheWVyIjoiYnJlZiIsInN0YXRpb24iOiJLRUFYIn19";
   const lakeHtml = lake && isFinite(lake.stage)
-    ? '<a class="w-lake" href="https://water.noaa.gov/gauges/tumm7" target="_blank" rel="noopener">🌊 Truman <strong>' + lake.stage.toFixed(1) + ' ft</strong></a>'
-    : '<a class="w-lake" href="https://water.usace.army.mil/overview/nwk/locations/hast" target="_blank" rel="noopener">🌊 Truman Lake →</a>';
+    ? (function() {
+        const diff = lake.stage - TRUMAN_NORMAL_POOL_FT;
+        const diffStr = (diff >= 0 ? "+" : "") + diff.toFixed(1) + " ft";
+        const diffColor = diff > 2 ? "#b91c1c" : diff < -2 ? "#1d4ed8" : "var(--text-soft)";
+        let trendStr = "";
+        if (lake.change24h !== null && isFinite(lake.change24h)) {
+          const ch = lake.change24h;
+          const arrow = ch > 0.05 ? "↑" : ch < -0.05 ? "↓" : "→";
+          const trendColor = ch > 0.05 ? "#b91c1c" : ch < -0.05 ? "#1d4ed8" : "var(--text-soft)";
+          trendStr = ' <span style="color:' + trendColor + ';font-size:11px">' + arrow + Math.abs(ch).toFixed(2) + ' ft/day</span>';
+        }
+        return '<a class="w-lake" href="https://waterdata.usgs.gov/monitoring-location/06922440/" target="_blank" rel="noopener">'
+          + '🌊 Truman <strong>' + lake.stage.toFixed(1) + ' ft</strong>'
+          + ' <span style="color:' + diffColor + ';font-size:11px">(' + diffStr + ')</span>'
+          + trendStr + '</a>';
+      })()
+    : '<a class="w-lake" href="https://waterdata.usgs.gov/monitoring-location/06922440/" target="_blank" rel="noopener">🌊 Truman Lake →</a>';
+
+  // ── FISHING CONDITIONS ──
+  function getFishingTips(lake, airTempF, windMph) {
+    if (!lake || !isFinite(lake.stage)) return null;
+    const diff = lake.stage - TRUMAN_NORMAL_POOL_FT;
+    const ch = lake.change24h;
+    const rising   = ch !== null && ch > 0.05;
+    const falling  = ch !== null && ch < -0.05;
+    const fastMove = ch !== null && Math.abs(ch) > 0.5;
+    // Shad/wind note
+    let shadNote = windMph >= 15 ? "Strong wind pushing shad to windward banks — both species will stack there." :
+                   windMph >= 8  ? "Moderate wind concentrating shad on windward banks." :
+                                   "Calm — shad scattered; focus on structure and bait schools.";
+    if (airTempF !== null && airTempF >= 78) shadNote += " Warm air: shad and bait shallow at dawn, deeper by midday.";
+    else if (airTempF !== null && airTempF <= 55) shadNote += " Cool air: shad sluggish and deeper — slow presentations near bottom.";
+    // Blue cat
+    let blueCat = diff > 5 && rising  ? (fastMove ? "Fast-rising flood pool — blues scattered in flooded timber and creek arms 2–8 ft. Fresh-cut bait near flooded brush edges." : "High rising pool — blues pushed into flooded timber and creek arms. Chunk shad near wood edges.")
+                : diff > 5 && falling ? "High falling lake — blues moving back to main channel ledges and creek mouths. Target 15–25 ft drops with cut shad."
+                : diff > 5            ? "High stable pool — blues spread through timber and channel bends. Drift cut shad along 10–20 ft structure."
+                : diff > 1 && rising  ? "Rising water activating blues. Hit creek channel bends and flooded timber edges with skipjack or cut shad."
+                : diff > 1 && falling ? "Slight drop — blues staging on main lake ledges and deeper humps. Try 20–30 ft channel bend drops."
+                : diff < -2 && falling? "Low falling lake — blues stacking in the deepest holes. Tailwater below the dam can be excellent. Night bite peaks."
+                :                       "Stable pool — target main lake ledges, submerged timber, and creek channel bends in 15–30 ft.";
+    if (windMph >= 15) blueCat += " Wind-swept main lake points are bonus ambush spots.";
+    // Crappie
+    let crappie = diff > 3 && rising          ? "Rising water pushing crappie into flooded brush 2–8 ft. Work jigs slow through the timber — they'll be tight to wood."
+                : airTempF !== null && airTempF >= 75 ? "Warm temps — spawn or post-spawn. Fish shallow brush, dock pilings, stumps 2–6 ft. Jigs and minnows both produce."
+                : airTempF !== null && airTempF >= 62 ? "Pre-spawn crappie moving shallow. Hit brush piles 5–12 ft and dock pockets — morning bite is prime."
+                : airTempF !== null && airTempF >= 50 ? "Transitioning shallower. Fish brush and timber edges in 10–18 ft with slow jig presentations."
+                :                                       "Crappie holding deep. Slow-fish brush piles and submerged timber in 15–25 ft.";
+    return { blueCat, crappie, shadNote };
+  }
+  const _airTempF = c.temperature_2m !== undefined ? Math.round(c.temperature_2m) : null;
+  const _windMph  = c.wind_speed_10m  !== undefined ? Math.round(c.wind_speed_10m)  : 0;
+  const _tips = getFishingTips(lake, _airTempF, _windMph);
+  const fishingHtml = _tips
+    ? '<div class="w-fishing">'
+        + '<div class="w-fish-title">🎣 Fishing Conditions</div>'
+        + '<div class="w-fish-item"><span class="w-fish-label">🐟 Shad/Wind</span> ' + _tips.shadNote + '</div>'
+        + '<div class="w-fish-item"><span class="w-fish-label">🐱 Blue Cat</span> ' + _tips.blueCat + '</div>'
+        + '<div class="w-fish-item"><span class="w-fish-label">🎣 Crappie</span> ' + _tips.crappie + '</div>'
+      + '</div>'
+    : '';
+
   weatherEl.className = "weather";
   weatherEl.innerHTML =
     '<div class="w-current">' +
@@ -648,7 +712,8 @@ function renderWeather(data, lake) {
     '<div class="w-forecast">' +
       forecastHtml +
       '<a class="w-radar" target="_blank" href="' + radarHref + '">📡 Radar →</a>' +
-    '</div>';
+    '</div>' +
+    fishingHtml;
 }
 
 // ========== NEWS FEEDS ==========
@@ -762,7 +827,7 @@ async function fetchQuoteYahoo(ticker) {
   const closesRaw = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
   const closes = closesRaw.filter(x => x !== null && x !== undefined);
   const price = (meta.regularMarketPrice !== undefined && meta.regularMarketPrice !== null) ? meta.regularMarketPrice : closes[closes.length - 1];
-  const prevClose = (meta.chartPreviousClose !== undefined && meta.chartPreviousClose !== null) ? meta.chartPreviousClose : (meta.previousClose || closes[closes.length - 2]);
+  const prevClose = (meta.previousClose !== undefined && meta.previousClose !== null) ? meta.previousClose : (meta.chartPreviousClose || closes[closes.length - 2]);
   const change = price - prevClose;
   return {
     ticker, name: meta.shortName || meta.longName || ticker,

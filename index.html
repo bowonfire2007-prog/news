@@ -142,12 +142,44 @@
     .w-temp { font-size:20px; }
     .w-meta { font-size:11px; gap:6px; }
   }
+
+  /* ── TLDR BUTTON ── */
+  .tldr-btn { display:inline-flex; align-items:center; gap:5px; margin-top:8px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:11px; font-weight:600; letter-spacing:0.04em; cursor:pointer; font-family:inherit; text-transform:uppercase; transition:background .15s, color .15s, border-color .15s; }
+  .tldr-btn:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .tldr-btn.loading { opacity:0.6; pointer-events:none; }
+  /* ── TLDR MODAL ── */
+  #tldrModal { position:fixed; inset:0; z-index:200; display:flex; align-items:flex-end; justify-content:center; pointer-events:none; }
+  #tldrModal.open { pointer-events:auto; }
+  #tldrBackdrop { position:absolute; inset:0; background:rgba(0,0,0,.5); opacity:0; transition:opacity .25s; }
+  #tldrModal.open #tldrBackdrop { opacity:1; }
+  #tldrSheet { position:relative; width:100%; max-width:700px; background:var(--bg); border-radius:20px 20px 0 0; border-top:1px solid var(--border); padding:24px 24px max(env(safe-area-inset-bottom),24px); transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); max-height:80vh; overflow-y:auto; }
+  #tldrModal.open #tldrSheet { transform:translateY(0); }
+  #tldrClose { position:absolute; top:14px; right:16px; width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  #tldrClose:hover { background:var(--card-hover); }
+  #tldrLabel { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent); margin-bottom:8px; }
+  #tldrHeadline { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:18px; font-weight:700; line-height:1.35; color:var(--text); margin-bottom:14px; }
+  #tldrBody { font-size:15px; color:var(--text-muted); line-height:1.7; white-space:pre-wrap; }
+  #tldrSource { margin-top:14px; font-size:12px; color:var(--text-soft); }
+  #tldrSource a { color:var(--accent); font-weight:600; }
+
 </style>
 </head>
 <body>
 
 <!-- NWS ALERT BANNER -->
 <div id="alertBanner"></div>
+
+<!-- TLDR MODAL -->
+<div id="tldrModal">
+  <div id="tldrBackdrop"></div>
+  <div id="tldrSheet">
+    <button id="tldrClose" aria-label="Close">×</button>
+    <div id="tldrLabel">AI Summary</div>
+    <div id="tldrHeadline"></div>
+    <div id="tldrBody"><span class="spinner"></span> Summarizing…</div>
+    <div id="tldrSource"></div>
+  </div>
+</div>
 
 <!-- DRAWER OVERLAY -->
 <div id="drawerOverlay" class="drawer-overlay"></div>
@@ -193,6 +225,10 @@
   <div id="list"></div>
 </main>
 
+<div id="pulseQuickLinks" style="max-width:760px;margin:0 auto;padding:8px 20px 4px;display:flex;gap:10px;flex-wrap:wrap;">
+  <a href="https://app.pulsegrow.com/devices/21089/data" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:color-mix(in srgb,#22c55e 14%,transparent);color:#15803d;font-weight:700;font-size:13px;text-decoration:none;border:1px solid #86efac;">🌿 Veg Room</a>
+  <a href="https://app.pulsegrow.com/devices/21083/data" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:color-mix(in srgb,#f97316 14%,transparent);color:#c2410c;font-weight:700;font-size:13px;text-decoration:none;border:1px solid #fdba74;">🌸 Flower Room</a>
+</div>
 <footer>Built for Matt · Pull-to-refresh or tap ↺ to refresh.</footer>
 
 <script>
@@ -201,8 +237,8 @@ const WEATHER_LOCATION = { name:"Clinton, MO", lat:38.3686, lon:-93.7780, tz:"Am
 
 const CATEGORY_ICONS = {
   stocks:"📈", top:"🌍", local:"📍", ukraine:"🇺🇦", iran:"🕌",
-  scs:"⚓", tech:"💻", business:"💼", science:"🔬", sports:"🏆",
-  culture:"🎭", philippines:"🇵🇭", cannabis:"🌿"
+  scs:"⚓", tech:"💻", business:"💼", science:"🔬",
+  philippines:"🇵🇭", cannabis:"🌿", pulse:"🌱"
 };
 
 const CATEGORIES = [
@@ -292,22 +328,7 @@ const CATEGORIES = [
     { source:"Nature", url:"https://www.nature.com/nature.rss" },
     { source:"NASA", url:"https://www.nasa.gov/news-release/feed/" }
   ]},
-  { id:"sports", label:"Sports", feeds:[
-    { source:"ESPN", url:"https://www.espn.com/espn/rss/news" },
-    { source:"BBC Sport", url:"https://feeds.bbci.co.uk/sport/rss.xml" },
-    { source:"CBS Sports", url:"https://www.cbssports.com/rss/headlines/" },
-    { source:"Yahoo Sports", url:"https://sports.yahoo.com/rss/" },
-    { source:"Chiefs (Google)", url:"https://news.google.com/rss/search?q=Kansas+City+Chiefs&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Royals (Google)", url:"https://news.google.com/rss/search?q=Kansas+City+Royals&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Cardinals (Google)", url:"https://news.google.com/rss/search?q=St+Louis+Cardinals&hl=en-US&gl=US&ceid=US:en" }
-  ]},
-  { id:"culture", label:"Culture", feeds:[
-    { source:"NYT Arts", url:"https://rss.nytimes.com/services/xml/rss/nyt/Arts.xml" },
-    { source:"Guardian Culture", url:"https://www.theguardian.com/culture/rss" },
-    { source:"NPR Arts", url:"https://feeds.npr.org/1008/rss.xml" },
-    { source:"The Atlantic", url:"https://www.theatlantic.com/feed/channel/entertainment/" },
-    { source:"Variety", url:"https://variety.com/feed/" }
-  ]},
+
   { id:"philippines", label:"Philippines", feeds:[
     { source:"Panay News", url:"https://www.panaynews.net/feed/" },
     { source:"Iloilo (Google)", url:"https://news.google.com/rss/search?q=Iloilo+Panay&hl=en-PH&gl=PH&ceid=PH:en" },
@@ -321,21 +342,23 @@ const CATEGORIES = [
     { source:"GMA News", url:"https://data.gmanetwork.com/gno/rss/news/nation/feed.xml" },
     { source:"SunStar Iloilo (Google)", url:"https://news.google.com/rss/search?q=site%3Asunstar.com.ph+Iloilo&hl=en-PH&gl=PH&ceid=PH:en" }
   ]},
-  { id:"cannabis", label:"Cannabis", feeds:[
-    { source:"Marijuana Moment", url:"https://www.marijuanamoment.net/feed/" },
+  { id:"cannabis", label:"Cannabis 🌿", feeds:[
+    { source:"r/microgrowery", url:"https://www.reddit.com/r/microgrowery/new/.rss" },
+    { source:"r/CannabisExtracts", url:"https://www.reddit.com/r/CannabisExtracts/new/.rss" },
+    { source:"r/terpenes", url:"https://www.reddit.com/r/terpenes/new/.rss" },
+    { source:"r/cannabisscience", url:"https://www.reddit.com/r/cannabisscience/new/.rss" },
+    { source:"Cannabinoid Research", url:"https://news.google.com/rss/search?q=cannabinoid+terpene+research+study+2025+2026&hl=en-US&gl=US&ceid=US:en" },
+    { source:"CO2 / VPD Science", url:"https://news.google.com/rss/search?q=cannabis+CO2+enrichment+OR+VPD+vapor+pressure+deficit+grow&hl=en-US&gl=US&ceid=US:en" },
+    { source:"LED / Lighting", url:"https://news.google.com/rss/search?q=cannabis+LED+grow+light+spectrum+photosynthesis+PPFD&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Terpene Science", url:"https://news.google.com/rss/search?q=terpene+entourage+effect+cannabis+aroma+flavor&hl=en-US&gl=US&ceid=US:en" },
+    { source:"ScienceDaily Cannabis", url:"https://www.sciencedaily.com/rss/plants_animals/cannabis.xml" },
+    { source:"Grow Techniques", url:"https://news.google.com/rss/search?q=cannabis+cultivation+SOG+SCROG+defoliation+training+technique&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Legalization News", url:"https://news.google.com/rss/search?q=marijuana+OR+cannabis+legalization+law+2025+2026&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Missouri Cannabis", url:"https://news.google.com/rss/search?q=Missouri+cannabis+marijuana&hl=en-US&gl=US&ceid=US:en" },
     { source:"MJBizDaily", url:"https://mjbizdaily.com/feed/" },
-    { source:"High Times", url:"https://hightimes.com/feed/" },
-    { source:"Ganjapreneur", url:"https://www.ganjapreneur.com/feed/" },
-    { source:"NORML", url:"https://norml.org/feed/" },
-    { source:"Cannabis Business Times", url:"https://www.cannabisbusinesstimes.com/rss/feed/" },
-    { source:"Leafly News", url:"https://consumer-api.leafly.com/api/strain_playlists/v2?strain_slug=&strain_page=1&sort=latest" },
-    { source:"Legalization News", url:"https://news.google.com/rss/search?q=marijuana+OR+cannabis+legalization+law&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Grow Techniques", url:"https://news.google.com/rss/search?q=cannabis+cultivation+growing+techniques+indoor+outdoor&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Cannabis Science", url:"https://news.google.com/rss/search?q=cannabis+science+study+cannabinoid+research&hl=en-US&gl=US&ceid=US:en" },
-    { source:"THC/CBD Research", url:"https://news.google.com/rss/search?q=THC+OR+CBD+OR+cannabinoid+research+study+2025+2026&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Cannabis Competitions", url:"https://news.google.com/rss/search?q=%22Cannabis+Cup%22+OR+%22Emerald+Cup%22+OR+cannabis+award&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Missouri Cannabis", url:"https://news.google.com/rss/search?q=Missouri+cannabis+marijuana&hl=en-US&gl=US&ceid=US:en" }
-  ]}
+    { source:"Marijuana Moment", url:"https://www.marijuanamoment.net/feed/" }
+  ]},
+  { id:"pulse", label:"Pulse Rooms 🌱", isPulse:true, feeds:[] }
 ];
 
 // Stock news feeds — Google News for each default ticker group
@@ -827,7 +850,9 @@ async function fetchQuoteYahoo(ticker) {
   const closesRaw = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
   const closes = closesRaw.filter(x => x !== null && x !== undefined);
   const price = (meta.regularMarketPrice !== undefined && meta.regularMarketPrice !== null) ? meta.regularMarketPrice : closes[closes.length - 1];
-  const prevClose = (meta.previousClose !== undefined && meta.previousClose !== null) ? meta.previousClose : (meta.chartPreviousClose || closes[closes.length - 2]);
+  // Use closes[last] as prevClose — avoids chartPreviousClose bug where Yahoo returns
+  // start-of-period close (not yesterday's close) causing fake +30-40% swings on volatile stocks
+  const prevClose = closes.length >= 2 ? closes[closes.length - 2] : (meta.previousClose || meta.chartPreviousClose || closes[closes.length - 1]);
   const change = price - prevClose;
   return {
     ticker, name: meta.shortName || meta.longName || ticker,
@@ -1046,6 +1071,7 @@ async function loadStocks(force) {
 
 // ========== LOAD CATEGORY ==========
 async function loadCategory(force) {
+  if (activeCat === "pulse") { loadPulse(); return; }
   const cat = CATEGORIES.find(c => c.id === activeCat);
   if (cat.isStocks) return loadStocks(force);
   listEl.innerHTML = "";
@@ -1086,12 +1112,15 @@ window.loadCategory = loadCategory;
 function renderNews(items) {
   const frag = document.createDocumentFragment();
   items.forEach(item => {
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = "border-bottom:1px solid var(--border);";
     const a = document.createElement("a");
     a.className = "item";
     a.href = item.link;
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     a.setAttribute("role","article");
+    a.style.borderBottom = "none";
     const hasImg = item.thumbnail && /^https?:\/\//.test(item.thumbnail);
     a.innerHTML =
       '<div class="item-text">' +
@@ -1100,10 +1129,109 @@ function renderNews(items) {
         (item.description ? '<div class="desc">' + escapeHtml(item.description) + '</div>' : '') +
       '</div>' +
       (hasImg ? '<img class="thumb" src="' + escapeHtml(item.thumbnail) + '" alt="" loading="lazy" onerror="this.remove()">' : '');
-    frag.appendChild(a);
+    const tldrRow = document.createElement("div");
+    tldrRow.style.cssText = "padding:0 0 12px;";
+    const btn = document.createElement("button");
+    btn.className = "tldr-btn";
+    btn.textContent = "✦ AI Summary";
+    btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openTldr(item.title, item.link); });
+    tldrRow.appendChild(btn);
+    wrapper.appendChild(a);
+    wrapper.appendChild(tldrRow);
+    frag.appendChild(wrapper);
   });
   listEl.innerHTML = "";
   listEl.appendChild(frag);
+}
+
+// ========== TLDR ==========
+// API key stored in localStorage only — never in source code
+function getClaudeKey() {
+  let k = localStorage.getItem("claude_api_key");
+  if (!k) {
+    k = prompt("Enter your Anthropic API key to enable AI summaries:\n(It will be saved in your browser only, never uploaded anywhere)");
+    if (k && k.trim().startsWith("sk-ant-")) {
+      localStorage.setItem("claude_api_key", k.trim());
+    } else {
+      return null;
+    }
+  }
+  return k;
+}
+const tldrModal = document.getElementById("tldrModal");
+const tldrBackdrop = document.getElementById("tldrBackdrop");
+const tldrClose = document.getElementById("tldrClose");
+const tldrHeadline = document.getElementById("tldrHeadline");
+const tldrBody = document.getElementById("tldrBody");
+const tldrSource = document.getElementById("tldrSource");
+
+function closeTldr() {
+  tldrModal.classList.remove("open");
+  document.body.style.overflow = "";
+}
+tldrClose.addEventListener("click", closeTldr);
+tldrBackdrop.addEventListener("click", closeTldr);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeTldr(); });
+
+async function openTldr(title, url) {
+  tldrHeadline.textContent = title;
+  tldrBody.innerHTML = '<span class="spinner"></span> Fetching article…';
+  tldrSource.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener noreferrer">View original article ↗</a>';
+  tldrModal.classList.add("open");
+  document.body.style.overflow = "hidden";
+  try {
+    const jinaUrl = "https://r.jina.ai/" + encodeURIComponent(url);
+    const jinaRes = await fetch(jinaUrl, { headers: { "Accept": "text/plain", "X-Return-Format": "text" } });
+    if (!jinaRes.ok) throw new Error("Jina fetch failed: " + jinaRes.status);
+    const articleText = (await jinaRes.text()).slice(0, 6000);
+    tldrBody.innerHTML = '<span class="spinner"></span> Summarizing with AI…';
+    const apiKey = getClaudeKey();
+    if (!apiKey) { tldrBody.textContent = "No API key set. Reload and enter your Anthropic key to use AI summaries."; return; }
+    const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": getClaudeKey(),
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 400,
+        messages: [{
+          role: "user",
+          content: "Please summarize this article in 3-5 clear bullet points. Be concise and focus on the key facts.\n\nTitle: " + title + "\n\nContent:\n" + articleText
+        }]
+      })
+    });
+    if (!claudeRes.ok) throw new Error("Claude API error: " + claudeRes.status);
+    const claudeData = await claudeRes.json();
+    const summary = claudeData.content[0].text;
+    tldrBody.textContent = summary;
+  } catch (err) {
+    tldrBody.textContent = "Could not generate summary: " + err.message;
+  }
+}
+window.openTldr = openTldr;
+
+// ========== PULSE ROOMS PAGE ==========
+function loadPulse() {
+  listEl.innerHTML = "";
+  statusEl.style.display = "none";
+  const container = document.createElement("div");
+  container.style.cssText = "padding:24px 0; display:flex; flex-direction:column; gap:20px;";
+  container.innerHTML =
+    '<h2 style="font-family:\'Iowan Old Style\',\'Palatino\',Georgia,serif;font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px;">🌱 Grow Room Dashboards</h2>' +
+    '<p style="font-size:14px;color:var(--text-muted);">Live Pulse sensor data for your rooms. Click a card to open the full Pulse dashboard.</p>' +
+    '<a href="https://app.pulsegrow.com/devices/21089/data" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:16px;padding:20px;border-radius:14px;border:1px solid #86efac;background:color-mix(in srgb,#22c55e 10%,var(--bg));text-decoration:none;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(34,197,94,.25)'" onmouseout="this.style.boxShadow='none'">' +
+    '  <div style="font-size:40px;line-height:1;">🌿</div>' +
+    '  <div><div style="font-size:18px;font-weight:700;color:#15803d;">Veg Room</div><div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Device #21089 · Tap to view live sensor data →</div></div>' +
+    '</a>' +
+    '<a href="https://app.pulsegrow.com/devices/21083/data" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:16px;padding:20px;border-radius:14px;border:1px solid #fdba74;background:color-mix(in srgb,#f97316 10%,var(--bg));text-decoration:none;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(249,115,22,.25)'" onmouseout="this.style.boxShadow='none'">' +
+    '  <div style="font-size:40px;line-height:1;">🌸</div>' +
+    '  <div><div style="font-size:18px;font-weight:700;color:#c2410c;">Flower Room</div><div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Device #21083 · Tap to view live sensor data →</div></div>' +
+    '</a>';
+  listEl.appendChild(container);
 }
 
 // ========== INIT ==========
@@ -1132,9 +1260,3 @@ updateSectionLabel();
 fetchNWSAlerts();
 loadWeather();
 loadCategory();
-
-// Re-poll alerts every 5 minutes
-setInterval(() => { localStorage.removeItem("news.nws.alerts"); fetchNWSAlerts(); }, ALERTS_CACHE_TTL_MS);
-</script>
-</body>
-</html>

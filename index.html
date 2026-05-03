@@ -996,12 +996,15 @@ async function loadStockNews(force) {
   newsSection.querySelector(".stock-news-loading").remove();
   const frag = document.createDocumentFragment();
   deduped.slice(0, 40).forEach(item => {
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = "border-bottom:1px solid var(--border);";
     const a = document.createElement("a");
     a.className = "item";
     a.href = item.link;
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     a.setAttribute("role","article");
+    a.style.borderBottom = "none";
     const hasImg = item.thumbnail && /^https?:\/\//.test(item.thumbnail);
     a.innerHTML =
       '<div class="item-text">' +
@@ -1010,7 +1013,13 @@ async function loadStockNews(force) {
         (item.description ? '<div class="desc">' + escapeHtml(item.description) + '</div>' : '') +
       '</div>' +
       (hasImg ? '<img class="thumb" src="' + escapeHtml(item.thumbnail) + '" alt="" loading="lazy" onerror="this.remove()">' : '');
-    frag.appendChild(a);
+    const sBtn = document.createElement("button");
+    sBtn.className = "tldr-btn";
+    sBtn.textContent = "✶ AI Summary";
+    sBtn.addEventListener("click", function(e) { e.preventDefault(); e.stopPropagation(); openTldr(item.title, item.link); });
+    wrapper.appendChild(a);
+    wrapper.appendChild(sBtn);
+    frag.appendChild(wrapper);
   });
   newsSection.appendChild(frag);
 }
@@ -1300,7 +1309,7 @@ function loadOutdoors() {
   }
   function shadSpawnHtml(month, day) {
     if ((month === 4 && day >= 20) || (month === 5 && day <= 20))
-      return "<strong>\U0001f534 SPAWN ALERT:</strong> Gizzard shad spawning now (water ~60–68°F). Fish 1–3 ft of calm cove banks at first light — visible splashing near shore. Easiest netting of the year.";
+      return "<strong>🔴 SPAWN ALERT:</strong> Gizzard shad spawning now (water ~60–68°F). Fish 1–3 ft of calm cove banks at first light — visible splashing near shore. Easiest netting of the year.";
     if (month === 5 && day > 20) return "Post-spawn: shad transitioning to open water. Check both shallow coves and main lake points near the surface.";
     if (month >= 6 && month <= 8) return "Summer: shad schooling open water mid-lake. Dawn and dusk they push into shallows — follow diving birds.";
     if (month === 9 || month === 10) return "Fall: shad moving shallow with cooling water — excellent cast-netting near creek mouths and main lake points.";
@@ -1318,34 +1327,34 @@ function loadOutdoors() {
       : month === 3
       ? "Early season starting in SW MO. Hit south-facing hillsides near dying elm/ash after warm soaking rain + 50°F nights."
       : (month === 4 && day <= 20)
-      ? "\U0001f534 PEAK season for most of MO! South-facing slopes first → east/west → north-facing last. Dying elm, ash, sycamore, old apple orchards. After warm rain + overnight temps above 50°F — GO."
+      ? "🔴 PEAK season for most of MO! South-facing slopes first → east/west → north-facing last. Dying elm, ash, sycamore, old apple orchards. After warm rain + overnight temps above 50°F — GO."
       : (month === 4)
       ? "Late season — move to north-facing slopes, shaded ravines, and higher elevations."
       : (month === 5 && day <= 15)
       ? "Winding down. Try dense timber on north-facing slopes and shaded creek bottoms."
       : "Season finished. Next season: late March. <em>Fall bonus: hen-of-the-woods near old oaks Oct–Nov.</em>";
-    secs.push({ emoji:"\U0001f344", name:"Morel", season:"Late Mar – May", cls:morelCls,
+    secs.push({ emoji:"🍄", name:"Morel", season:"Late Mar – May", cls:morelCls,
       rows:[ morelText, "Habitat: dying/dead elm, ash, old apple orchards, sycamore near creek bottoms. Trigger: warm soaking rain + nights above 50°F." ] });
     /* Chanterelle */
-    secs.push({ emoji:"\U0001f7e1", name:"Chanterelle", season:"June – Aug",
+    secs.push({ emoji:"🟡", name:"Chanterelle", season:"June – Aug",
       rows:["Golden egg-yolk yellow. Oak-hickory forest after rain. <strong>False gills</strong> (forking ridges, not true gills) — key ID point vs. toxic jack-o-lantern.", "Best summer edible in MO. Apricot-like aroma. Fry in butter."] });
     /* Chicken of the Woods */
-    secs.push({ emoji:"\U0001f7e0", name:"Chicken of the Woods", season:"July – Oct",
+    secs.push({ emoji:"🟠", name:"Chicken of the Woods", season:"July – Oct",
       rows:["Unmistakable bright orange-yellow shelves on oaks, locust, and other hardwoods. No gills.", "Cook thoroughly — a small percentage of people react to specimens on locust or conifers. Tastes like chicken when sauteed."] });
     /* Hen of the Woods */
-    secs.push({ emoji:"\U0001f7e4", name:"Hen of the Woods (Maitake)", season:"Sept – Nov",
+    secs.push({ emoji:"🟤", name:"Hen of the Woods (Maitake)", season:"Sept – Nov",
       rows:["Overlapping gray-brown fronds at the base of OLD oaks (look for big gnarly oaks). Can be 20+ lbs!", "Mark your oak trees now — they fruit in the same spot year after year. Excellent sauteed or in soup."] });
     /* Lion's Mane */
-    secs.push({ emoji:"️\U0001f9b1", name:"Lion’s Mane", season:"Aug – Oct",
+    secs.push({ emoji:"️🦱", name:"Lion’s Mane", season:"Aug – Oct",
       rows:["White shaggy waterfall on dying oaks and beeches. Completely unique look — no lookalikes.", "Crab-like flavor. Slice thick and sear in a hot dry pan until golden. Also used for brain health supplements."] });
     /* Oyster */
-    secs.push({ emoji:"\U0001f9c6", name:"Oyster Mushroom", season:"Spring &amp; Fall",
+    secs.push({ emoji:"🧆", name:"Oyster Mushroom", season:"Spring &amp; Fall",
       rows:["White to tan shelf clusters on dead elm, cottonwood, and willow. Gills run down the stem.", "Best after cool rainy periods. Mild flavor. Two flushes: April–May and September–November."] });
     /* Giant Puffball */
     secs.push({ emoji:"⚪", name:"Giant Puffball", season:"July – Oct",
       rows:["Smooth white sphere, can be soccer-ball-sized, in fields and forest edges.", "<strong>Always slice in half</strong> — must be pure white inside (no gills, no figure). If white = edible. Any other color = discard (could be Amanita egg). Bread and fry like a steak."] });
     /* Shaggy Mane */
-    secs.push({ emoji:"\U0001f5fb", name:"Shaggy Mane", season:"Sept – Oct",
+    secs.push({ emoji:"🗻", name:"Shaggy Mane", season:"Sept – Oct",
       rows:["Tall shaggy white cap in disturbed soil, lawns, roadsides. Eat YOUNG before cap turns black and auto-digests.", "Do not mix alcohol within 24h — causes reaction. Eat same day picked."] });
     var H2 = "";
     secs.forEach(function(s) {
@@ -1361,71 +1370,71 @@ function loadOutdoors() {
   function wildlifeActivity(month, day) {
     var items = [];
     if (month === 1) {
-      items.push("\U0001f985 <strong>Bald Eagles at Truman Lake</strong> (peak Jan–Feb) — up to 30+ visible near the dam and coves. Best viewed from Bucksaw Recreation Area.");
-      items.push("\U0001f989 Great Horned Owls already on nests — eggs hatch in February. Listen for pairs hooting at dusk.");
-      items.push("\U0001f98a Coyotes entering breeding season. Pair howling common at night.");
-      items.push("\U0001f98c Bucks shedding antlers — younger bucks first. Shed hunting in timber can be productive.");
+      items.push("🦅 <strong>Bald Eagles at Truman Lake</strong> (peak Jan–Feb) — up to 30+ visible near the dam and coves. Best viewed from Bucksaw Recreation Area.");
+      items.push("🦉 Great Horned Owls already on nests — eggs hatch in February. Listen for pairs hooting at dusk.");
+      items.push("🦊 Coyotes entering breeding season. Pair howling common at night.");
+      items.push("🦌 Bucks shedding antlers — younger bucks first. Shed hunting in timber can be productive.");
     } else if (month === 2) {
-      items.push("\U0001f985 Bald Eagles still concentrating at Truman Lake through February.");
-      items.push("\U0001f989 Great Horned Owl eggs hatching — listen for begging young at night.");
-      items.push("\U0001f98b Red-tailed Hawks beginning courtship flights over open fields.");
-      items.push("\U0001f98c Older bucks shedding antlers now. Best shed hunting on south-facing slopes (deer lounge there in cold weather).");
+      items.push("🦅 Bald Eagles still concentrating at Truman Lake through February.");
+      items.push("🦉 Great Horned Owl eggs hatching — listen for begging young at night.");
+      items.push("🦋 Red-tailed Hawks beginning courtship flights over open fields.");
+      items.push("🦌 Older bucks shedding antlers now. Best shed hunting on south-facing slopes (deer lounge there in cold weather).");
     } else if (month === 3) {
-      items.push("\U0001f985 American Woodcock sky dance display at dusk in wet thickets (listen for buzzy ‘peent’). One of MO’s best spring wildlife experiences.");
-      items.push("\U0001f983 Tom turkeys strutting and gobbling — can hear from 1/2 mile. Locate them now before season.");
-      items.push("\U0001f426 Bluebirds checking nest boxes — have boxes cleaned and open by March 1.");
-      items.push("\U0001f438 Spring peepers and chorus frogs calling from ponds and wetlands — first frogs of the year.");
-      items.push("\U0001f994 Crayfish very active in creeks — good time to check crawdad traps or flip rocks.");
+      items.push("🦅 American Woodcock sky dance display at dusk in wet thickets (listen for buzzy ‘peent’). One of MO’s best spring wildlife experiences.");
+      items.push("🦃 Tom turkeys strutting and gobbling — can hear from 1/2 mile. Locate them now before season.");
+      items.push("🐦 Bluebirds checking nest boxes — have boxes cleaned and open by March 1.");
+      items.push("🐸 Spring peepers and chorus frogs calling from ponds and wetlands — first frogs of the year.");
+      items.push("🦔 Crayfish very active in creeks — good time to check crawdad traps or flip rocks.");
     } else if (month === 4) {
-      items.push("\U0001f986 Purple Martin scouts arriving — first birds choose the best houses. Have yours open and predator-guarded.");
-      items.push("\U0001f43a Spring warbler migration peak (dozens of species passing through MO April–15 – May–1).");
-      items.push("\U0001f983 Turkey hens beginning to sit on nests in early April.");
-      items.push("\U0001f98c Does and ewes heavily pregnant — fawns born in 4–6 weeks.");
-      items.push("\U0001f425 Goslings and ducklings appearing by late April — geese aggressive near nests.");
-      items.push("\U0001f422 Box turtles emerging from hibernation, starting to cross roads — drive carefully.");
+      items.push("🦆 Purple Martin scouts arriving — first birds choose the best houses. Have yours open and predator-guarded.");
+      items.push("🐺 Spring warbler migration peak (dozens of species passing through MO April–15 – May–1).");
+      items.push("🦃 Turkey hens beginning to sit on nests in early April.");
+      items.push("🦌 Does and ewes heavily pregnant — fawns born in 4–6 weeks.");
+      items.push("🐥 Goslings and ducklings appearing by late April — geese aggressive near nests.");
+      items.push("🐢 Box turtles emerging from hibernation, starting to cross roads — drive carefully.");
     } else if (month === 5) {
-      items.push("\U0001f98c <strong>FAWNS BEING BORN! (late May – June)</strong> — If you find a spotted fawn alone, leave it. Mom hides fawns deliberately and returns every few hours. It is NOT abandoned.");
-      items.push("\U0001f9f9 Fireflies appear late May — first flickers in fields near woods after dark.");
-      items.push("\U0001f983 Turkey poults hatching — hens are secretive and protective. Give them space.");
-      items.push("\U0001f430 Baby rabbits (cottontails) being born — litters every 28 days through September. Nests are shallow depressions in grass.");
-      items.push("\U0001f422 Snapping turtles begin nesting near water — watch for them crossing roads.");
+      items.push("🦌 <strong>FAWNS BEING BORN! (late May – June)</strong> — If you find a spotted fawn alone, leave it. Mom hides fawns deliberately and returns every few hours. It is NOT abandoned.");
+      items.push("🧹 Fireflies appear late May — first flickers in fields near woods after dark.");
+      items.push("🦃 Turkey poults hatching — hens are secretive and protective. Give them space.");
+      items.push("🐰 Baby rabbits (cottontails) being born — litters every 28 days through September. Nests are shallow depressions in grass.");
+      items.push("🐢 Snapping turtles begin nesting near water — watch for them crossing roads.");
     } else if (month === 6) {
-      items.push("\U0001f9f9 <strong>FIREFLY PEAK</strong> (mid-June) — Best viewing 9:30–10:30 pm in fields near woods. Synchronous flashing in some years.");
-      items.push("\U0001f98c Fawns spotted everywhere — still small and wobbly, beginning to follow does.");
-      items.push("\U0001f422 Box turtles crossing roads to lay eggs (June) — move them in the direction they were heading, never take them home.");
-      items.push("\U0001f99d Coyote pups emerging from den and learning to hunt.");
-      items.push("\U0001f98b Baby raccoons and opossums following mother in evening.");
-      items.push("\U0001f98c Bucks growing velvet antlers — visible at dawn and dusk in fields.");
+      items.push("🧹 <strong>FIREFLY PEAK</strong> (mid-June) — Best viewing 9:30–10:30 pm in fields near woods. Synchronous flashing in some years.");
+      items.push("🦌 Fawns spotted everywhere — still small and wobbly, beginning to follow does.");
+      items.push("🐢 Box turtles crossing roads to lay eggs (June) — move them in the direction they were heading, never take them home.");
+      items.push("🦝 Coyote pups emerging from den and learning to hunt.");
+      items.push("🦋 Baby raccoons and opossums following mother in evening.");
+      items.push("🦌 Bucks growing velvet antlers — visible at dawn and dusk in fields.");
     } else if (month === 7) {
-      items.push("\U0001f98c Velvet antlers at peak growth — dawn and dusk field viewing excellent. Best month for wildlife photography of bucks.");
-      items.push("\U0001f983 Turkey broods in open fields at dawn — hens herding poults.");
-      items.push("\U0001f9f9 Fireflies winding down mid-July.");
-      items.push("\U0001f43f️ Young squirrels now fully independent — harvest squirrel season opens May 25.");
-      items.push("\U0001f33a Hummingbird activity intensifying as young of year join adults at feeders.");
+      items.push("🦌 Velvet antlers at peak growth — dawn and dusk field viewing excellent. Best month for wildlife photography of bucks.");
+      items.push("🦃 Turkey broods in open fields at dawn — hens herding poults.");
+      items.push("🧹 Fireflies winding down mid-July.");
+      items.push("🐿️ Young squirrels now fully independent — harvest squirrel season opens May 25.");
+      items.push("🌺 Hummingbird activity intensifying as young of year join adults at feeders.");
     } else if (month === 8) {
-      items.push("\U0001f98c Bucks’ velvet hardening and beginning to shed (late August) — bucks becoming secretive as rut prep starts.");
-      items.push("\U0001f426 <strong>Purple Martins departing mid-to-late August</strong> — large pre-migration roosts forming. Close house after they leave.");
-      items.push("\U0001f33a <strong>Hummingbird FEEDING FRENZY</strong> — birds fattening up for migration. Keep feeders fresh every 2 days.");
-      items.push("\U0001f985 Broad-winged Hawk migration beginning late August — watch for kettles on warm afternoons.");
+      items.push("🦌 Bucks’ velvet hardening and beginning to shed (late August) — bucks becoming secretive as rut prep starts.");
+      items.push("🐦 <strong>Purple Martins departing mid-to-late August</strong> — large pre-migration roosts forming. Close house after they leave.");
+      items.push("🌺 <strong>Hummingbird FEEDING FRENZY</strong> — birds fattening up for migration. Keep feeders fresh every 2 days.");
+      items.push("🦅 Broad-winged Hawk migration beginning late August — watch for kettles on warm afternoons.");
     } else if (month === 9) {
-      items.push("\U0001f98c <strong>Pre-rut begins</strong> — bucks making scrapes and rubs. Find clusters of rubs = primary travel corridor.");
-      items.push("\U0001f330 First acorns dropping (white oak) — deer, turkey, and squirrels concentrate here. Best scouting month.");
-      items.push("\U0001f985 Peak fall hawk migration (Broad-winged Hawk peak ~Sept 15). Look for kettles circling on thermal days.");
-      items.push("\U0001f422 Box turtles, snakes, and frogs fattening up before hibernation.");
-      items.push("\U0001f994 Crayfish very active in warm fall creek water — prime cast-netting time.");
+      items.push("🦌 <strong>Pre-rut begins</strong> — bucks making scrapes and rubs. Find clusters of rubs = primary travel corridor.");
+      items.push("🌰 First acorns dropping (white oak) — deer, turkey, and squirrels concentrate here. Best scouting month.");
+      items.push("🦅 Peak fall hawk migration (Broad-winged Hawk peak ~Sept 15). Look for kettles circling on thermal days.");
+      items.push("🐢 Box turtles, snakes, and frogs fattening up before hibernation.");
+      items.push("🦔 Crayfish very active in warm fall creek water — prime cast-netting time.");
     } else if (month === 10) {
-      items.push("\U0001f330 <strong>PEAK ACORN DROP</strong> (red oak now dropping) — deer, turkey, and squirrels all concentrated at mast trees. Find the acorns, find the animals.");
-      items.push("\U0001f98c Pre-rut intensifying — bucks sparring, scrapes being refreshed daily. Rub lines leading to scrapes = stand locations.");
-      items.push("\U0001f987 Peak fall songbird and bat migration. Spider webs heavy with dew in morning — garden spiders at peak size.");
-      items.push("\U0001f98c Antlers fully hardened and polished — trophy quality at peak.");
+      items.push("🌰 <strong>PEAK ACORN DROP</strong> (red oak now dropping) — deer, turkey, and squirrels all concentrated at mast trees. Find the acorns, find the animals.");
+      items.push("🦌 Pre-rut intensifying — bucks sparring, scrapes being refreshed daily. Rub lines leading to scrapes = stand locations.");
+      items.push("🦇 Peak fall songbird and bat migration. Spider webs heavy with dew in morning — garden spiders at peak size.");
+      items.push("🦌 Antlers fully hardened and polished — trophy quality at peak.");
     } else if (month === 11) {
-      items.push("\U0001f98c <strong>WHITETAIL RUT PEAK (Nov 15–25)</strong> — bucks chasing does all day, ignoring danger. Most car-deer collisions happen now — drive carefully.");
-      items.push("\U0001f986 Waterfowl migration in full swing — ducks and geese moving through. Scout flooded fields and lake coves.");
-      items.push("\U0001f985 Bald Eagles starting to arrive at Truman Lake for winter — look near the dam.");
+      items.push("🦌 <strong>WHITETAIL RUT PEAK (Nov 15–25)</strong> — bucks chasing does all day, ignoring danger. Most car-deer collisions happen now — drive carefully.");
+      items.push("🦆 Waterfowl migration in full swing — ducks and geese moving through. Scout flooded fields and lake coves.");
+      items.push("🦅 Bald Eagles starting to arrive at Truman Lake for winter — look near the dam.");
     } else if (month === 12) {
-      items.push("\U0001f985 <strong>Bald Eagles at Truman Lake</strong> — peak Dec–Feb. Best viewing near Bucksaw Recreation Area and the dam area.");
-      items.push("\U0001f98c Post-rut bucks exhausted and eating constantly to recover weight. Best mid-day sits on cold sunny days (deer move when it warms).");
-      items.push("\U0001f98c Deer grouping in winter herds near shelter and food. Food plots and standing corn hold deer well now.");
+      items.push("🦅 <strong>Bald Eagles at Truman Lake</strong> — peak Dec–Feb. Best viewing near Bucksaw Recreation Area and the dam area.");
+      items.push("🦌 Post-rut bucks exhausted and eating constantly to recover weight. Best mid-day sits on cold sunny days (deer move when it warms).");
+      items.push("🦌 Deer grouping in winter herds near shelter and food. Food plots and standing corn hold deer well now.");
     }
     return items;
   }
@@ -1433,40 +1442,40 @@ function loadOutdoors() {
   /* ── BIRDS ── */
   function birdMigration(month, day) {
     var lines = [];
-    if (month === 2 && day >= 20) lines.push("\U0001f426 Purple Martin scouts arriving any day (late Feb–early Mar). Open your house — scouts choose sites first, colony follows.");
-    if (month === 3 || (month === 4 && day <= 20)) lines.push("\U0001f426 Purple Martins arriving (March–April). House open, predator guards on pole. Play martin calls at dawn to attract scouts.");
-    if (month >= 5 && month <= 7) lines.push("\U0001f426 Purple Martins actively nesting. Weekly nest checks help catch problems early.");
-    if (month === 8) lines.push("\U0001f426 Purple Martins gathering to depart (August). Close house after they leave to block sparrows and starlings over winter.");
-    if (month === 9 && day <= 15) lines.push("\U0001f426 Purple Martins have departed. Close house now to block invasive birds.");
-    if (month === 4 && day >= 10) lines.push("\U0001f33a Put hummingbird feeders out NOW — Ruby-throated Hummingbirds arriving mid-to-late April. 1:4 sugar:water, no red dye.");
-    if (month >= 5 && month <= 8) lines.push("\U0001f33a Hummingbirds actively feeding. Refresh every 3–5 days (every 2 days in summer heat). Multiple feeders out of sight of each other reduces aggression.");
-    if (month === 9) lines.push("\U0001f33a Keep feeders up through mid-October — northern migrants still passing through. They migrate by day length, NOT food availability.");
-    if (month === 10 && day <= 15) lines.push("\U0001f33a Late hummingbirds possible through mid-October — keep one feeder out.");
-    if ((month === 3 && day >= 1) || month === 4) lines.push("\U0001f985 American Woodcock displaying at dusk in wet thickets (March–April). Listen for the buzzy ‘peent’ call near wet fields at last light.");
-    if ((month === 9 && day >= 15) || month === 10 || (month === 11 && day <= 15)) lines.push("\U0001f986 Peak fall waterfowl migration for west-central MO (Sept–Nov). Scout flooded fields and lake coves early morning.");
-    if (month >= 12 || month <= 2) lines.push("\U0001f985 Bald Eagle viewing season — check Truman Lake near the dam. Also look at Lake of the Ozarks and Swan Lake NWR.");
+    if (month === 2 && day >= 20) lines.push("🐦 Purple Martin scouts arriving any day (late Feb–early Mar). Open your house — scouts choose sites first, colony follows.");
+    if (month === 3 || (month === 4 && day <= 20)) lines.push("🐦 Purple Martins arriving (March–April). House open, predator guards on pole. Play martin calls at dawn to attract scouts.");
+    if (month >= 5 && month <= 7) lines.push("🐦 Purple Martins actively nesting. Weekly nest checks help catch problems early.");
+    if (month === 8) lines.push("🐦 Purple Martins gathering to depart (August). Close house after they leave to block sparrows and starlings over winter.");
+    if (month === 9 && day <= 15) lines.push("🐦 Purple Martins have departed. Close house now to block invasive birds.");
+    if (month === 4 && day >= 10) lines.push("🌺 Put hummingbird feeders out NOW — Ruby-throated Hummingbirds arriving mid-to-late April. 1:4 sugar:water, no red dye.");
+    if (month >= 5 && month <= 8) lines.push("🌺 Hummingbirds actively feeding. Refresh every 3–5 days (every 2 days in summer heat). Multiple feeders out of sight of each other reduces aggression.");
+    if (month === 9) lines.push("🌺 Keep feeders up through mid-October — northern migrants still passing through. They migrate by day length, NOT food availability.");
+    if (month === 10 && day <= 15) lines.push("🌺 Late hummingbirds possible through mid-October — keep one feeder out.");
+    if ((month === 3 && day >= 1) || month === 4) lines.push("🦅 American Woodcock displaying at dusk in wet thickets (March–April). Listen for the buzzy ‘peent’ call near wet fields at last light.");
+    if ((month === 9 && day >= 15) || month === 10 || (month === 11 && day <= 15)) lines.push("🦆 Peak fall waterfowl migration for west-central MO (Sept–Nov). Scout flooded fields and lake coves early morning.");
+    if (month >= 12 || month <= 2) lines.push("🦅 Bald Eagle viewing season — check Truman Lake near the dam. Also look at Lake of the Ozarks and Swan Lake NWR.");
     return lines;
   }
 
   /* ── SEASONS ── */
   function huntingSeasons(month, day) {
     var active = [], upcoming = [];
-    if (month === 9 || month === 10 || (month === 11 && day <= 1)) active.push("\U0001f54a️ Dove Season (Sept 1 – Nov 1)");
-    else if (month === 8 && day >= 20) upcoming.push("\U0001f54a️ Dove opens Sept 1 — " + (32 - day) + " days away");
-    if (month === 10 || (month === 11 && day <= 14)) active.push("\U0001f98c Archery Deer Season (Oct 1 – Nov 14)");
-    else if (month === 9 && day >= 15) upcoming.push("\U0001f98c Archery deer opens Oct 1 — hang your stand now");
-    if (month === 12 || (month === 1 && day <= 15)) active.push("\U0001f98c Late Archery/Muzzleloader (Dec 1 – Jan 15)");
-    if (month === 11 && day >= 15 && day <= 25) active.push("\U0001f98c\U0001f52b FIREARMS DEER SEASON OPEN (Nov 15–25) — prime time!");
-    else if (month === 11 && day >= 1 && day < 15) upcoming.push("\U0001f98c\U0001f52b Firearms deer opens Nov 15 — " + (15 - day) + " days away!");
-    else if (month === 10 && day >= 20) upcoming.push("\U0001f98c Firearms deer season Nov 15 — scout your stand locations now");
-    if ((month === 4 && day >= 18) || (month === 5 && day <= 10)) active.push("\U0001f983 Spring Turkey Season (late Apr – May 10)");
-    else if (month === 4 && day < 18) upcoming.push("\U0001f983 Spring turkey opens ~April 18 — " + (18 - day) + " days. Scout strutting areas.");
-    else if (month === 3 && day >= 15) upcoming.push("\U0001f983 Spring turkey ~3–4 weeks away. Practice your calls.");
-    if (month === 11 || month === 12 || (month === 1 && day <= 31)) active.push("\U0001f986 Waterfowl Season open (check MDC for exact zone dates)");
-    else if (month === 10 && day >= 20) upcoming.push("\U0001f986 Duck/goose opens Nov 1 — scout flooded fields now");
-    if ((month === 5 && day >= 25) || month >= 6 || month <= 2) active.push("\U0001f43f️ Squirrel Season (May 25 – Feb 15)");
-    if (month === 10 || month === 11 || month === 12 || month <= 2) active.push("\U0001f430 Rabbit Season (Oct 1 – Feb 15)");
-    if (month >= 6 && month <= 10) active.push("\U0001f3a3 Fishing: no closed season for most MO species. Trout parks have special regs.");
+    if (month === 9 || month === 10 || (month === 11 && day <= 1)) active.push("🕊️ Dove Season (Sept 1 – Nov 1)");
+    else if (month === 8 && day >= 20) upcoming.push("🕊️ Dove opens Sept 1 — " + (32 - day) + " days away");
+    if (month === 10 || (month === 11 && day <= 14)) active.push("🦌 Archery Deer Season (Oct 1 – Nov 14)");
+    else if (month === 9 && day >= 15) upcoming.push("🦌 Archery deer opens Oct 1 — hang your stand now");
+    if (month === 12 || (month === 1 && day <= 15)) active.push("🦌 Late Archery/Muzzleloader (Dec 1 – Jan 15)");
+    if (month === 11 && day >= 15 && day <= 25) active.push("🦌🔫 FIREARMS DEER SEASON OPEN (Nov 15–25) — prime time!");
+    else if (month === 11 && day >= 1 && day < 15) upcoming.push("🦌🔫 Firearms deer opens Nov 15 — " + (15 - day) + " days away!");
+    else if (month === 10 && day >= 20) upcoming.push("🦌 Firearms deer season Nov 15 — scout your stand locations now");
+    if ((month === 4 && day >= 18) || (month === 5 && day <= 10)) active.push("🦃 Spring Turkey Season (late Apr – May 10)");
+    else if (month === 4 && day < 18) upcoming.push("🦃 Spring turkey opens ~April 18 — " + (18 - day) + " days. Scout strutting areas.");
+    else if (month === 3 && day >= 15) upcoming.push("🦃 Spring turkey ~3–4 weeks away. Practice your calls.");
+    if (month === 11 || month === 12 || (month === 1 && day <= 31)) active.push("🦆 Waterfowl Season open (check MDC for exact zone dates)");
+    else if (month === 10 && day >= 20) upcoming.push("🦆 Duck/goose opens Nov 1 — scout flooded fields now");
+    if ((month === 5 && day >= 25) || month >= 6 || month <= 2) active.push("🐿️ Squirrel Season (May 25 – Feb 15)");
+    if (month === 10 || month === 11 || month === 12 || month <= 2) active.push("🐰 Rabbit Season (Oct 1 – Feb 15)");
+    if (month >= 6 && month <= 10) active.push("🎣 Fishing: no closed season for most MO species. Trout parks have special regs.");
     return { active: active, upcoming: upcoming };
   }
 
@@ -1474,49 +1483,49 @@ function loadOutdoors() {
   function plantingGuide(month, day) {
     var tips = [];
     if (month <= 2 || (month === 3 && day <= 10)) {
-      tips.push("\U0001f331 Start onion and leek seeds indoors (Jan–Feb). Order bare-root trees, strawberry plants, asparagus crowns before they sell out.");
-      tips.push("\U0001f333 Dormant-prune fruit trees, grapes, and roses through early March before bud break.");
-      tips.push("\U0001f98c Deer food plot planning: order clover, chicory, brassica seed now for spring planting.");
+      tips.push("🌱 Start onion and leek seeds indoors (Jan–Feb). Order bare-root trees, strawberry plants, asparagus crowns before they sell out.");
+      tips.push("🌳 Dormant-prune fruit trees, grapes, and roses through early March before bud break.");
+      tips.push("🦌 Deer food plot planning: order clover, chicory, brassica seed now for spring planting.");
     }
     if (month === 3) {
-      tips.push("\U0001f331 Start tomatoes and peppers indoors (6–8 weeks before last frost ~May 1–10 in central MO).");
-      tips.push("\U0001f333 Best time for bare-root trees: oaks, pecans, persimmons, pawpaws, serviceberry, elderberry. Plant before they leaf out.");
-      tips.push("\U0001f33e Cool-season crops outdoors: peas, spinach, lettuce, onion sets, radishes (handle light frost).");
-      tips.push("\U0001f98c Spring food plots: frost-seed clover into existing grass in late March (freeze/thaw works it in).");
+      tips.push("🌱 Start tomatoes and peppers indoors (6–8 weeks before last frost ~May 1–10 in central MO).");
+      tips.push("🌳 Best time for bare-root trees: oaks, pecans, persimmons, pawpaws, serviceberry, elderberry. Plant before they leaf out.");
+      tips.push("🌾 Cool-season crops outdoors: peas, spinach, lettuce, onion sets, radishes (handle light frost).");
+      tips.push("🦌 Spring food plots: frost-seed clover into existing grass in late March (freeze/thaw works it in).");
     }
     if (month === 4 && day <= 20) {
-      tips.push("\U0001f331 Harden off tomato/pepper transplants outdoors daily. Plant potatoes now.");
-      tips.push("\U0001f333 Plant native shrubs: serviceberry, elderberry, wild plum, hawthorn — great for wildlife and table. Native plants go in fast this time of year.");
+      tips.push("🌱 Harden off tomato/pepper transplants outdoors daily. Plant potatoes now.");
+      tips.push("🌳 Plant native shrubs: serviceberry, elderberry, wild plum, hawthorn — great for wildlife and table. Native plants go in fast this time of year.");
     }
-    if (month === 4 && day > 20) tips.push("\U0001f331 After April 20: warm-season transplants safe in sheltered spots. Watch the 10-day forecast for late frost.");
+    if (month === 4 && day > 20) tips.push("🌱 After April 20: warm-season transplants safe in sheltered spots. Watch the 10-day forecast for late frost.");
     if (month === 5) {
-      tips.push("\U0001f331 After May 10–15: transplant tomatoes, peppers, squash, cucumbers, melons outdoors in central MO.");
-      tips.push("\U0001f98c Clover and chicory food plots: plant after May 15. Needs moisture to establish — watch the rain forecast.");
-      tips.push("\U0001f33c Native wildflowers: butterfly milkweed, purple coneflower, black-eyed Susan. Attract pollinators and hummingbirds. Direct sow or transplant now.");
+      tips.push("🌱 After May 10–15: transplant tomatoes, peppers, squash, cucumbers, melons outdoors in central MO.");
+      tips.push("🦌 Clover and chicory food plots: plant after May 15. Needs moisture to establish — watch the rain forecast.");
+      tips.push("🌼 Native wildflowers: butterfly milkweed, purple coneflower, black-eyed Susan. Attract pollinators and hummingbirds. Direct sow or transplant now.");
     }
     if (month === 6) {
-      tips.push("\U0001f331 Full garden underway. Direct-sow beans, squash, melons, okra, sweet potatoes.");
-      tips.push("\U0001f98c Summer annual food plots: cowpeas, sunflowers, sorghum-sudan grass for late summer and fall wildlife.");
-      tips.push("\U0001f333 Avoid transplanting trees in summer heat. Water established plantings deeply once a week.");
+      tips.push("🌱 Full garden underway. Direct-sow beans, squash, melons, okra, sweet potatoes.");
+      tips.push("🦌 Summer annual food plots: cowpeas, sunflowers, sorghum-sudan grass for late summer and fall wildlife.");
+      tips.push("🌳 Avoid transplanting trees in summer heat. Water established plantings deeply once a week.");
     }
     if (month === 7 || month === 8) {
-      tips.push("\U0001f331 Start fall garden indoors: broccoli, cabbage, kale (start late July, transplant mid-August).");
-      if (month === 8) tips.push("\U0001f98c <strong>Plant fall food plots NOW</strong>: turnips, radishes, rape, kale by Aug 1–15. This timing is critical for full establishment before deer season.");
-      tips.push("\U0001f333 Late summer tree planting OK with heavy watering. Fall planting 6 weeks away — plan your mast tree additions.");
+      tips.push("🌱 Start fall garden indoors: broccoli, cabbage, kale (start late July, transplant mid-August).");
+      if (month === 8) tips.push("🦌 <strong>Plant fall food plots NOW</strong>: turnips, radishes, rape, kale by Aug 1–15. This timing is critical for full establishment before deer season.");
+      tips.push("🌳 Late summer tree planting OK with heavy watering. Fall planting 6 weeks away — plan your mast tree additions.");
     }
     if (month === 9) {
-      tips.push("\U0001f331 Plant spinach, kale, arugula now for fall harvest. Garlic goes in mid-October.");
-      tips.push("\U0001f333 <strong>Best tree-planting season</strong> — warm soil, cooling air, fall rains. Plant oaks, pecans, persimmons, pawpaws, dogwood, redbud. They’ll establish all fall and winter.");
-      tips.push("\U0001f98c Perennial food plots: clover, chicory, cereal rye. Mid-September target for central MO.");
+      tips.push("🌱 Plant spinach, kale, arugula now for fall harvest. Garlic goes in mid-October.");
+      tips.push("🌳 <strong>Best tree-planting season</strong> — warm soil, cooling air, fall rains. Plant oaks, pecans, persimmons, pawpaws, dogwood, redbud. They’ll establish all fall and winter.");
+      tips.push("🦌 Perennial food plots: clover, chicory, cereal rye. Mid-September target for central MO.");
     }
     if (month === 10) {
-      tips.push("\U0001f333 Fall tree planting prime time. Oaks, hickories, persimmons, chestnuts for long-term mast production.");
-      tips.push("\U0001f331 Plant garlic cloves 4–6 inches deep, cover with 3–4 inches mulch. Harvest next July.");
-      tips.push("\U0001f98c Last chance for cereal rye and winter wheat food plots — should be in the ground by mid-October in central MO.");
+      tips.push("🌳 Fall tree planting prime time. Oaks, hickories, persimmons, chestnuts for long-term mast production.");
+      tips.push("🌱 Plant garlic cloves 4–6 inches deep, cover with 3–4 inches mulch. Harvest next July.");
+      tips.push("🦌 Last chance for cereal rye and winter wheat food plots — should be in the ground by mid-October in central MO.");
     }
     if (month === 11 || month === 12) {
-      tips.push("\U0001f333 Dormant-season tree planting OK on mild days above 32°F. Bare-root orders arrive Dec–Feb — order now for best variety selection.");
-      tips.push("\U0001f331 Plan next year’s garden and food plots. Popular seed varieties sell out by February.");
+      tips.push("🌳 Dormant-season tree planting OK on mild days above 32°F. Bare-root orders arrive Dec–Feb — order now for best variety selection.");
+      tips.push("🌱 Plan next year’s garden and food plots. Popular seed varieties sell out by February.");
     }
     return tips;
   }
@@ -1532,30 +1541,30 @@ function loadOutdoors() {
 
   /* Shad / Cast Net */
   H += '<div class="od-section">'
-    + '<div class="od-section-title">\U0001fa63 Cast Net — Shad Report</div>'
-    + '<div id="od-shad-wind" class="od-row"><span class="od-label">\U0001f4cd Best Bank</span>'
+    + '<div class="od-section-title">🩣 Cast Net — Shad Report</div>'
+    + '<div id="od-shad-wind" class="od-row"><span class="od-label">📍 Best Bank</span>'
     + shadWindHtml(null, 0) + '</div>'
-    + '<div class="od-row"><span class="od-label">\U0001f4c5 Spawn Status</span>'
+    + '<div class="od-row"><span class="od-label">📅 Spawn Status</span>'
     + shadSpawnHtml(mo, dy) + '</div>'
     + '</div>';
 
   /* Fishing Conditions */
   H += '<div class="od-section">'
-    + '<div class="od-section-title">\U0001f3a3 Truman Lake Fishing Conditions</div>'
+    + '<div class="od-section-title">🎣 Truman Lake Fishing Conditions</div>'
     + '<div id="od-fish-body"><div class="od-row" style="color:var(--text-soft);font-style:italic;">⏳ Fetching lake data…</div></div>'
     + '</div>';
 
   /* Wildlife */
   if (wildlife.length) {
     H += '<div class="od-section">'
-      + '<div class="od-section-title">\U0001f43e Wildlife Activity &amp; Nature Now</div>'
+      + '<div class="od-section-title">🐾 Wildlife Activity &amp; Nature Now</div>'
       + wildlife.map(function(w) { return '<div class="od-row">' + w + '</div>'; }).join("")
       + '</div>';
   }
 
   /* Mushrooms */
   H += '<div class="od-section">'
-    + '<div class="od-section-title">\U0001f344 Missouri Edible Mushrooms — Field Guide</div>'
+    + '<div class="od-section-title">🍄 Missouri Edible Mushrooms — Field Guide</div>'
     + '<div class="od-mush-grid">' + mushHtml + '</div>'
     + '<div class="od-tip">Always use multiple field guides. When in doubt, throw it out. Slice all puffballs to verify pure-white inside. <a href="https://momushroomhunters.com/" target="_blank" rel="noopener">MO Mushroom Hunters Club →</a></div>'
     + '</div>';
@@ -1563,7 +1572,7 @@ function loadOutdoors() {
   /* Birds */
   if (birds.length) {
     H += '<div class="od-section">'
-      + '<div class="od-section-title">\U0001f426 Bird Migration &amp; Feeders</div>'
+      + '<div class="od-section-title">🐦 Bird Migration &amp; Feeders</div>'
       + birds.map(function(b) { return '<div class="od-row">' + b + '</div>'; }).join("")
       + '</div>';
   }
@@ -1571,35 +1580,35 @@ function loadOutdoors() {
   /* Seasons */
   if (seasons.active.length || seasons.upcoming.length) {
     H += '<div class="od-section">'
-      + '<div class="od-section-title">\U0001f98c Hunting &amp; Fishing Seasons</div>'
+      + '<div class="od-section-title">🦌 Hunting &amp; Fishing Seasons</div>'
       + seasons.active.map(function(s) { return '<div class="od-row od-season">✅ ' + s + '</div>'; }).join("")
       + seasons.upcoming.map(function(s) { return '<div class="od-row">⏳ ' + s + '</div>'; }).join("")
-      + '<div class="od-tip"><a href="https://huntfish.mdc.mo.gov/hunting-trapping/regulations" target="_blank" rel="noopener">\U0001f4cb MDC Official Regulations →</a></div>'
+      + '<div class="od-tip"><a href="https://huntfish.mdc.mo.gov/hunting-trapping/regulations" target="_blank" rel="noopener">📋 MDC Official Regulations →</a></div>'
       + '</div>';
   }
 
   /* Planting */
   if (plants.length) {
     H += '<div class="od-section">'
-      + '<div class="od-section-title">\U0001f331 ' + mname + ' Planting Guide</div>'
+      + '<div class="od-section-title">🌱 ' + mname + ' Planting Guide</div>'
       + plants.map(function(p) { return '<div class="od-row">' + p + '</div>'; }).join("")
-      + '<div class="od-tip"><a href="https://extension.missouri.edu/programs/agebb" target="_blank" rel="noopener">\U0001f4da MU Extension →</a></div>'
+      + '<div class="od-tip"><a href="https://extension.missouri.edu/programs/agebb" target="_blank" rel="noopener">📚 MU Extension →</a></div>'
       + '</div>';
   }
 
   /* Quick Links */
   H += '<div class="od-links">'
-    + '<a href="https://huntfish.mdc.mo.gov/" target="_blank" rel="noopener" class="od-link">\U0001f3e0 MDC HuntFish</a>'
-    + '<a href="https://mdc.mo.gov/fishing/fishing-reports" target="_blank" rel="noopener" class="od-link">\U0001f3a3 MDC Fishing Reports</a>'
-    + '<a href="https://waterdata.usgs.gov/monitoring-location/06922440/" target="_blank" rel="noopener" class="od-link">\U0001f30a Truman Lake Level</a>'
-    + '<a href="https://www.purplemartin.org/scout-arrival-study/" target="_blank" rel="noopener" class="od-link">\U0001f426 Martin Scout Map</a>'
-    + '<a href="https://www.hummingbirdcentral.com/hummingbird-migration-spring-missouri.htm" target="_blank" rel="noopener" class="od-link">\U0001f33a Hummingbird Map</a>'
-    + '<a href="https://huntfish.mdc.mo.gov/hunting-trapping/regulations" target="_blank" rel="noopener" class="od-link">\U0001f4cb MDC Regs</a>'
-    + '<a href="https://extension.missouri.edu/publications" target="_blank" rel="noopener" class="od-link">\U0001f4da MU Extension</a>'
-    + '<a href="https://momushroomhunters.com/" target="_blank" rel="noopener" class="od-link">\U0001f344 MO Mushroom Hunters</a>'
+    + '<a href="https://huntfish.mdc.mo.gov/" target="_blank" rel="noopener" class="od-link">🏠 MDC HuntFish</a>'
+    + '<a href="https://mdc.mo.gov/fishing/fishing-reports" target="_blank" rel="noopener" class="od-link">🎣 MDC Fishing Reports</a>'
+    + '<a href="https://waterdata.usgs.gov/monitoring-location/06922440/" target="_blank" rel="noopener" class="od-link">🌊 Truman Lake Level</a>'
+    + '<a href="https://www.purplemartin.org/scout-arrival-study/" target="_blank" rel="noopener" class="od-link">🐦 Martin Scout Map</a>'
+    + '<a href="https://www.hummingbirdcentral.com/hummingbird-migration-spring-missouri.htm" target="_blank" rel="noopener" class="od-link">🌺 Hummingbird Map</a>'
+    + '<a href="https://huntfish.mdc.mo.gov/hunting-trapping/regulations" target="_blank" rel="noopener" class="od-link">📋 MDC Regs</a>'
+    + '<a href="https://extension.missouri.edu/publications" target="_blank" rel="noopener" class="od-link">📚 MU Extension</a>'
+    + '<a href="https://momushroomhunters.com/" target="_blank" rel="noopener" class="od-link">🍄 MO Mushroom Hunters</a>'
     + '</div>';
 
-  H += '<div class="od-news-header">\U0001f4f0 Latest Missouri Outdoors News</div>';
+  H += '<div class="od-news-header">📰 Latest Missouri Outdoors News</div>';
   H += '</div>';
   odc.innerHTML = H;
 
@@ -1621,7 +1630,7 @@ function loadOutdoors() {
 
     /* Update shad wind bank */
     var shadEl = document.getElementById("od-shad-wind");
-    if (shadEl) shadEl.innerHTML = '<span class="od-label">\U0001f4cd Best Bank</span>' + shadWindHtml(windDeg, windMph);
+    if (shadEl) shadEl.innerHTML = '<span class="od-label">📍 Best Bank</span>' + shadWindHtml(windDeg, windMph);
 
     /* Update fishing conditions */
     var fishEl = document.getElementById("od-fish-body");
@@ -1661,9 +1670,9 @@ function loadOutdoors() {
 
     var tempStr = airTempF !== null ? airTempF + "°F air" : "";
     fishEl.innerHTML = '<div class="od-row" style="font-size:12px;color:var(--text-soft);margin-bottom:8px;">Truman Lake: <strong>' + stageStr + '</strong> (' + diffStr + trendStr + ') &nbsp;···&nbsp; ' + tempStr + '</div>'
-      + '<div class="od-row"><span class="od-label">\U0001f436 Blue Catfish</span>' + blueCat + '</div>'
-      + '<div class="od-row"><span class="od-label">\U0001f41f Crappie</span>' + crappie + '</div>'
-      + '<div class="od-row"><span class="od-label">\U0001fa63 Shad/Wind</span>' + shadNote + '</div>';
+      + '<div class="od-row"><span class="od-label">🐶 Blue Catfish</span>' + blueCat + '</div>'
+      + '<div class="od-row"><span class="od-label">🐟 Crappie</span>' + crappie + '</div>'
+      + '<div class="od-row"><span class="od-label">🩣 Shad/Wind</span>' + shadNote + '</div>';
   });
 
   /* ── Load news feeds into #list ── */

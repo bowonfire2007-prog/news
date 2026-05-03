@@ -174,15 +174,25 @@
   #tldrModal.open { pointer-events:auto; }
   #tldrBackdrop { position:absolute; inset:0; background:rgba(0,0,0,.5); opacity:0; transition:opacity .25s; }
   #tldrModal.open #tldrBackdrop { opacity:1; }
-  #tldrSheet { position:relative; width:100%; max-width:700px; background:var(--bg); border-radius:20px 20px 0 0; border-top:1px solid var(--border); padding:24px 24px max(env(safe-area-inset-bottom),24px); transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); max-height:80vh; overflow-y:auto; }
+  #tldrSheet { position:relative; width:100%; max-width:700px; background:var(--bg); border-radius:20px 20px 0 0; border-top:1px solid var(--border); transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); height:82vh; display:flex; flex-direction:column; overflow:hidden; }
   #tldrModal.open #tldrSheet { transform:translateY(0); }
-  #tldrClose { position:absolute; top:14px; right:16px; width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  #tldrSheetTop { padding:16px 48px 12px 18px; border-bottom:1px solid var(--border); flex-shrink:0; }
+  #tldrClose { position:absolute; top:14px; right:14px; width:30px; height:30px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
   #tldrClose:hover { background:var(--card-hover); }
-  #tldrLabel { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent); margin-bottom:8px; }
-  #tldrHeadline { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:18px; font-weight:700; line-height:1.35; color:var(--text); margin-bottom:14px; }
-  #tldrBody { font-size:15px; color:var(--text-muted); line-height:1.7; white-space:pre-wrap; }
-  #tldrSource { margin-top:14px; font-size:12px; color:var(--text-soft); }
-  #tldrSource a { color:var(--accent); font-weight:600; }
+  #tldrLabel { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent); margin-bottom:5px; }
+  #tldrHeadline { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:15px; font-weight:700; line-height:1.3; color:var(--text); }
+  #tldrSource { margin-top:4px; font-size:11px; color:var(--text-soft); }
+  #tldrSource a { color:var(--accent); font-weight:600; text-decoration:none; }
+  #tldrMessages { flex:1; overflow-y:auto; padding:14px 14px 6px; display:flex; flex-direction:column; gap:10px; }
+  .tldr-bubble { max-width:90%; font-size:14px; line-height:1.65; border-radius:16px; padding:10px 14px; white-space:pre-wrap; word-break:break-word; }
+  .tldr-bubble-ai { background:var(--card); color:var(--text); border-bottom-left-radius:4px; align-self:flex-start; border:1px solid var(--border); }
+  .tldr-bubble-user { background:var(--accent); color:#fff; border-bottom-right-radius:4px; align-self:flex-end; }
+  .tldr-bubble-ai .spinner { vertical-align:middle; }
+  #tldrInputRow { display:flex; align-items:center; gap:8px; padding:10px 12px max(env(safe-area-inset-bottom),12px); border-top:1px solid var(--border); flex-shrink:0; background:var(--bg); }
+  #tldrInput { flex:1; padding:9px 14px; border-radius:999px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:14px; font-family:inherit; outline:none; min-width:0; }
+  #tldrInput:focus { border-color:var(--accent); }
+  #tldrSendBtn { width:36px; height:36px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:opacity .15s; }
+  #tldrSendBtn:disabled { opacity:0.4; cursor:default; }
 
 </style>
 </head>
@@ -191,15 +201,21 @@
 <!-- NWS ALERT BANNER -->
 <div id="alertBanner"></div>
 
-<!-- TLDR MODAL -->
+<!-- AI CHAT MODAL -->
 <div id="tldrModal">
   <div id="tldrBackdrop"></div>
   <div id="tldrSheet">
-    <button id="tldrClose" aria-label="Close">×</button>
-    <div id="tldrLabel">AI Summary</div>
-    <div id="tldrHeadline"></div>
-    <div id="tldrBody"><span class="spinner"></span> Summarizing…</div>
-    <div id="tldrSource"></div>
+    <div id="tldrSheetTop">
+      <button id="tldrClose" aria-label="Close">×</button>
+      <div id="tldrLabel">✦ AI Chat</div>
+      <div id="tldrHeadline"></div>
+      <div id="tldrSource"></div>
+    </div>
+    <div id="tldrMessages"></div>
+    <div id="tldrInputRow">
+      <input id="tldrInput" placeholder="Ask a follow-up…" autocomplete="off" />
+      <button id="tldrSendBtn" aria-label="Send">↑</button>
+    </div>
   </div>
 </div>
 
@@ -1202,12 +1218,18 @@ function getClaudeKey() {
   }
   return k;
 }
-const tldrModal = document.getElementById("tldrModal");
+const tldrModal    = document.getElementById("tldrModal");
 const tldrBackdrop = document.getElementById("tldrBackdrop");
-const tldrClose = document.getElementById("tldrClose");
+const tldrClose    = document.getElementById("tldrClose");
 const tldrHeadline = document.getElementById("tldrHeadline");
-const tldrBody = document.getElementById("tldrBody");
-const tldrSource = document.getElementById("tldrSource");
+const tldrSource   = document.getElementById("tldrSource");
+const tldrMessages = document.getElementById("tldrMessages");
+const tldrInput    = document.getElementById("tldrInput");
+const tldrSendBtn  = document.getElementById("tldrSendBtn");
+
+let _tldrConvo = [];   // full conversation history
+let _tldrTitle = "";   // current article title
+let _tldrBusy  = false;
 
 function closeTldr() {
   tldrModal.classList.remove("open");
@@ -1217,57 +1239,30 @@ tldrClose.addEventListener("click", closeTldr);
 tldrBackdrop.addEventListener("click", closeTldr);
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeTldr(); });
 
-async function openTldr(title, url, description) {
-  tldrHeadline.textContent = title;
-  tldrBody.innerHTML = '<span class="spinner"></span> Fetching article…';
-  tldrSource.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener noreferrer">View original article ↗</a>';
-  tldrModal.classList.add("open");
-  document.body.style.overflow = "hidden";
-
-  const apiKey = getClaudeKey();
-  if (!apiKey) { tldrBody.textContent = "No API key set. Reload and enter your Anthropic key to use AI summaries."; return; }
-
-  // Try to fetch full article text via Jina, then allorigins proxy fallback
-  let articleText = "";
-  let sourceLabel = "full article";
-  try {
-    const jinaRes = await fetch("https://r.jina.ai/" + encodeURIComponent(url),
-      { headers: { "Accept": "text/plain", "X-Return-Format": "text" } });
-    if (jinaRes.ok) {
-      articleText = (await jinaRes.text()).slice(0, 6000);
-    } else {
-      throw new Error("status " + jinaRes.status);
-    }
-  } catch (jinaErr) {
-    // Jina blocked — try allorigins proxy
-    try {
-      const proxyRes = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
-      if (proxyRes.ok) {
-        const raw = await proxyRes.text();
-        // strip HTML tags to get plain text
-        articleText = raw.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-                         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-                         .replace(/<[^>]+>/g, " ")
-                         .replace(/\s{2,}/g, " ").trim().slice(0, 6000);
-      }
-    } catch (e) { /* both failed — fall through to description */ }
-  }
-
-  // Build the best prompt we can from available content
-  let prompt;
-  if (articleText && articleText.length > 200) {
-    prompt = "Summarize this article in 3-5 concise bullet points focusing on the key facts.\n\nTitle: " + title + "\n\nContent:\n" + articleText;
-  } else if (description && description.length > 30) {
-    sourceLabel = "headline & excerpt";
-    prompt = "Based on this headline and excerpt, give a 2-3 bullet summary of what this article is likely about. Note you are working from limited info.\n\nTitle: " + title + "\n\nExcerpt: " + description;
+function _tldrAddBubble(role, text) {
+  var div = document.createElement("div");
+  div.className = "tldr-bubble tldr-bubble-" + (role === "user" ? "user" : "ai");
+  if (text === null) {
+    div.innerHTML = '<span class="spinner"></span>';
   } else {
-    sourceLabel = "headline only";
-    prompt = "Based on this headline alone, briefly explain in 2-3 sentences what this news story is likely about.\n\nTitle: " + title;
+    div.textContent = text;
   }
+  tldrMessages.appendChild(div);
+  tldrMessages.scrollTop = tldrMessages.scrollHeight;
+  return div;
+}
 
-  tldrBody.innerHTML = '<span class="spinner"></span> Summarizing with AI…';
+async function _tldrCall() {
+  _tldrBusy = true;
+  tldrSendBtn.disabled = true;
+  var bubble = _tldrAddBubble("ai", null); // spinner
+  const apiKey = getClaudeKey();
+  if (!apiKey) {
+    bubble.textContent = "No API key — reload the page and enter your Anthropic key when prompted.";
+    _tldrBusy = false; tldrSendBtn.disabled = false; return;
+  }
   try {
-    const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1277,20 +1272,82 @@ async function openTldr(title, url, description) {
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 400,
-        messages: [{ role: "user", content: prompt }]
+        max_tokens: 600,
+        system: "You are a knowledgeable assistant. The user is reading a news article titled: \"" + _tldrTitle + "\". Answer clearly and concisely. Use bullet points when helpful. After your first response invite follow-up questions.",
+        messages: _tldrConvo
       })
     });
-    if (!claudeRes.ok) throw new Error("Claude API error: " + claudeRes.status);
-    const claudeData = await claudeRes.json();
-    tldrBody.textContent = claudeData.content[0].text;
-    if (sourceLabel !== "full article") {
-      tldrSource.innerHTML += '<br><span style="opacity:.6;font-size:11px;">⚠ Summarized from ' + sourceLabel + ' — site blocked full access</span>';
-    }
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error((e.error && e.error.message) || "API error " + res.status); }
+    const data = await res.json();
+    const reply = data.content[0].text;
+    _tldrConvo.push({ role: "assistant", content: reply });
+    bubble.textContent = reply;
   } catch (err) {
-    tldrBody.textContent = "Could not generate summary: " + err.message;
+    bubble.textContent = "Error: " + err.message;
   }
+  tldrMessages.scrollTop = tldrMessages.scrollHeight;
+  _tldrBusy = false;
+  tldrSendBtn.disabled = false;
+  tldrInput.focus();
 }
+
+async function openTldr(title, url, description) {
+  _tldrTitle  = title;
+  _tldrConvo  = [];
+  _tldrBusy   = false;
+  tldrMessages.innerHTML = "";
+  tldrInput.value = "";
+  tldrSendBtn.disabled = false;
+  tldrHeadline.textContent = title;
+  tldrSource.innerHTML = '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer">View original article ↗</a>';
+  tldrModal.classList.add("open");
+  document.body.style.overflow = "hidden";
+
+  // Try to get article text (Jina → allorigins → description snippet → title only)
+  var articleText = "";
+  try {
+    const jr = await fetch("https://r.jina.ai/" + encodeURIComponent(url),
+      { headers: { "Accept": "text/plain", "X-Return-Format": "text" } });
+    if (jr.ok) articleText = (await jr.text()).slice(0, 6000);
+  } catch(e) {}
+  if (!articleText) {
+    try {
+      const pr = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
+      if (pr.ok) {
+        const raw = await pr.text();
+        articleText = raw.replace(/<style[^>]*>[\s\S]*?<\/style>/gi,"")
+                         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi,"")
+                         .replace(/<[^>]+>/g," ").replace(/\s{2,}/g," ").trim().slice(0,6000);
+      }
+    } catch(e) {}
+  }
+
+  // Build first user message — always gives Claude enough context
+  var firstMsg;
+  if (articleText && articleText.length > 300) {
+    firstMsg = "I'm reading this news article. Please give me a clear summary in 3-5 bullet points.\n\nHeadline: " + title + "\n\nArticle text:\n" + articleText;
+  } else if (description && description.length > 40) {
+    firstMsg = "I'm reading an article titled \"" + title + "\" with this excerpt: " + description + "\n\nUsing your knowledge of this topic, give me a thorough 3-5 bullet summary of what's happening and what's important to know.";
+  } else {
+    firstMsg = "I'm reading a news article titled \"" + title + "\". Using your knowledge, tell me what this is about and the most important things to understand about this topic. Give 3-5 bullet points.";
+  }
+
+  _tldrConvo.push({ role: "user", content: firstMsg });
+  await _tldrCall();
+}
+
+function _tldrSend() {
+  if (_tldrBusy) return;
+  var text = tldrInput.value.trim();
+  if (!text) return;
+  tldrInput.value = "";
+  _tldrAddBubble("user", text);
+  _tldrConvo.push({ role: "user", content: text });
+  _tldrCall();
+}
+
+tldrSendBtn.addEventListener("click", _tldrSend);
+tldrInput.addEventListener("keydown", function(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); _tldrSend(); } });
 window.openTldr = openTldr;
 
 // ========== PULSE ROOMS PAGE ==========

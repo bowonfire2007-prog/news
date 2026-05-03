@@ -1016,7 +1016,7 @@ async function loadStockNews(force) {
     const sBtn = document.createElement("button");
     sBtn.className = "tldr-btn";
     sBtn.textContent = "✶ AI Summary";
-    sBtn.addEventListener("click", function(e) { e.preventDefault(); e.stopPropagation(); openTldr(item.title, item.link); });
+    sBtn.addEventListener("click", function(e) { e.preventDefault(); e.stopPropagation(); openTldr(item.title, item.link, item.description); });
     wrapper.appendChild(a);
     wrapper.appendChild(sBtn);
     frag.appendChild(wrapper);
@@ -1178,7 +1178,7 @@ function renderNews(items) {
     const btn = document.createElement("button");
     btn.className = "tldr-btn";
     btn.textContent = "✦ AI Summary";
-    btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openTldr(item.title, item.link); });
+    btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openTldr(item.title, item.link, item.description); });
     tldrRow.appendChild(btn);
     wrapper.appendChild(a);
     wrapper.appendChild(tldrRow);
@@ -1217,41 +1217,76 @@ tldrClose.addEventListener("click", closeTldr);
 tldrBackdrop.addEventListener("click", closeTldr);
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeTldr(); });
 
-async function openTldr(title, url) {
+async function openTldr(title, url, description) {
   tldrHeadline.textContent = title;
   tldrBody.innerHTML = '<span class="spinner"></span> Fetching article…';
   tldrSource.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener noreferrer">View original article ↗</a>';
   tldrModal.classList.add("open");
   document.body.style.overflow = "hidden";
+
+  const apiKey = getClaudeKey();
+  if (!apiKey) { tldrBody.textContent = "No API key set. Reload and enter your Anthropic key to use AI summaries."; return; }
+
+  // Try to fetch full article text via Jina, then allorigins proxy fallback
+  let articleText = "";
+  let sourceLabel = "full article";
   try {
-    const jinaUrl = "https://r.jina.ai/" + encodeURIComponent(url);
-    const jinaRes = await fetch(jinaUrl, { headers: { "Accept": "text/plain", "X-Return-Format": "text" } });
-    if (!jinaRes.ok) throw new Error("Jina fetch failed: " + jinaRes.status);
-    const articleText = (await jinaRes.text()).slice(0, 6000);
-    tldrBody.innerHTML = '<span class="spinner"></span> Summarizing with AI…';
-    const apiKey = getClaudeKey();
-    if (!apiKey) { tldrBody.textContent = "No API key set. Reload and enter your Anthropic key to use AI summaries."; return; }
+    const jinaRes = await fetch("https://r.jina.ai/" + encodeURIComponent(url),
+      { headers: { "Accept": "text/plain", "X-Return-Format": "text" } });
+    if (jinaRes.ok) {
+      articleText = (await jinaRes.text()).slice(0, 6000);
+    } else {
+      throw new Error("status " + jinaRes.status);
+    }
+  } catch (jinaErr) {
+    // Jina blocked — try allorigins proxy
+    try {
+      const proxyRes = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
+      if (proxyRes.ok) {
+        const raw = await proxyRes.text();
+        // strip HTML tags to get plain text
+        articleText = raw.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+                         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+                         .replace(/<[^>]+>/g, " ")
+                         .replace(/\s{2,}/g, " ").trim().slice(0, 6000);
+      }
+    } catch (e) { /* both failed — fall through to description */ }
+  }
+
+  // Build the best prompt we can from available content
+  let prompt;
+  if (articleText && articleText.length > 200) {
+    prompt = "Summarize this article in 3-5 concise bullet points focusing on the key facts.\n\nTitle: " + title + "\n\nContent:\n" + articleText;
+  } else if (description && description.length > 30) {
+    sourceLabel = "headline & excerpt";
+    prompt = "Based on this headline and excerpt, give a 2-3 bullet summary of what this article is likely about. Note you are working from limited info.\n\nTitle: " + title + "\n\nExcerpt: " + description;
+  } else {
+    sourceLabel = "headline only";
+    prompt = "Based on this headline alone, briefly explain in 2-3 sentences what this news story is likely about.\n\nTitle: " + title;
+  }
+
+  tldrBody.innerHTML = '<span class="spinner"></span> Summarizing with AI…';
+  try {
     const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": getClaudeKey(),
+        "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
         "anthropic-dangerous-direct-browser-access": "true"
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 400,
-        messages: [{
-          role: "user",
-          content: "Please summarize this article in 3-5 clear bullet points. Be concise and focus on the key facts.\n\nTitle: " + title + "\n\nContent:\n" + articleText
-        }]
+        messages: [{ role: "user", content: prompt }]
       })
     });
     if (!claudeRes.ok) throw new Error("Claude API error: " + claudeRes.status);
     const claudeData = await claudeRes.json();
-    const summary = claudeData.content[0].text;
-    tldrBody.textContent = summary;
+    tldrBody.textContent = claudeData.content[0].text;
+    if (sourceLabel !== "full article") {
+      tldrSource.innerHTML += '<br><span style="opacity:.6;font-size:11px;">⚠ Summarized from ' + sourceLabel + ' — site blocked full access</span>';
+    }
   } catch (err) {
     tldrBody.textContent = "Could not generate summary: " + err.message;
   }

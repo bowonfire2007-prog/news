@@ -1289,9 +1289,9 @@ async function _tldrCall() {
         "anthropic-dangerous-direct-browser-access": "true"
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 600,
-        system: "You are a knowledgeable assistant. The user is reading a news article titled: \"" + _tldrTitle + "\". Answer clearly and concisely. Use bullet points when helpful. After your first response invite follow-up questions.",
+        model: "claude-sonnet-4-6",
+        max_tokens: 1200,
+        system: "You are a sharp, experienced news analyst — part investigative journalist, part policy expert, part historian. The user is reading a news article and wants real depth, not a headline summary. Your job: explain what is actually happening and why it matters, provide the background and context the article likely skips, identify the key players and their motivations, flag what's contested or unresolved, and note the broader implications. Be specific and substantive — no vague generalities, no restating the headline. Write in clear prose, not bullet points, unless the user asks for bullets. Always invite a follow-up question at the end.",
         messages: _tldrConvo
       })
     });
@@ -1343,11 +1343,11 @@ async function openTldr(title, url, description) {
   // Build first user message — always gives Claude enough context
   var firstMsg;
   if (articleText && articleText.length > 300) {
-    firstMsg = "I'm reading this news article. Please give me a clear summary in 3-5 bullet points.\n\nHeadline: " + title + "\n\nArticle text:\n" + articleText;
+    firstMsg = "Headline: \"" + title + "\"\n\nArticle text:\n" + articleText + "\n\n---\nDon't just summarize this — go deeper. What is actually going on here? Give me the real background and context behind this story, who the key players are and what their motivations are, what's contested or unresolved, and why this matters. Write analytically, like you're briefing someone who wants to actually understand the story, not just know what happened.";
   } else if (description && description.length > 40) {
-    firstMsg = "I'm reading an article titled \"" + title + "\" with this excerpt: " + description + "\n\nUsing your knowledge of this topic, give me a thorough 3-5 bullet summary of what's happening and what's important to know.";
+    firstMsg = "I'm reading an article: \"" + title + "\"\n\nExcerpt: " + description + "\n\nUsing your knowledge of this topic, give me a real analytical breakdown. What's actually going on here — the background, the key players, what's at stake, and what the headline doesn't tell me. Don't just restate the excerpt; give me depth and context.";
   } else {
-    firstMsg = "I'm reading a news article titled \"" + title + "\". Using your knowledge, tell me what this is about and the most important things to understand about this topic. Give 3-5 bullet points.";
+    firstMsg = "I'm reading a news article: \"" + title + "\"\n\nUsing your knowledge, give me a real analytical take on this story. What's the background and history here, who are the key players and what do they want, what's contested or unresolved, and why does this matter? Go beyond the headline.";
   }
 
   _tldrConvo.push({ role: "user", content: firstMsg });

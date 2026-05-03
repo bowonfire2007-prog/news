@@ -737,6 +737,7 @@ function renderWeather(data, lake) {
   const _windDir = c.wind_direction_10m !== undefined ? Math.round(c.wind_direction_10m) : null;
   const _tips = getFishingTips(lake, _airTempF, _windMph);
   _odWindDeg = _windDir; _odAirTempF = _airTempF; _odWindMph = _windMph; _odLake = lake; _odFishTips = _tips;
+  if (activeCat === "outdoors") loadOutdoors();
   const fishingHtml = _tips
     ? '<div class="w-fishing">'
         + '<div class="w-fish-title">🎣 Fishing Conditions</div>'

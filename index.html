@@ -737,7 +737,15 @@ function renderWeather(data, lake) {
   const _windDir = c.wind_direction_10m !== undefined ? Math.round(c.wind_direction_10m) : null;
   const _tips = getFishingTips(lake, _airTempF, _windMph);
   _odWindDeg = _windDir; _odAirTempF = _airTempF; _odWindMph = _windMph; _odLake = lake; _odFishTips = _tips;
-  if (activeCat === "outdoors") loadOutdoors();
+  if (activeCat === "outdoors") {
+    var ph = document.getElementById("od-fish-placeholder");
+    if (ph && _odFishTips) {
+      var newHtml = '<div class="od-row"><span class="od-label">🐶 Blue Catfish</span>' + _odFishTips.blueCat + '</div>'
+        + '<div class="od-row"><span class="od-label">🐟 Crappie</span>' + _odFishTips.crappie + '</div>';
+      var sec = document.getElementById("od-fish-section");
+      if (sec) sec.innerHTML = '<div class="od-section-title">🎣 Truman Lake Fishing Conditions</div>' + newHtml;
+    }
+  }
   const fishingHtml = _tips
     ? '<div class="w-fishing">'
         + '<div class="w-fish-title">🎣 Fishing Conditions</div>'
@@ -1416,15 +1424,14 @@ function loadOutdoors() {
     + '<div class="od-row"><span class="od-label">📅 Spawn Status</span>' + shad.spawnNote + '</div>'
     + '</div>';
 
-  H += '<div class="od-section">';
-  H += '<div class="od-section-title">🎣 Truman Lake Fishing Conditions</div>';
-  if (_odFishTips) {
-    H += '<div class="od-row"><span class="od-label">🐶 Blue Catfish</span>' + _odFishTips.blueCat + '</div>'
-      + '<div class="od-row"><span class="od-label">🐟 Crappie</span>' + _odFishTips.crappie + '</div>';
-  } else {
-    H += '<div class="od-row" style="color:var(--text-soft);font-style:italic;">Lake and weather data loading — if this persists, tap the tab again after the weather widget loads.</div>';
-  }
-  H += '</div>';
+  var fishInner = _odFishTips
+    ? '<div class="od-row"><span class="od-label">🐶 Blue Catfish</span>' + _odFishTips.blueCat + '</div>'
+      + '<div class="od-row"><span class="od-label">🐟 Crappie</span>' + _odFishTips.crappie + '</div>'
+    : '<div id="od-fish-placeholder" class="od-row" style="color:var(--text-soft);font-style:italic;">Lake data loading…</div>';
+  H += '<div class="od-section" id="od-fish-section">'
+    + '<div class="od-section-title">🎣 Truman Lake Fishing Conditions</div>'
+    + fishInner
+    + '</div>';
 
   H += '<div class="od-section' + morel.cls + '">'
     + '<div class="od-section-title">🍄 Morel Mushrooms</div>'

@@ -430,11 +430,15 @@ const STOCK_NEWS_FEEDS = [
 ];
 
 // Proxies tried in parallel — first response wins
+// cfworker is Matt's own Cloudflare Worker (fast, no rate limits)
+const CF_WORKER = "https://rss-proxy.bowonfire2007.workers.dev/";
 const PROXIES = [
+  { name:"cfworker",   url:u=>CF_WORKER+"?url="+encodeURIComponent(u), parse:"xml" },
   { name:"rss2json",   url:u=>"https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(u), parse:"json" },
   { name:"allorigins", url:u=>"https://api.allorigins.win/get?url="+encodeURIComponent(u), parse:"allorigins" }
 ];
 const CORS_PROXIES = [
+  { name:"cfworker",     url:u=>CF_WORKER+"?url="+encodeURIComponent(u) },
   { name:"corsproxy.io", url:u=>"https://corsproxy.io/?"+encodeURIComponent(u) },
   { name:"allorigins",   url:u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u) },
   { name:"codetabs",     url:u=>"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u) }
@@ -895,9 +899,4 @@ function parseXmlFeed(xmlText, source) {
   if (doc.querySelector("parsererror")) return [];
   const isAtom = doc.documentElement.nodeName.toLowerCase()==="feed";
   const entries = Array.from(doc.querySelectorAll(isAtom?"entry":"item"));
-  return entries.slice(0, PER_FEED_LIMIT).map(el => {
-    const get = sel => { const n=el.querySelector(sel); return n?n.textContent.trim():""; };
-    let link="";
-    if (isAtom) {
-      const a = el.querySelector("link[rel='alternate']")||el.querySelector("link");
-      link = a?(a.getAttribute("href")||a.textConten
+  return entries.slice(0,

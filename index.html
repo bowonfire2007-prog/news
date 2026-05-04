@@ -433,9 +433,9 @@ const STOCK_NEWS_FEEDS = [
 // cfworker is Matt's own Cloudflare Worker (fast, no rate limits)
 const CF_WORKER = "https://rss-proxy.bowonfire2007.workers.dev/";
 const PROXIES = [
-  { name:"cfworker",   url:u=>CF_WORKER+"?url="+encodeURIComponent(u), parse:"xml" },
   { name:"rss2json",   url:u=>"https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(u), parse:"json" },
-  { name:"allorigins", url:u=>"https://api.allorigins.win/get?url="+encodeURIComponent(u), parse:"allorigins" }
+  { name:"allorigins", url:u=>"https://api.allorigins.win/get?url="+encodeURIComponent(u), parse:"allorigins" },
+  { name:"cfworker",   url:u=>CF_WORKER+"?url="+encodeURIComponent(u), parse:"xml" }
 ];
 const CORS_PROXIES = [
   { name:"cfworker",     url:u=>CF_WORKER+"?url="+encodeURIComponent(u) },

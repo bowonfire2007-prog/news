@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f0e0d" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)">
 <title>Matt's Daily Read</title>
 <style>
-  :root { --bg:#ffffff; --text:#0a0a0a; --text-muted:#6b6b6b; --text-soft:#9a9a9a; --border:#ececec; --accent:#b8331a; --card-hover:#f5f4f2; }
-  [data-theme="dark"] { --bg:#0f0f10; --text:#f5f5f4; --text-muted:#a3a3a3; --text-soft:#6b6b6b; --border:#27272a; --accent:#ff6b4a; --card-hover:#1c1c1f; }
+  :root { --bg:#faf9f7; --text:#0a0a0a; --text-muted:#6b6b6b; --text-soft:#9a9a9a; --border:#e8e6e0; --accent:#b8331a; --card-hover:#f0ede8; }
+  [data-theme="dark"] { --bg:#0f0e0d; --text:#f5f5f4; --text-muted:#a3a3a3; --text-soft:#6b6b6b; --border:#2a2825; --accent:#ff6b4a; --card-hover:#1c1b19; }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html,body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.5; -webkit-font-smoothing:antialiased; transition:background-color .25s ease,color .25s ease; }
   a { color:inherit; text-decoration:none; }
@@ -29,11 +29,9 @@
   .alert-headline { opacity:.9; margin-top:2px; }
   .alert-link { color:#fff; text-decoration:underline; white-space:nowrap; font-weight:600; margin-left:8px; flex-shrink:0; }
 
-  /* ── DRAWER OVERLAY ── */
+  /* ── DRAWER ── */
   .drawer-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50; opacity:0; pointer-events:none; transition:opacity .25s ease; }
   .drawer-overlay.open { opacity:1; pointer-events:auto; }
-
-  /* ── SIDEBAR DRAWER ── */
   .drawer { position:fixed; top:0; left:0; bottom:0; width:min(300px,85vw); background:var(--bg); border-right:1px solid var(--border); z-index:60; transform:translateX(-100%); transition:transform .28s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; overflow:hidden; }
   .drawer.open { transform:translateX(0); }
   .drawer-header { padding:20px 20px 14px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); flex-shrink:0; }
@@ -48,20 +46,24 @@
   .drawer-item-icon { font-size:18px; width:24px; text-align:center; flex-shrink:0; }
 
   /* ── HEADER ── */
-  header { position:sticky; top:0; z-index:10; background:color-mix(in srgb,var(--bg) 88%,transparent); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:1px solid var(--border); padding:max(env(safe-area-inset-top),12px) 20px 0; }
+  header { position:sticky; top:0; z-index:10; background:color-mix(in srgb,var(--bg) 90%,transparent); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:1px solid var(--border); padding:max(env(safe-area-inset-top),12px) 20px 0; }
   .header-row { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:12px; }
   .brand { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:22px; font-weight:700; letter-spacing:-0.01em; }
   .brand span { color:var(--accent); }
-  .header-actions { display:flex; align-items:center; gap:6px; }
-  .icon-btn { width:38px; height:38px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--border); color:var(--text); cursor:pointer; }
+  .header-actions { display:flex; align-items:center; gap:5px; }
+  .icon-btn { width:36px; height:36px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--border); color:var(--text); cursor:pointer; flex-shrink:0; }
   .icon-btn:hover { background:var(--card-hover); }
-  .icon-btn svg { width:18px; height:18px; }
+  .icon-btn svg { width:17px; height:17px; }
+  .font-btn { height:28px; padding:0 9px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; font-size:11px; font-weight:700; font-family:inherit; line-height:1; }
+  .font-btn:hover { background:var(--card-hover); color:var(--text); }
 
-  /* ── SECTION BAR ── */
-  .section-bar { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:8px 0 10px; }
-  .section-label { font-size:13px; font-weight:700; color:var(--text); letter-spacing:0.02em; text-transform:uppercase; }
-  .section-menu-btn { font-size:13px; font-weight:600; color:var(--accent); background:transparent; border:none; cursor:pointer; padding:4px 0; display:flex; align-items:center; gap:5px; }
-  .section-menu-btn svg { width:14px; height:14px; }
+  /* ── SEARCH ── */
+  .search-wrap { max-width:760px; margin:0 auto; overflow:hidden; max-height:0; opacity:0; transition:max-height .2s ease,opacity .2s ease; }
+  .search-wrap.open { max-height:52px; opacity:1; }
+  .search-inner { display:flex; gap:8px; padding-bottom:10px; }
+  .search-input { flex:1; padding:7px 14px; border-radius:999px; border:1px solid var(--border); background:var(--card-hover); color:var(--text); font-size:14px; outline:none; font-family:inherit; }
+  .search-input:focus { border-color:var(--accent); }
+  .search-clear { width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; font-size:17px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 
   /* ── WEATHER ── */
   .weather { max-width:760px; margin:0 auto 2px; padding:10px 0; display:flex; flex-direction:column; gap:8px; font-size:14px; }
@@ -81,22 +83,72 @@
   .w-lake { display:inline-flex; align-items:center; gap:5px; padding:3px 10px 3px 8px; background:color-mix(in srgb,var(--accent) 12%,transparent); border-radius:999px; font-weight:700; color:var(--accent); font-size:13px; white-space:nowrap; text-decoration:none; }
   .w-lake:hover { text-decoration:underline; }
 
+  /* ── QUOTE OF DAY ── */
+  .quote-bar { max-width:760px; margin:0 auto; padding:8px 0 6px; border-top:1px solid var(--border); }
+  .quote-text { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:13px; color:var(--text-muted); font-style:italic; line-height:1.5; }
+  .quote-author { font-size:11px; color:var(--text-soft); margin-top:2px; letter-spacing:0.02em; }
+
+  /* ── SECTION BAR ── */
+  .section-bar { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:8px 0 4px; }
+  .section-left { display:flex; align-items:center; gap:8px; }
+  .section-label { font-size:13px; font-weight:700; color:var(--text); letter-spacing:0.02em; text-transform:uppercase; }
+  .new-pill { font-size:10px; font-weight:700; color:var(--accent); background:color-mix(in srgb,var(--accent) 13%,transparent); padding:2px 7px; border-radius:999px; white-space:nowrap; }
+  .section-menu-btn { font-size:13px; font-weight:600; color:var(--accent); background:transparent; border:none; cursor:pointer; padding:4px 0; display:flex; align-items:center; gap:5px; }
+  .section-menu-btn svg { width:14px; height:14px; }
+
+  /* ── QUICK TABS ── */
+  .quick-tabs { max-width:760px; margin:0 auto; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; display:flex; gap:7px; padding:5px 0 10px; }
+  .quick-tabs::-webkit-scrollbar { display:none; }
+  .qtab { flex-shrink:0; padding:5px 13px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:13px; font-weight:500; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .12s,color .12s,border-color .12s; }
+  .qtab:hover { background:var(--card-hover); color:var(--text); }
+  .qtab.active { background:var(--text); color:var(--bg); border-color:var(--text); font-weight:600; }
+
   /* ── MAIN ── */
   main { max-width:760px; margin:0 auto; padding:8px 20px max(env(safe-area-inset-bottom),40px); }
   .status { padding:40px 20px; text-align:center; color:var(--text-muted); font-size:14px; line-height:1.6; }
   .spinner { display:inline-block; width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; vertical-align:middle; margin-right:8px; }
   @keyframes spin { to { transform:rotate(360deg); } }
+  @keyframes shimmer { 0%{opacity:.35} 50%{opacity:.7} 100%{opacity:.35} }
+
+  /* ── SKELETON ── */
+  .skel { display:flex; gap:16px; padding:20px 0; border-bottom:1px solid var(--border); }
+  .skel-body { flex:1; display:flex; flex-direction:column; gap:7px; padding-top:4px; }
+  .skel-line { background:var(--card-hover); border-radius:4px; animation:shimmer 1.5s ease-in-out infinite; }
+  .skel-line.s1 { height:11px; width:38%; }
+  .skel-line.s2 { height:19px; width:94%; }
+  .skel-line.s3 { height:19px; width:72%; }
+  .skel-line.s4 { height:13px; width:88%; }
+  .skel-line.s5 { height:13px; width:60%; }
+  .skel-img { width:110px; height:110px; flex-shrink:0; border-radius:8px; background:var(--card-hover); animation:shimmer 1.5s ease-in-out infinite; }
 
   /* ── NEWS ITEMS ── */
-  article.item { display:flex; gap:16px; padding:20px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+  article.item { display:flex; gap:16px; padding:20px 0; border-bottom:1px solid var(--border); cursor:pointer; position:relative; }
   article.item:hover .title { color:var(--accent); }
+  article.item.read { opacity:0.52; }
+  article.item.read:hover { opacity:0.82; }
+  article.item.kb-focus { outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
   .item-text { flex:1; min-width:0; }
-  .meta { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-soft); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; }
-  .meta .source { color:var(--text-muted); font-weight:600; }
-  .meta .dot { opacity:0.5; }
+  .meta { display:flex; align-items:center; gap:6px; font-size:12px; margin-bottom:5px; flex-wrap:wrap; }
+  .source-chip { background:var(--card-hover); color:var(--text-muted); font-size:10px; font-weight:700; padding:2px 6px; border-radius:3px; letter-spacing:0.04em; text-transform:uppercase; }
+  .meta-dot { color:var(--text-soft); opacity:0.4; }
+  .meta-age { font-size:11px; color:var(--text-soft); }
+  .badge-row { display:flex; gap:5px; margin-bottom:5px; flex-wrap:wrap; align-items:center; }
+  .badge { font-size:10px; font-weight:700; padding:2px 6px; border-radius:3px; letter-spacing:0.04em; text-transform:uppercase; }
+  .badge-breaking { background:#7f1d1d; color:#fecaca; }
+  .badge-trending { background:color-mix(in srgb,var(--accent) 14%,transparent); color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 28%,transparent); }
+  .badge-new { background:#14532d; color:#bbf7d0; }
   .title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:19px; font-weight:700; line-height:1.3; letter-spacing:-0.01em; color:var(--text); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
   .desc { margin-top:6px; font-size:14px; color:var(--text-muted); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .thumb { width:110px; height:110px; flex-shrink:0; border-radius:8px; background:var(--card-hover); object-fit:cover; }
+  .bkmk-btn { position:absolute; bottom:18px; right:0; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:transparent; border:none; cursor:pointer; font-size:15px; opacity:0; transition:opacity .15s; color:var(--text-soft); padding:0; }
+  article.item:hover .bkmk-btn { opacity:1; }
+  article.item.bookmarked .bkmk-btn { opacity:1; color:var(--accent); }
+
+  /* ── HERO (first story) ── */
+  article.item.hero { flex-direction:column; gap:10px; padding-bottom:24px; }
+  article.item.hero .thumb { width:100%; height:220px; border-radius:10px; }
+  article.item.hero .title { font-size:26px; -webkit-line-clamp:4; }
+  article.item.hero .desc { -webkit-line-clamp:3; font-size:15px; }
 
   /* ── STOCKS ── */
   .stock-input-row { display:flex; gap:8px; padding:20px 0 12px; border-bottom:1px solid var(--border); }
@@ -116,8 +168,6 @@
   .stock-remove { width:28px; height:28px; border-radius:50%; border:none; background:transparent; color:var(--text-soft); cursor:pointer; font-size:18px; line-height:1; padding:0; flex-shrink:0; }
   .stock-remove:hover { background:var(--card-hover); color:var(--accent); }
   .stock-loading { opacity:0.5; }
-
-  /* ── STOCK NEWS ── */
   .stock-news-header { display:flex; align-items:center; gap:8px; padding:24px 0 4px; border-top:2px solid var(--border); margin-top:8px; }
   .stock-news-title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:18px; font-weight:700; color:var(--text); }
   .stock-news-sub { font-size:12px; color:var(--text-muted); margin-left:auto; }
@@ -128,101 +178,27 @@
   .retry-btn { margin-top:14px; padding:8px 18px; border-radius:999px; background:var(--accent); color:white; border:none; font-size:14px; font-weight:500; cursor:pointer; }
 
   /* ── RESPONSIVE ── */
-  .w-fishing { display:flex; flex-direction:column; gap:5px; padding-top:8px; border-top:1px solid var(--border); font-size:13px; }
-  .w-fish-title { font-weight:700; color:var(--text); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:2px; }
-  .w-fish-label { font-weight:600; color:var(--text); margin-right:4px; }
-  .w-fish-item { color:var(--text-muted); line-height:1.5; }
-
-  /* ── MO OUTDOORS PANEL ── */
-  .od-panel { padding:4px 0 20px; }
-  .od-section { margin-bottom:16px; padding:14px 16px; background:color-mix(in srgb,var(--accent) 6%,var(--bg)); border-radius:12px; border:1px solid var(--border); }
-  .od-section.od-gold { background:color-mix(in srgb,#f59e0b 13%,var(--bg)); border-color:color-mix(in srgb,#f59e0b 50%,var(--border)); }
-  .od-section-title { font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--accent); margin-bottom:10px; }
-  .od-row { font-size:13px; color:var(--text-muted); line-height:1.65; margin-bottom:7px; }
-  .od-row:last-child { margin-bottom:0; }
-  .od-label { font-weight:600; color:var(--text); margin-right:5px; }
-  .od-tip { font-size:12px; color:var(--text-soft); margin-top:8px; font-style:italic; }
-  .od-tip a, .od-row a { color:var(--accent); text-decoration:none; }
-  .od-season { font-weight:600; color:var(--text); }
-  .od-news-header { font-weight:700; font-size:15px; color:var(--text); padding:10px 0 16px; border-bottom:2px solid var(--border); margin-top:4px; }
-  .od-links { display:flex; flex-wrap:wrap; gap:8px; padding:12px 16px 14px; }
-  .od-link { display:inline-block; padding:6px 13px; background:var(--card); border:1px solid var(--border); border-radius:999px; font-size:12px; font-weight:500; color:var(--text); text-decoration:none; }
-  .od-mush-grid { display:flex; flex-direction:column; gap:10px; }
-  .od-mush { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
-  .od-mush.od-gold { background:color-mix(in srgb,#f59e0b 13%,var(--bg)); border-color:color-mix(in srgb,#f59e0b 50%,var(--border)); }
-  .od-mush-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
-  .od-mush-season { font-size:11px; color:var(--text-soft); font-weight:500; }
-  .od-mush-row { font-size:12px; color:var(--text-muted); line-height:1.55; margin-bottom:3px; }
-  .od-mush-row:last-child { margin-bottom:0; }
-    @media (max-width:520px) {
-    .brand { font-size:20px; }
+  @media (max-width:520px) {
+    .brand { font-size:19px; }
     .title { font-size:17px; }
     .thumb { width:84px; height:84px; }
     article.item { padding:16px 0; gap:12px; }
-    main, .header-row, header, .weather, .section-bar { padding-left:16px; padding-right:16px; }
-    .weather, .section-bar { padding-left:0; padding-right:0; }
+    article.item.hero .thumb { height:170px; }
+    article.item.hero .title { font-size:21px; }
+    main, .header-row, header, .weather, .section-bar, .quick-tabs, .quote-bar, .search-wrap { padding-left:16px; padding-right:16px; }
+    .weather, .section-bar, .quick-tabs, .quote-bar { padding-left:0; padding-right:0; }
     .w-temp { font-size:20px; }
     .w-meta { font-size:11px; gap:6px; }
+    .skel-img { width:84px; height:84px; }
+    .font-btn { display:none; }
   }
-
-  /* ── TLDR BUTTON ── */
-  .tldr-btn { display:inline-flex; align-items:center; gap:5px; margin-top:8px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:11px; font-weight:600; letter-spacing:0.04em; cursor:pointer; font-family:inherit; text-transform:uppercase; transition:background .15s, color .15s, border-color .15s; }
-  .tldr-btn:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
-  .tldr-btn.loading { opacity:0.6; pointer-events:none; }
-  /* ── TLDR MODAL ── */
-  #tldrModal { position:fixed; inset:0; z-index:200; display:flex; align-items:flex-end; justify-content:center; pointer-events:none; }
-  #tldrModal.open { pointer-events:auto; }
-  #tldrBackdrop { position:absolute; inset:0; background:rgba(0,0,0,.5); opacity:0; transition:opacity .25s; }
-  #tldrModal.open #tldrBackdrop { opacity:1; }
-  #tldrSheet { position:relative; width:100%; max-width:700px; background:var(--bg); border-radius:20px 20px 0 0; border-top:1px solid var(--border); transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); height:82vh; display:flex; flex-direction:column; overflow:hidden; }
-  #tldrModal.open #tldrSheet { transform:translateY(0); }
-  #tldrSheetTop { padding:16px 48px 12px 18px; border-bottom:1px solid var(--border); flex-shrink:0; }
-  #tldrClose { position:absolute; top:14px; right:14px; width:30px; height:30px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-  #tldrClose:hover { background:var(--card-hover); }
-  #tldrLabel { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent); margin-bottom:5px; }
-  #tldrHeadline { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:15px; font-weight:700; line-height:1.3; color:var(--text); }
-  #tldrSource { margin-top:4px; font-size:11px; color:var(--text-soft); }
-  #tldrSource a { color:var(--accent); font-weight:600; text-decoration:none; }
-  #tldrMessages { flex:1; overflow-y:auto; padding:14px 14px 6px; display:flex; flex-direction:column; gap:10px; }
-  .tldr-bubble { max-width:90%; font-size:14px; line-height:1.65; border-radius:16px; padding:10px 14px; white-space:pre-wrap; word-break:break-word; }
-  .tldr-bubble-ai { background:var(--card); color:var(--text); border-bottom-left-radius:4px; align-self:flex-start; border:1px solid var(--border); }
-  .tldr-bubble-user { background:var(--accent); color:#fff; border-bottom-right-radius:4px; align-self:flex-end; }
-  .tldr-bubble-ai .spinner { vertical-align:middle; }
-  #tldrInputRow { display:flex; align-items:center; gap:8px; padding:10px 12px max(env(safe-area-inset-bottom),12px); border-top:1px solid var(--border); flex-shrink:0; background:var(--bg); }
-  #tldrInput { flex:1; padding:9px 14px; border-radius:999px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:14px; font-family:inherit; outline:none; min-width:0; }
-  #tldrInput:focus { border-color:var(--accent); }
-  #tldrSendBtn { width:36px; height:36px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:opacity .15s; }
-  #tldrSendBtn:disabled { opacity:0.4; cursor:default; }
-
 </style>
 </head>
 <body>
 
-<!-- NWS ALERT BANNER -->
 <div id="alertBanner"></div>
-
-<!-- AI CHAT MODAL -->
-<div id="tldrModal">
-  <div id="tldrBackdrop"></div>
-  <div id="tldrSheet">
-    <div id="tldrSheetTop">
-      <button id="tldrClose" aria-label="Close">×</button>
-      <div id="tldrLabel">✦ AI Chat</div>
-      <div id="tldrHeadline"></div>
-      <div id="tldrSource"></div>
-    </div>
-    <div id="tldrMessages"></div>
-    <div id="tldrInputRow">
-      <input id="tldrInput" placeholder="Ask a follow-up…" autocomplete="off" />
-      <button id="tldrSendBtn" aria-label="Send">↑</button>
-    </div>
-  </div>
-</div>
-
-<!-- DRAWER OVERLAY -->
 <div id="drawerOverlay" class="drawer-overlay"></div>
 
-<!-- SIDEBAR DRAWER -->
 <nav id="drawer" class="drawer" aria-label="Navigation">
   <div class="drawer-header">
     <div class="drawer-brand">Matt's Daily<span>.</span>Read</div>
@@ -234,54 +210,71 @@
 <header>
   <div class="header-row">
     <button class="icon-btn" id="menuBtn" aria-label="Open navigation">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
     <div class="brand">Matt's Daily<span>.</span>Read</div>
     <div class="header-actions">
+      <button class="font-btn" id="fontSmBtn" aria-label="Smaller text">A−</button>
+      <button class="font-btn" id="fontLgBtn" aria-label="Larger text">A+</button>
+      <button class="icon-btn" id="searchBtn" aria-label="Search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
       <button class="icon-btn" id="refreshBtn" aria-label="Refresh">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
       <button class="icon-btn" id="themeBtn" aria-label="Toggle theme">
-        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       </button>
     </div>
   </div>
+
+  <div class="search-wrap" id="searchWrap">
+    <div class="search-inner">
+      <input class="search-input" id="searchInput" placeholder="Search stories…" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="search-clear" id="searchClear">×</button>
+    </div>
+  </div>
+
   <div class="weather loading" id="weather"><span class="spinner"></span><span>Loading weather…</span></div>
+  <div class="quote-bar" id="quoteBar"></div>
+
   <div class="section-bar">
-    <span class="section-label" id="sectionLabel">Top Stories</span>
+    <div class="section-left">
+      <span class="section-label" id="sectionLabel">Top Stories</span>
+      <span class="new-pill" id="newPill" style="display:none"></span>
+    </div>
     <button class="section-menu-btn" id="sectionMenuBtn">
       All Sections
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
   </div>
+  <div class="quick-tabs" id="quickTabs"></div>
 </header>
 
 <main>
-  <div id="status" class="status"><span class="spinner"></span>Loading…</div>
+  <div id="status" class="status" style="display:none"></div>
   <div id="list"></div>
 </main>
 
-<div id="pulseQuickLinks" style="max-width:760px;margin:0 auto;padding:8px 20px 4px;display:flex;gap:10px;flex-wrap:wrap;">
-  <a href="https://app.pulsegrow.com/devices/21089/data" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:color-mix(in srgb,#22c55e 14%,transparent);color:#15803d;font-weight:700;font-size:13px;text-decoration:none;border:1px solid #86efac;">🌿 Veg Room</a>
-  <a href="https://app.pulsegrow.com/devices/21083/data" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:color-mix(in srgb,#f97316 14%,transparent);color:#c2410c;font-weight:700;font-size:13px;text-decoration:none;border:1px solid #fdba74;">🌸 Flower Room</a>
-</div>
-<footer>Built for Matt · Pull-to-refresh or tap ↺ to refresh.</footer>
+<footer>Built for Matt · Pull-to-refresh or tap ↺ to refresh. · J/K navigate · B bookmark · Enter open</footer>
 
 <script>
 // ========== CONFIG ==========
 const WEATHER_LOCATION = { name:"Clinton, MO", lat:38.3686, lon:-93.7780, tz:"America/Chicago" };
 
 const CATEGORY_ICONS = {
-  stocks:"📈", top:"🌍", local:"📍", ukraine:"🇺🇦", iran:"🕌",
-  scs:"⚓", tech:"💻", business:"💼", science:"🔬",
-  philippines:"🇵🇭", cannabis:"🌿", outdoors:"🦌", pulse:"🌱"
+  saved:"🔖", stocks:"📈", top:"🌍", local:"📍", ukraine:"🇺🇦", iran:"🕌",
+  scs:"⚓", tech:"💻", business:"💼", science:"🔬", sports:"🏆",
+  culture:"🎭", philippines:"🇵🇭", cannabis:"🌿"
 };
 
+// Quick-access tab bar — these show as pills at the top
+const QUICK_TAB_IDS = ["top","local","ukraine","tech","stocks","sports","cannabis","saved"];
+
 const CATEGORIES = [
+  { id:"saved", label:"Saved", isSaved:true, feeds:[] },
   { id:"stocks", label:"Stocks", isStocks:true, feeds:[] },
-  { id:"top", label:"Top Stories", feeds:[
+  { id:"top", label:"Top Stories", maxAgeHours:48, feeds:[
     { source:"BBC", url:"https://feeds.bbci.co.uk/news/world/rss.xml" },
     { source:"NPR", url:"https://feeds.npr.org/1001/rss.xml" },
     { source:"AP (via Google)", url:"https://news.google.com/rss/search?q=when:1d+site:apnews.com&hl=en-US&gl=US&ceid=US:en" },
@@ -294,31 +287,26 @@ const CATEGORIES = [
     { source:"ABC News", url:"https://abcnews.go.com/abcnews/topstories" },
     { source:"DW (Germany)", url:"https://rss.dw.com/rdf/rss-en-all" }
   ]},
-  { id:"local", label:"Local (MO)", feeds:[
-    // ── Hyperlocal: Clinton & Henry County ──
+  { id:"local", label:"Local (MO)", maxAgeHours:168, feeds:[
     { source:"Clinton Daily Democrat", url:"https://news.google.com/rss/search?q=site%3Aclintondailydem.com+OR+%22Clinton+Daily+Democrat%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"Henry County MO", url:"https://news.google.com/rss/search?q=%22Henry+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Clinton MO News", url:"https://news.google.com/rss/search?q=%22Clinton%2C+Missouri%22+OR+%22Clinton+MO%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"KDKD Clinton", url:"https://news.google.com/rss/search?q=%22KDKD%22+Clinton+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Truman Lake", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+OR+%22Harry+S+Truman+Reservoir%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"Lake of the Ozarks", url:"https://news.google.com/rss/search?q=%22Lake+of+the+Ozarks%22+OR+%22Camden+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
-    // ── West Central & Nearby Counties ──
     { source:"West Central MO", url:"https://news.google.com/rss/search?q=%22West+Central+Missouri%22+OR+%22Benton+County+Missouri%22+OR+%22Warsaw+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"Sedalia / Pettis Co.", url:"https://news.google.com/rss/search?q=%22Sedalia%22+OR+%22Pettis+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Warrensburg / Johnson Co.", url:"https://news.google.com/rss/search?q=%22Warrensburg%22+OR+%22Johnson+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Cass / Lafayette Co.", url:"https://news.google.com/rss/search?q=%22Cass+County%22+OR+%22Lafayette+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Saline / Marshall MO", url:"https://news.google.com/rss/search?q=%22Saline+County%22+OR+%22Marshall+Missouri%22+OR+%22Slater+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
-    // ── State Capital & Legislature ──
     { source:"Jefferson City / Cole Co.", url:"https://news.google.com/rss/search?q=%22Jefferson+City%22+Missouri+OR+%22Cole+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Missouri Legislature", url:"https://news.google.com/rss/search?q=Missouri+legislature+OR+Missouri+Senate+OR+%22Missouri+House%22&hl=en-US&gl=US&ceid=US:en" },
-    // ── Statewide News ──
     { source:"Missouri Independent", url:"https://missouriindependent.com/feed/" },
     { source:"Missouri Times", url:"https://themissouritimes.com/feed/" },
     { source:"MissouriNet", url:"https://news.google.com/rss/search?q=site%3Amissourinet.com&hl=en-US&gl=US&ceid=US:en" },
     { source:"KCUR", url:"https://www.kcur.org/news.rss" },
     { source:"St. Louis Public Radio", url:"https://news.stlpublicradio.org/rss" },
     { source:"Missouri Economy", url:"https://news.google.com/rss/search?q=Missouri+economy+OR+Missouri+jobs+OR+%22Missouri+business%22&hl=en-US&gl=US&ceid=US:en" },
-    // ── Major Cities ──
     { source:"Kansas City Star", url:"https://news.google.com/rss/search?q=%22Kansas+City%22+Missouri+news+site:kansascity.com&hl=en-US&gl=US&ceid=US:en" },
     { source:"Kansas City News", url:"https://news.google.com/rss/search?q=%22Kansas+City%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"St. Louis Post-Dispatch", url:"https://news.google.com/rss/search?q=when:1d+site:stltoday.com&hl=en-US&gl=US&ceid=US:en" },
@@ -327,7 +315,7 @@ const CATEGORIES = [
     { source:"Springfield MO", url:"https://news.google.com/rss/search?q=Springfield+Missouri+news&hl=en-US&gl=US&ceid=US:en" },
     { source:"Joplin / SW Missouri", url:"https://news.google.com/rss/search?q=Joplin+Missouri+OR+%22Southwest+Missouri%22&hl=en-US&gl=US&ceid=US:en" }
   ]},
-  { id:"ukraine", label:"Ukraine War", feeds:[
+  { id:"ukraine", label:"Ukraine War", maxAgeHours:48, feeds:[
     { source:"Google News", url:"https://news.google.com/rss/search?q=ukraine+war+russia&hl=en-US&gl=US&ceid=US:en" },
     { source:"Kyiv Independent", url:"https://kyivindependent.com/rss/" },
     { source:"Ukrainska Pravda", url:"https://www.pravda.com.ua/eng/rss/" },
@@ -338,7 +326,7 @@ const CATEGORIES = [
     { source:"Guardian Ukraine", url:"https://www.theguardian.com/world/ukraine/rss" },
     { source:"RFE/RL Ukraine", url:"https://www.rferl.org/api/zrqiteuuir" }
   ]},
-  { id:"iran", label:"Iran / Middle East", feeds:[
+  { id:"iran", label:"Iran / Middle East", maxAgeHours:48, feeds:[
     { source:"Google News", url:"https://news.google.com/rss/search?q=iran+israel+war&hl=en-US&gl=US&ceid=US:en" },
     { source:"Al Jazeera", url:"https://www.aljazeera.com/xml/rss/all.xml" },
     { source:"BBC Middle East", url:"https://feeds.bbci.co.uk/news/world/middle_east/rss.xml" },
@@ -349,7 +337,7 @@ const CATEGORIES = [
     { source:"Iran International", url:"https://www.iranintl.com/en/rss.xml" },
     { source:"Guardian ME", url:"https://www.theguardian.com/world/middleeast/rss" }
   ]},
-  { id:"scs", label:"South China Sea", feeds:[
+  { id:"scs", label:"South China Sea", maxAgeHours:48, feeds:[
     { source:"Google News (SCS)", url:"https://news.google.com/rss/search?q=%22south+china+sea%22+OR+taiwan+OR+philippines+china&hl=en-US&gl=US&ceid=US:en" },
     { source:"Google News (Taiwan)", url:"https://news.google.com/rss/search?q=taiwan+china+tensions&hl=en-US&gl=US&ceid=US:en" },
     { source:"BBC Asia", url:"https://feeds.bbci.co.uk/news/world/asia/rss.xml" },
@@ -359,7 +347,7 @@ const CATEGORIES = [
     { source:"Focus Taiwan", url:"https://focustaiwan.tw/RSS/PD.aspx" },
     { source:"Inquirer (PH)", url:"https://www.inquirer.net/fullfeed" }
   ]},
-  { id:"tech", label:"Tech", feeds:[
+  { id:"tech", label:"Tech", maxAgeHours:72, feeds:[
     { source:"The Verge", url:"https://www.theverge.com/rss/index.xml" },
     { source:"Ars Technica", url:"https://feeds.arstechnica.com/arstechnica/index" },
     { source:"Hacker News", url:"https://hnrss.org/frontpage" },
@@ -368,7 +356,7 @@ const CATEGORIES = [
     { source:"Wired", url:"https://www.wired.com/feed/rss" },
     { source:"MIT Tech Review", url:"https://www.technologyreview.com/feed/" }
   ]},
-  { id:"business", label:"Business", feeds:[
+  { id:"business", label:"Business", maxAgeHours:48, feeds:[
     { source:"BBC Business", url:"https://feeds.bbci.co.uk/news/business/rss.xml" },
     { source:"CNBC", url:"https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147" },
     { source:"Yahoo Finance", url:"https://finance.yahoo.com/news/rssindex" },
@@ -376,7 +364,7 @@ const CATEGORIES = [
     { source:"MarketWatch", url:"https://feeds.content.dowjones.io/public/rss/mw_topstories" },
     { source:"Bloomberg (Google)", url:"https://news.google.com/rss/search?q=when:1d+site:bloomberg.com&hl=en-US&gl=US&ceid=US:en" }
   ]},
-  { id:"science", label:"Science", feeds:[
+  { id:"science", label:"Science", maxAgeHours:96, feeds:[
     { source:"BBC Science", url:"https://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
     { source:"Ars Science", url:"https://feeds.arstechnica.com/arstechnica/science" },
     { source:"New Scientist", url:"https://www.newscientist.com/feed/home/" },
@@ -384,8 +372,23 @@ const CATEGORIES = [
     { source:"Nature", url:"https://www.nature.com/nature.rss" },
     { source:"NASA", url:"https://www.nasa.gov/news-release/feed/" }
   ]},
-
-  { id:"philippines", label:"Philippines", feeds:[
+  { id:"sports", label:"Sports", maxAgeHours:24, feeds:[
+    { source:"ESPN", url:"https://www.espn.com/espn/rss/news" },
+    { source:"BBC Sport", url:"https://feeds.bbci.co.uk/sport/rss.xml" },
+    { source:"CBS Sports", url:"https://www.cbssports.com/rss/headlines/" },
+    { source:"Yahoo Sports", url:"https://sports.yahoo.com/rss/" },
+    { source:"Chiefs (Google)", url:"https://news.google.com/rss/search?q=Kansas+City+Chiefs&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Royals (Google)", url:"https://news.google.com/rss/search?q=Kansas+City+Royals&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Cardinals (Google)", url:"https://news.google.com/rss/search?q=St+Louis+Cardinals&hl=en-US&gl=US&ceid=US:en" }
+  ]},
+  { id:"culture", label:"Culture", maxAgeHours:96, feeds:[
+    { source:"NYT Arts", url:"https://rss.nytimes.com/services/xml/rss/nyt/Arts.xml" },
+    { source:"Guardian Culture", url:"https://www.theguardian.com/culture/rss" },
+    { source:"NPR Arts", url:"https://feeds.npr.org/1008/rss.xml" },
+    { source:"The Atlantic", url:"https://www.theatlantic.com/feed/channel/entertainment/" },
+    { source:"Variety", url:"https://variety.com/feed/" }
+  ]},
+  { id:"philippines", label:"Philippines", maxAgeHours:72, feeds:[
     { source:"Panay News", url:"https://www.panaynews.net/feed/" },
     { source:"Iloilo (Google)", url:"https://news.google.com/rss/search?q=Iloilo+Panay&hl=en-PH&gl=PH&ceid=PH:en" },
     { source:"Panay Island (Google)", url:"https://news.google.com/rss/search?q=%22Panay+Island%22+OR+%22Western+Visayas%22&hl=en-PH&gl=PH&ceid=PH:en" },
@@ -398,34 +401,22 @@ const CATEGORIES = [
     { source:"GMA News", url:"https://data.gmanetwork.com/gno/rss/news/nation/feed.xml" },
     { source:"SunStar Iloilo (Google)", url:"https://news.google.com/rss/search?q=site%3Asunstar.com.ph+Iloilo&hl=en-PH&gl=PH&ceid=PH:en" }
   ]},
-  { id:"cannabis", label:"Cannabis 🌿", feeds:[
+  { id:"cannabis", label:"Cannabis", maxAgeHours:96, feeds:[
     { source:"Marijuana Moment", url:"https://www.marijuanamoment.net/feed/" },
     { source:"MJBizDaily", url:"https://mjbizdaily.com/feed/" },
-    { source:"NORML News", url:"https://norml.org/rss/" },
-    { source:"Legalization & Policy", url:"https://news.google.com/rss/search?q=marijuana+OR+cannabis+legalization+law+policy+bill+federal+state&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Missouri Cannabis", url:"https://news.google.com/rss/search?q=Missouri+cannabis+marijuana+dispensary+law+regulation&hl=en-US&gl=US&ceid=US:en" },
-    { source:"ScienceDaily Cannabis", url:"https://www.sciencedaily.com/rss/plants_animals/cannabis.xml" },
-    { source:"Cannabinoid Research", url:"https://news.google.com/rss/search?q=cannabinoid+THC+CBD+terpene+research+study+university+trial&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Terpene Science", url:"https://news.google.com/rss/search?q=terpene+entourage+effect+cannabis+aroma+flavor+research+2025&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Grow Science", url:"https://news.google.com/rss/search?q=cannabis+cultivation+yield+genetics+strain+lighting+nutrients+science+study&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Medical Cannabis", url:"https://news.google.com/rss/search?q=medical+marijuana+cannabis+treatment+FDA+clinical+trial&hl=en-US&gl=US&ceid=US:en" }
-  ]},
-  { id:"outdoors", label:"MO Outdoors 🦌", isOutdoors:true, feeds:[
-    { source:"MDC News", url:"https://news.google.com/rss/search?q=Missouri+Department+Conservation+MDC+hunting+fishing+wildlife&hl=en-US&gl=US&ceid=US:en" },
-    { source:"MO Fishing Reports", url:"https://news.google.com/rss/search?q=Missouri+fishing+report+crappie+catfish+bass+lake&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Truman Lake", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+fishing+OR+hunting+OR+recreation&hl=en-US&gl=US&ceid=US:en" },
-    { source:"MO Hunting", url:"https://news.google.com/rss/search?q=Missouri+hunting+deer+turkey+duck+dove+season&hl=en-US&gl=US&ceid=US:en" },
-    { source:"MO Records", url:"https://news.google.com/rss/search?q=Missouri+fishing+record+trophy+state+record+catch&hl=en-US&gl=US&ceid=US:en" },
-    { source:"MO Regulations", url:"https://news.google.com/rss/search?q=Missouri+hunting+fishing+regulation+rule+season+limit+change&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Morels & Foraging", url:"https://news.google.com/rss/search?q=morel+mushroom+Missouri+foraging+season&hl=en-US&gl=US&ceid=US:en" },
-    { source:"MO Wildlife Research", url:"https://news.google.com/rss/search?q=Missouri+wildlife+deer+turkey+fish+population+research+study&hl=en-US&gl=US&ceid=US:en" },
-    { source:"In-Fisherman", url:"https://www.in-fisherman.com/rss/all" },
-    { source:"Outdoor Life", url:"https://www.outdoorlife.com/rss/news.xml" }
-  ]},
-  { id:"pulse", label:"Pulse Rooms 🌱", isPulse:true, feeds:[] }
+    { source:"High Times", url:"https://hightimes.com/feed/" },
+    { source:"Ganjapreneur", url:"https://www.ganjapreneur.com/feed/" },
+    { source:"NORML", url:"https://norml.org/feed/" },
+    { source:"Cannabis Business Times", url:"https://www.cannabisbusinesstimes.com/rss/feed/" },
+    { source:"Legalization News", url:"https://news.google.com/rss/search?q=marijuana+OR+cannabis+legalization+law&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Grow Techniques", url:"https://news.google.com/rss/search?q=cannabis+cultivation+growing+techniques+indoor+outdoor&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Cannabis Science", url:"https://news.google.com/rss/search?q=cannabis+science+study+cannabinoid+research&hl=en-US&gl=US&ceid=US:en" },
+    { source:"THC/CBD Research", url:"https://news.google.com/rss/search?q=THC+OR+CBD+OR+cannabinoid+research+study+2025+2026&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Cannabis Competitions", url:"https://news.google.com/rss/search?q=%22Cannabis+Cup%22+OR+%22Emerald+Cup%22+OR+cannabis+award&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Missouri Cannabis", url:"https://news.google.com/rss/search?q=Missouri+cannabis+marijuana&hl=en-US&gl=US&ceid=US:en" }
+  ]}
 ];
 
-// Stock news feeds — Google News for each default ticker group
 const STOCK_NEWS_FEEDS = [
   { source:"Market News", url:"https://news.google.com/rss/search?q=AAPL+OR+MSFT+OR+NVDA+OR+GOOGL+stock+earnings&hl=en-US&gl=US&ceid=US:en" },
   { source:"Tesla / EV", url:"https://news.google.com/rss/search?q=TSLA+Tesla+stock&hl=en-US&gl=US&ceid=US:en" },
@@ -438,40 +429,99 @@ const STOCK_NEWS_FEEDS = [
   { source:"MarketWatch", url:"https://feeds.content.dowjones.io/public/rss/mw_topstories" }
 ];
 
+// Proxies tried in parallel — first response wins
 const PROXIES = [
-  { name:"rss2json", url:u=>"https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(u), parse:"json" },
+  { name:"rss2json",   url:u=>"https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(u), parse:"json" },
   { name:"allorigins", url:u=>"https://api.allorigins.win/get?url="+encodeURIComponent(u), parse:"allorigins" }
 ];
 const CORS_PROXIES = [
   { name:"corsproxy.io", url:u=>"https://corsproxy.io/?"+encodeURIComponent(u) },
-  { name:"allorigins", url:u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u) },
-  { name:"codetabs", url:u=>"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u) }
+  { name:"allorigins",   url:u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u) },
+  { name:"codetabs",     url:u=>"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u) }
 ];
-const PER_FEED_LIMIT = 15;
-const CACHE_TTL_MS = 10*60*1000;
-const FEED_TIMEOUT_MS = 8000;
-const STOCKS_CACHE_TTL_MS = 60*1000;
+
+const PER_FEED_LIMIT       = 15;
+const CACHE_TTL_MS         = 10*60*1000;
+const FEED_TIMEOUT_MS      = 6000;   // reduced from 8s
+const STOCKS_CACHE_TTL_MS  = 60*1000;
 const WEATHER_CACHE_TTL_MS = 15*60*1000;
-const ALERTS_CACHE_TTL_MS = 5*60*1000;
-const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F","LRCX"];
+const ALERTS_CACHE_TTL_MS  = 5*60*1000;
+const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F"];
 const WATCHLIST_VERSION = 3;
-const TICKER_DISPLAY = { "BZ=F":"BRENT", "CL=F":"WTI", "BTC-USD":"BITCOIN", "XRP-USD":"XRP" };
+const TICKER_DISPLAY = { "BZ=F":"BRENT","CL=F":"WTI","BTC-USD":"BITCOIN","XRP-USD":"XRP" };
+
+// ── SOURCE TRUST WEIGHTS ──
+const SOURCE_WEIGHT = {
+  "AP (via Google)":2.0,"Reuters (via Google)":2.0,
+  "BBC":1.9,"BBC Middle East":1.9,"BBC Europe":1.9,"BBC Asia":1.9,"BBC Business":1.9,"BBC Science":1.9,"BBC Sport":1.9,
+  "NPR":1.7,"NPR Arts":1.7,
+  "Guardian":1.6,"Guardian Ukraine":1.6,"Guardian ME":1.6,"Guardian Culture":1.6,
+  "NYT World":1.6,"NYT Arts":1.6,"Al Jazeera":1.5,"Washington Post":1.5,
+  "DW (Germany)":1.4,"CNN":1.4,"ABC News":1.4,
+  "Kyiv Independent":1.8,"Ukrainska Pravda":1.7,"RFE/RL Ukraine":1.6,"Ukrinform":1.5,"United24 Media":1.4,"Kyiv Post":1.4,
+  "Times of Israel":1.6,"Iran International":1.6,"Haaretz":1.5,"Jerusalem Post":1.4,"Middle East Eye":1.4,
+  "Nikkei Asia":1.7,"Focus Taiwan":1.6,"Straits Times":1.5,"SCMP (HK)":1.5,
+  "Ars Technica":1.6,"Ars Science":1.6,"MIT Tech Review":1.6,"Wired":1.5,"The Verge":1.5,"TechCrunch":1.4,"Engadget":1.3,
+  "Bloomberg (Google)":1.8,"CNBC":1.5,"MarketWatch":1.5,"Fortune":1.4,"Yahoo Finance":1.3,
+  "Nature":1.9,"Scientific American":1.7,"New Scientist":1.6,"NASA":1.5,
+  "Missouri Independent":1.7,"KCUR":1.5,"St. Louis Public Radio":1.4,"Missouri Times":1.3,
+  "ESPN":1.5,"CBS Sports":1.4,
+  "Marijuana Moment":1.6,"MJBizDaily":1.5,
+  "default":1.0
+};
+
+// ── GARDEN / GROW QUOTES (rotates daily) ──
+const GARDEN_QUOTES = [
+  { text:"To plant a garden is to believe in tomorrow.", author:"Audrey Hepburn" },
+  { text:"The love of gardening is a seed once sown that never dies.", author:"Gertrude Jekyll" },
+  { text:"All the flowers of all the tomorrows are in the seeds of today.", author:"Indian Proverb" },
+  { text:"The glory of gardening: hands in the dirt, head in the sun, heart with nature.", author:"Alfred Austin" },
+  { text:"He who plants a tree plants a hope.", author:"Lucy Larcom" },
+  { text:"The secret of improved plant breeding, apart from scientific knowledge, is love.", author:"Luther Burbank" },
+  { text:"A garden requires patient labor and attention. Plants thrive because someone expended effort on them.", author:"Liberty Hyde Bailey" },
+  { text:"A garden is a grand teacher. It teaches patience and careful watchfulness.", author:"Gertrude Jekyll" },
+  { text:"Gardens are not made by singing 'Oh, how beautiful' and sitting in the shade.", author:"Rudyard Kipling" },
+  { text:"The best fertilizer is the gardener's shadow falling over the garden daily.", author:"Old Proverb" },
+  { text:"What is a weed? A plant whose virtues have not yet been discovered.", author:"Ralph Waldo Emerson" },
+  { text:"Green fingers are the extension of a verdant heart.", author:"Russell Page" },
+  { text:"Life begins the day you start a garden.", author:"Chinese Proverb" },
+  { text:"To understand a plant, you have to spend time with it.", author:"Howard Garrett" },
+  { text:"There is no gardening without humility.", author:"Alfred Austin" },
+  { text:"Roots grow in darkness, yet emerge into light.", author:"Anonymous" },
+  { text:"Water, light, and patience — the holy trinity of the indoor garden.", author:"Anonymous" },
+  { text:"The most valuable thing in a garden is a quiet hour.", author:"Anonymous" },
+  { text:"A plant doesn't ask for your attention. It asks for your intention.", author:"Anonymous" },
+  { text:"Every harvest begins with the same act: a seed placed in soil with hope.", author:"Anonymous" },
+  { text:"Indoor growing is outdoor growing's focused, patient sibling.", author:"Anonymous" },
+  { text:"Know your plants, and your plants will know you.", author:"Anonymous" },
+  { text:"VPD, pH, and patience — the language of the indoor gardener.", author:"Anonymous" },
+  { text:"The best grow room upgrade is knowledge.", author:"Anonymous" },
+  { text:"Light is to plants what love is to people — both are necessary for survival.", author:"Anonymous" },
+  { text:"Trim what needs trimming, water what needs watering, and trust the rest to grow.", author:"Anonymous" },
+  { text:"Seeds are the greatest travelers.", author:"Bernd Heinrich" },
+  { text:"In every gardener there is a child who believes in the seed fairy.", author:"Robert Brault" },
+  { text:"God Almighty first planted a garden. Indeed, it is the purest of human pleasures.", author:"Francis Bacon" },
+  { text:"Everything that slows us down and forces patience sets us back into the slow circles of nature — and that is a help.", author:"May Sarton" }
+];
 
 // ========== STATE ==========
 let activeCat = localStorage.getItem("news.activeCat") || "top";
-let _odWindDeg = null, _odAirTempF = null, _odWindMph = 0, _odLake = null, _odFishTips = null;
-const listEl = document.getElementById("list");
-const statusEl = document.getElementById("status");
-const weatherEl = document.getElementById("weather");
+let currentItems = [];   // current rendered items for search/keyboard
+let kbIndex = -1;        // keyboard navigation index
+const listEl      = document.getElementById("list");
+const statusEl    = document.getElementById("status");
+const weatherEl   = document.getElementById("weather");
 const alertBannerEl = document.getElementById("alertBanner");
-const drawerEl = document.getElementById("drawer");
-const overlayEl = document.getElementById("drawerOverlay");
+const drawerEl    = document.getElementById("drawer");
+const overlayEl   = document.getElementById("drawerOverlay");
 const sectionLabelEl = document.getElementById("sectionLabel");
+const newPillEl   = document.getElementById("newPill");
+const quoteBarEl  = document.getElementById("quoteBar");
 
 // ========== THEME ==========
-const themeBtn = document.getElementById("themeBtn");
+const themeBtn  = document.getElementById("themeBtn");
 const themeIcon = document.getElementById("themeIcon");
-const SUN = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>';
+const SUN  = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>';
 const MOON = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
 function applyTheme(mode) {
   document.documentElement.setAttribute("data-theme", mode);
@@ -483,17 +533,86 @@ themeBtn.addEventListener("click", () => {
   applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
 });
 
+// ========== FONT SIZE ==========
+const FONT_SIZES = ["sm","md","lg"];
+function applyFont(sz) {
+  document.documentElement.setAttribute("data-font", sz);
+  localStorage.setItem("news.font", sz);
+}
+function cycleFont(dir) {
+  const cur = localStorage.getItem("news.font") || "md";
+  const idx = FONT_SIZES.indexOf(cur);
+  const next = FONT_SIZES[Math.max(0, Math.min(FONT_SIZES.length-1, idx+dir))];
+  applyFont(next);
+}
+const savedFont = localStorage.getItem("news.font") || "md";
+if (savedFont !== "md") applyFont(savedFont);
+document.getElementById("fontSmBtn").addEventListener("click", () => cycleFont(-1));
+document.getElementById("fontLgBtn").addEventListener("click", () => cycleFont(1));
+// Apply font-size via style tag since data-font doesn't cascade without CSS
+const fontStyle = document.createElement("style");
+fontStyle.id = "fontStyle";
+document.head.appendChild(fontStyle);
+function setFontStyle(sz) {
+  const map = { sm:"13px", md:"16px", lg:"18px" };
+  fontStyle.textContent = "html { font-size:" + (map[sz]||"16px") + "; }";
+}
+setFontStyle(savedFont);
+document.getElementById("fontSmBtn").addEventListener("click", () => { const s = localStorage.getItem("news.font")||"md"; setFontStyle(s); });
+document.getElementById("fontLgBtn").addEventListener("click", () => { const s = localStorage.getItem("news.font")||"md"; setFontStyle(s); });
+
+// ========== SEARCH ==========
+const searchBtn   = document.getElementById("searchBtn");
+const searchWrap  = document.getElementById("searchWrap");
+const searchInput = document.getElementById("searchInput");
+const searchClear = document.getElementById("searchClear");
+let searchOpen = false;
+searchBtn.addEventListener("click", () => {
+  searchOpen = !searchOpen;
+  searchWrap.classList.toggle("open", searchOpen);
+  if (searchOpen) { setTimeout(() => searchInput.focus(), 150); }
+  else { searchInput.value = ""; filterItems(""); }
+});
+searchClear.addEventListener("click", () => { searchInput.value = ""; filterItems(""); searchInput.focus(); });
+searchInput.addEventListener("input", e => filterItems(e.target.value));
+function filterItems(q) {
+  if (!q.trim()) { renderNews(currentItems); return; }
+  const lq = q.toLowerCase();
+  renderNews(currentItems.filter(i =>
+    i.title.toLowerCase().includes(lq) || (i.description||"").toLowerCase().includes(lq)
+  ));
+}
+
+// ========== QUOTE OF DAY ==========
+function renderQuoteOfDay() {
+  const day = Math.floor(Date.now() / 86400000); // stable index per calendar day
+  const q = GARDEN_QUOTES[day % GARDEN_QUOTES.length];
+  quoteBarEl.innerHTML =
+    '<div class="quote-text">🌱 "' + escapeHtml(q.text) + '"</div>' +
+    '<div class="quote-author">— ' + escapeHtml(q.author) + '</div>';
+}
+
+// ========== QUICK TABS ==========
+function renderQuickTabs() {
+  const container = document.getElementById("quickTabs");
+  container.innerHTML = "";
+  QUICK_TAB_IDS.forEach(id => {
+    const cat = CATEGORIES.find(c => c.id === id);
+    if (!cat) return;
+    const btn = document.createElement("button");
+    btn.className = "qtab" + (id === activeCat ? " active" : "");
+    btn.textContent = (CATEGORY_ICONS[id] || "") + " " + cat.label;
+    btn.addEventListener("click", () => {
+      if (activeCat === id) return;
+      switchCategory(id);
+    });
+    container.appendChild(btn);
+  });
+}
+
 // ========== DRAWER ==========
-function openDrawer() {
-  drawerEl.classList.add("open");
-  overlayEl.classList.add("open");
-  document.body.style.overflow = "hidden";
-}
-function closeDrawer() {
-  drawerEl.classList.remove("open");
-  overlayEl.classList.remove("open");
-  document.body.style.overflow = "";
-}
+function openDrawer() { drawerEl.classList.add("open"); overlayEl.classList.add("open"); document.body.style.overflow = "hidden"; }
+function closeDrawer() { drawerEl.classList.remove("open"); overlayEl.classList.remove("open"); document.body.style.overflow = ""; }
 document.getElementById("menuBtn").addEventListener("click", openDrawer);
 document.getElementById("sectionMenuBtn").addEventListener("click", openDrawer);
 document.getElementById("drawerClose").addEventListener("click", closeDrawer);
@@ -510,16 +629,24 @@ function renderDrawer() {
       '<span>' + cat.label + '</span>';
     item.addEventListener("click", () => {
       if (activeCat === cat.id) { closeDrawer(); return; }
-      activeCat = cat.id;
-      localStorage.setItem("news.activeCat", activeCat);
       closeDrawer();
-      renderDrawer();
-      updateSectionLabel();
-      loadCategory();
+      switchCategory(cat.id);
     });
     drawerList.appendChild(item);
   });
 }
+
+function switchCategory(id) {
+  activeCat = id;
+  localStorage.setItem("news.activeCat", activeCat);
+  kbIndex = -1;
+  renderDrawer();
+  renderQuickTabs();
+  updateSectionLabel();
+  newPillEl.style.display = "none";
+  loadCategory();
+}
+
 function updateSectionLabel() {
   const cat = CATEGORIES.find(c => c.id === activeCat);
   sectionLabelEl.textContent = cat ? cat.label : "";
@@ -550,8 +677,66 @@ function relativeTime(ts) {
   return new Date(ts).toLocaleDateString(undefined, { month:"short", day:"numeric" });
 }
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
+
+// Heat score: source weight × exponential recency decay (half-life ~12h)
+function heatScore(item) {
+  const ageHours = (Date.now() - item.pubDate) / 3600000;
+  const decay = Math.exp(-ageHours / 12);
+  const weight = SOURCE_WEIGHT[item.source] || SOURCE_WEIGHT["default"];
+  return decay * weight;
+}
+
+// Breaking news keyword detection
+const BREAKING_RE = /\b(breaking|urgent|alert|developing|just in|emergency|exclusive)\b/i;
+function isBreaking(title) { return BREAKING_RE.test(title); }
+
+// Cross-source trending: count how many distinct sources share overlapping title words
+function wordSet(title) {
+  const stop = new Set(["the","a","an","in","of","to","and","is","for","on","at","by","with","as","from","are","was","his","her","its","it","says","say","after","over"]);
+  return new Set(title.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !stop.has(w)));
+}
+function markTrending(items) {
+  const sets = items.map(i => wordSet(i.title));
+  items.forEach((item, i) => {
+    let matches = 0;
+    const seenSources = new Set([item.source]);
+    sets.forEach((s, j) => {
+      if (i === j) return;
+      if (seenSources.has(items[j].source)) return;
+      const inter = [...sets[i]].filter(w => s.has(w));
+      if (inter.length / Math.max(sets[i].size, s.size, 1) >= 0.38) {
+        matches++;
+        seenSources.add(items[j].source);
+      }
+    });
+    item.trending = matches >= 2;
+  });
+}
+
+// ========== READ / BOOKMARK ==========
+const READ_TTL = 48 * 3600000; // dim read items for 48h
+function getReads() { try { return JSON.parse(localStorage.getItem("news.reads")||"{}"); } catch { return {}; } }
+function markRead(url) {
+  const reads = getReads();
+  reads[url] = Date.now();
+  // Prune old reads
+  Object.keys(reads).forEach(k => { if (Date.now() - reads[k] > READ_TTL) delete reads[k]; });
+  try { localStorage.setItem("news.reads", JSON.stringify(reads)); } catch {}
+}
+function isRead(url) { const r = getReads(); return r[url] && (Date.now() - r[url]) < READ_TTL; }
+
+function getSaved() { try { return JSON.parse(localStorage.getItem("news.saved")||"[]"); } catch { return []; } }
+function toggleSave(item) {
+  let saved = getSaved();
+  const idx = saved.findIndex(s => s.link === item.link);
+  if (idx >= 0) { saved.splice(idx, 1); }
+  else { saved.unshift({ title:item.title, link:item.link, source:item.source, pubDate:item.pubDate, description:item.description, thumbnail:item.thumbnail }); }
+  try { localStorage.setItem("news.saved", JSON.stringify(saved.slice(0, 200))); } catch {}
+  return idx < 0; // returns true if now saved
+}
+function isSaved(url) { return getSaved().some(s => s.link === url); }
 
 // ========== NWS ALERTS ==========
 async function fetchNWSAlerts() {
@@ -565,1279 +750,154 @@ async function fetchNWSAlerts() {
   } catch {}
   try {
     const res = await fetchWithTimeout(
-      "https://api.weather.gov/alerts/active?point=" + WEATHER_LOCATION.lat + "," + WEATHER_LOCATION.lon,
-      6000
+      "https://api.weather.gov/alerts/active?point=" + WEATHER_LOCATION.lat + "," + WEATHER_LOCATION.lon, 6000
     );
     if (!res.ok) throw new Error("NWS HTTP " + res.status);
     const data = await res.json();
-    const alerts = (data.features || []).map(f => ({
+    const alerts = (data.features||[]).map(f => ({
       event: f.properties.event || "",
       headline: f.properties.headline || f.properties.description || "",
-      severity: (f.properties.severity || "").toLowerCase(),
+      severity: (f.properties.severity||"").toLowerCase(),
       url: f.properties["@id"] || ""
     }));
-    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: alerts })); } catch {}
+    try { localStorage.setItem(cacheKey, JSON.stringify({ ts:Date.now(), data:alerts })); } catch {}
     renderAlerts(alerts);
-  } catch (e) {
-    console.warn("NWS alerts failed:", e);
-  }
+  } catch(e) { console.warn("NWS alerts:", e); }
 }
 function severityClass(sev) {
-  if (sev === "extreme") return "extreme";
-  if (sev === "severe") return "severe";
-  if (sev === "moderate") return "moderate";
-  return "minor";
+  if (sev==="extreme") return "extreme"; if (sev==="severe") return "severe";
+  if (sev==="moderate") return "moderate"; return "minor";
 }
 function severityIcon(sev) {
-  if (sev === "extreme" || sev === "severe") return "🚨";
-  if (sev === "moderate") return "⚠️";
-  return "ℹ️";
+  if (sev==="extreme"||sev==="severe") return "🚨";
+  if (sev==="moderate") return "⚠️"; return "ℹ️";
 }
 function renderAlerts(alerts) {
-  if (!alerts || alerts.length === 0) {
-    alertBannerEl.classList.remove("has-alerts");
-    alertBannerEl.innerHTML = "";
-    return;
-  }
+  if (!alerts||!alerts.length) { alertBannerEl.classList.remove("has-alerts"); alertBannerEl.innerHTML=""; return; }
   alertBannerEl.classList.add("has-alerts");
   alertBannerEl.innerHTML = alerts.map(a =>
-    '<div class="alert-item ' + severityClass(a.severity) + '">' +
-      '<span class="alert-icon">' + severityIcon(a.severity) + '</span>' +
+    '<div class="alert-item '+severityClass(a.severity)+'">' +
+      '<span class="alert-icon">'+severityIcon(a.severity)+'</span>' +
       '<div class="alert-body">' +
-        '<div class="alert-event">' + escapeHtml(a.event) + ' — Clinton, MO</div>' +
-        '<div class="alert-headline">' + escapeHtml((a.headline || "").slice(0, 180)) + '</div>' +
+        '<div class="alert-event">'+escapeHtml(a.event)+' — Clinton, MO</div>' +
+        '<div class="alert-headline">'+escapeHtml((a.headline||"").slice(0,180))+'</div>' +
       '</div>' +
-      (a.url ? '<a class="alert-link" href="' + escapeHtml(a.url) + '" target="_blank" rel="noopener">Details →</a>' : '') +
+      (a.url?'<a class="alert-link" href="'+escapeHtml(a.url)+'" target="_blank" rel="noopener">Details →</a>':'') +
     '</div>'
   ).join("");
 }
 
-// ========== WEATHER (Open-Meteo) ==========
+// ========== WEATHER ==========
 const WEATHER_CODE_MAP = {
-  0:["Clear","☀️"], 1:["Mostly Clear","🌤️"], 2:["Partly Cloudy","⛅"], 3:["Overcast","☁️"],
-  45:["Fog","🌫️"], 48:["Icy Fog","🌫️"],
-  51:["Light Drizzle","🌦️"], 53:["Drizzle","🌦️"], 55:["Heavy Drizzle","🌦️"],
-  56:["Freezing Drizzle","🌧️"], 57:["Freezing Drizzle","🌧️"],
-  61:["Light Rain","🌧️"], 63:["Rain","🌧️"], 65:["Heavy Rain","🌧️"],
-  66:["Freezing Rain","🌧️"], 67:["Freezing Rain","🌧️"],
-  71:["Light Snow","🌨️"], 73:["Snow","🌨️"], 75:["Heavy Snow","❄️"],
-  77:["Snow Grains","🌨️"],
-  80:["Rain Showers","🌦️"], 81:["Rain Showers","🌧️"], 82:["Heavy Showers","⛈️"],
-  85:["Snow Showers","🌨️"], 86:["Heavy Snow Showers","❄️"],
-  95:["Thunderstorm","⛈️"], 96:["Thunderstorm + Hail","⛈️"], 99:["Severe Thunderstorm","⛈️"]
+  0:["Clear","☀️"],1:["Mostly Clear","🌤️"],2:["Partly Cloudy","⛅"],3:["Overcast","☁️"],
+  45:["Fog","🌫️"],48:["Icy Fog","🌫️"],
+  51:["Light Drizzle","🌦️"],53:["Drizzle","🌦️"],55:["Heavy Drizzle","🌦️"],
+  56:["Freezing Drizzle","🌧️"],57:["Freezing Drizzle","🌧️"],
+  61:["Light Rain","🌧️"],63:["Rain","🌧️"],65:["Heavy Rain","🌧️"],
+  66:["Freezing Rain","🌧️"],67:["Freezing Rain","🌧️"],
+  71:["Light Snow","🌨️"],73:["Snow","🌨️"],75:["Heavy Snow","❄️"],77:["Snow Grains","🌨️"],
+  80:["Rain Showers","🌦️"],81:["Rain Showers","🌧️"],82:["Heavy Showers","⛈️"],
+  85:["Snow Showers","🌨️"],86:["Heavy Snow Showers","❄️"],
+  95:["Thunderstorm","⛈️"],96:["Thunderstorm + Hail","⛈️"],99:["Severe Thunderstorm","⛈️"]
 };
-
-const TRUMAN_NORMAL_POOL_FT = 706.0; // Normal pool elevation, ft above sea level (NAVD88)
 async function fetchTrumanLake() {
-  try {
-    // USGS site 06922440 = Harry S. Truman Dam and Res. at Warsaw, MO
-    // parameterCd 00065 = Gage height (pool elevation), feet — period=P1D gives 24h of readings
-    const res = await fetchWithTimeout(
-      "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=06922440&parameterCd=00065&siteStatus=active&period=P1D",
-      6000
-    );
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
-    const series = data && data.value && data.value.timeSeries && data.value.timeSeries[0];
-    if (!series) throw new Error("no series");
-    const vals = series.values && series.values[0] && series.values[0].value;
-    if (!vals || !vals.length) throw new Error("no values");
-    const last  = vals[vals.length - 1];
-    const first = vals[0];
-    const stage = parseFloat(last.value);
-    if (!isFinite(stage)) throw new Error("bad stage");
-    const change24h = isFinite(parseFloat(first.value)) ? stage - parseFloat(first.value) : null;
-    return { stage, time: last.dateTime, change24h };
-  } catch (e) {
-    console.warn("Truman lake fetch failed:", e);
-    return null;
+  const endpoints = [
+    "https://api.water.noaa.gov/nwps/v1/gauges/TUMM7/stageflow/observed",
+    "https://api.water.noaa.gov/nwps/v1/gauges/WRSM7/stageflow/observed"
+  ];
+  for (const ep of endpoints) {
+    try {
+      const res = await fetchWithTimeout(ep, 5000);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const rows = (data&&data.data)||[];
+      if (!rows.length) continue;
+      const last = [...rows].reverse().find(r => r.primary!==null&&r.primary!==undefined);
+      if (!last) continue;
+      const stage = parseFloat(last.primary);
+      if (!isFinite(stage)) continue;
+      return { stage, time:last.validTime, gauge:ep.includes("WRSM7")?"Warsaw":"Truman" };
+    } catch(e) { console.warn("Lake endpoint:", ep, e); }
   }
+  return null;
 }
-
 async function loadWeather(force) {
-  const cacheKey = "news.weather";
-  const lakeCacheKey = "news.truman";
+  const cacheKey="news.weather", lakeCacheKey="news.truman";
   let data, lake;
   if (!force) {
-    try { const p = JSON.parse(localStorage.getItem(cacheKey) || "null"); if (p && Date.now() - p.ts < WEATHER_CACHE_TTL_MS) data = p.data; } catch {}
-    try { const p = JSON.parse(localStorage.getItem(lakeCacheKey) || "null"); if (p && Date.now() - p.ts < WEATHER_CACHE_TTL_MS) lake = p.data; } catch {}
+    try { const p=JSON.parse(localStorage.getItem(cacheKey)||"null"); if(p&&Date.now()-p.ts<WEATHER_CACHE_TTL_MS) data=p.data; } catch {}
+    try { const p=JSON.parse(localStorage.getItem(lakeCacheKey)||"null"); if(p&&Date.now()-p.ts<WEATHER_CACHE_TTL_MS) lake=p.data; } catch {}
   }
-  if (data && lake !== undefined) { renderWeather(data, lake); return; }
-  weatherEl.className = "weather loading";
-  weatherEl.innerHTML = '<span class="spinner"></span><span>Loading weather…</span>';
-  const url = "https://api.open-meteo.com/v1/forecast?latitude=" + WEATHER_LOCATION.lat +
-    "&longitude=" + WEATHER_LOCATION.lon +
-    "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m" +
+  if (data && lake!==undefined) { renderWeather(data, lake); return; }
+  weatherEl.className="weather loading";
+  weatherEl.innerHTML='<span class="spinner"></span><span>Loading weather…</span>';
+  const url = "https://api.open-meteo.com/v1/forecast?latitude="+WEATHER_LOCATION.lat+"&longitude="+WEATHER_LOCATION.lon+
+    "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m" +
     "&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max" +
-    "&temperature_unit=fahrenheit&wind_speed_unit=mph" +
-    "&timezone=" + encodeURIComponent(WEATHER_LOCATION.tz) +
-    "&forecast_days=3";
+    "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone="+encodeURIComponent(WEATHER_LOCATION.tz)+"&forecast_days=3";
   try {
-    const [wRes, lakeData] = await Promise.all([
-      fetchWithTimeout(url, FEED_TIMEOUT_MS),
-      fetchTrumanLake()
-    ]);
-    if (!wRes.ok) throw new Error("HTTP " + wRes.status);
-    data = await wRes.json();
-    lake = lakeData;
-    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data })); } catch {}
-    try { localStorage.setItem(lakeCacheKey, JSON.stringify({ ts: Date.now(), data: lake })); } catch {}
+    const [wRes, lakeData] = await Promise.all([fetchWithTimeout(url, FEED_TIMEOUT_MS), fetchTrumanLake()]);
+    if (!wRes.ok) throw new Error("HTTP "+wRes.status);
+    data = await wRes.json(); lake = lakeData;
+    try { localStorage.setItem(cacheKey, JSON.stringify({ts:Date.now(),data})); } catch {}
+    try { localStorage.setItem(lakeCacheKey, JSON.stringify({ts:Date.now(),data:lake})); } catch {}
     renderWeather(data, lake);
-  } catch (err) {
-    console.warn("Weather failed:", err);
-    weatherEl.className = "weather";
-    weatherEl.innerHTML = '<div class="w-current"><span class="w-icon">⚠️</span><span>Weather unavailable · ' + WEATHER_LOCATION.name + '</span></div>';
+  } catch(err) {
+    console.warn("Weather:", err);
+    weatherEl.className="weather";
+    weatherEl.innerHTML='<div class="w-current"><span class="w-icon">⚠️</span><span>Weather unavailable · '+WEATHER_LOCATION.name+'</span></div>';
   }
 }
 function dayLabel(dateStr, idx) {
-  if (idx === 0) return "Today";
-  if (idx === 1) return "Tomorrow";
-  try { return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" }); } catch { return ""; }
+  if (idx===0) return "Today"; if (idx===1) return "Tomorrow";
+  try { return new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"short"}); } catch { return ""; }
 }
 function renderWeather(data, lake) {
-  const c = data.current || {};
-  const d = data.daily || {};
-  const code = c.weather_code;
-  const entry = WEATHER_CODE_MAP[code] || ["—", "🌡️"];
-  const temp = Math.round(c.temperature_2m);
-  const feels = Math.round(c.apparent_temperature);
-  const hi = d.temperature_2m_max && Math.round(d.temperature_2m_max[0]);
-  const lo = d.temperature_2m_min && Math.round(d.temperature_2m_min[0]);
-  const wind = Math.round(c.wind_speed_10m);
-  const hum = c.relative_humidity_2m;
-  const dates = d.time || [];
-  const maxes = d.temperature_2m_max || [];
-  const mins = d.temperature_2m_min || [];
-  const codes = d.weather_code || [];
-  const pops = d.precipitation_probability_max || [];
-  let forecastHtml = "";
-  for (let i = 0; i < Math.min(3, dates.length); i++) {
-    const e = WEATHER_CODE_MAP[codes[i]] || ["", "🌡️"];
-    const pop = pops[i];
-    forecastHtml += '<span class="w-day"><span class="w-day-name">' + dayLabel(dates[i], i) + '</span> ' + e[1] + ' ' +
-      Math.round(maxes[i]) + '° / ' + Math.round(mins[i]) + '°' +
-      (isFinite(pop) && pop > 0 ? ' <span style="color:var(--text-soft)">💧' + pop + '%</span>' : '') + '</span>';
+  const c=data.current||{}, d=data.daily||{};
+  const entry=WEATHER_CODE_MAP[c.weather_code]||["—","🌡️"];
+  const temp=Math.round(c.temperature_2m), feels=Math.round(c.apparent_temperature);
+  const hi=d.temperature_2m_max&&Math.round(d.temperature_2m_max[0]), lo=d.temperature_2m_min&&Math.round(d.temperature_2m_min[0]);
+  const wind=Math.round(c.wind_speed_10m), hum=c.relative_humidity_2m;
+  let forecastHtml="";
+  for (let i=0; i<Math.min(3,(d.time||[]).length); i++) {
+    const e=WEATHER_CODE_MAP[(d.weather_code||[])[i]]||["","🌡️"];
+    const pop=(d.precipitation_probability_max||[])[i];
+    forecastHtml+='<span class="w-day"><span class="w-day-name">'+dayLabel((d.time||[])[i],i)+'</span> '+e[1]+' '+
+      Math.round((d.temperature_2m_max||[])[i])+'° / '+Math.round((d.temperature_2m_min||[])[i])+'°'+
+      (isFinite(pop)&&pop>0?' <span style="color:var(--text-soft)">💧'+pop+'%</span>':'')+' </span>';
   }
-  const radarHref = "https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My43NzgsMzguMzY4Nl0sImxvY2F0aW9uIjpudWxsLCJ6b29tIjo4LCJmaWx0ZXJpbmciOnRydWUsImxheWVyIjoiYnJlZiIsInN0YXRpb24iOiJLRUFYIn19";
-  const lakeHtml = lake && isFinite(lake.stage)
-    ? (function() {
-        const diff = lake.stage - TRUMAN_NORMAL_POOL_FT;
-        const diffStr = (diff >= 0 ? "+" : "") + diff.toFixed(1) + " ft";
-        const diffColor = diff > 2 ? "#b91c1c" : diff < -2 ? "#1d4ed8" : "var(--text-soft)";
-        let trendStr = "";
-        if (lake.change24h !== null && isFinite(lake.change24h)) {
-          const ch = lake.change24h;
-          const arrow = ch > 0.05 ? "↑" : ch < -0.05 ? "↓" : "→";
-          const trendColor = ch > 0.05 ? "#b91c1c" : ch < -0.05 ? "#1d4ed8" : "var(--text-soft)";
-          trendStr = ' <span style="color:' + trendColor + ';font-size:11px">' + arrow + Math.abs(ch).toFixed(2) + ' ft/day</span>';
-        }
-        return '<a class="w-lake" href="https://waterdata.usgs.gov/monitoring-location/06922440/" target="_blank" rel="noopener">'
-          + '🌊 Truman <strong>' + lake.stage.toFixed(1) + ' ft</strong>'
-          + ' <span style="color:' + diffColor + ';font-size:11px">(' + diffStr + ')</span>'
-          + trendStr + '</a>';
-      })()
-    : '<a class="w-lake" href="https://waterdata.usgs.gov/monitoring-location/06922440/" target="_blank" rel="noopener">🌊 Truman Lake →</a>';
-
-  // ── FISHING CONDITIONS ──
-  function getFishingTips(lake, airTempF, windMph) {
-    if (!lake || !isFinite(lake.stage)) return null;
-    const diff = lake.stage - TRUMAN_NORMAL_POOL_FT;
-    const ch = lake.change24h;
-    const rising   = ch !== null && ch > 0.05;
-    const falling  = ch !== null && ch < -0.05;
-    const fastMove = ch !== null && Math.abs(ch) > 0.5;
-    // Shad/wind note
-    let shadNote = windMph >= 15 ? "Strong wind pushing shad to windward banks — both species will stack there." :
-                   windMph >= 8  ? "Moderate wind concentrating shad on windward banks." :
-                                   "Calm — shad scattered; focus on structure and bait schools.";
-    if (airTempF !== null && airTempF >= 78) shadNote += " Warm air: shad and bait shallow at dawn, deeper by midday.";
-    else if (airTempF !== null && airTempF <= 55) shadNote += " Cool air: shad sluggish and deeper — slow presentations near bottom.";
-    // Blue cat
-    let blueCat = diff > 5 && rising  ? (fastMove ? "Fast-rising flood pool — blues scattered in flooded timber and creek arms 2–8 ft. Fresh-cut bait near flooded brush edges." : "High rising pool — blues pushed into flooded timber and creek arms. Chunk shad near wood edges.")
-                : diff > 5 && falling ? "High falling lake — blues moving back to main channel ledges and creek mouths. Target 15–25 ft drops with cut shad."
-                : diff > 5            ? "High stable pool — blues spread through timber and channel bends. Drift cut shad along 10–20 ft structure."
-                : diff > 1 && rising  ? "Rising water activating blues. Hit creek channel bends and flooded timber edges with skipjack or cut shad."
-                : diff > 1 && falling ? "Slight drop — blues staging on main lake ledges and deeper humps. Try 20–30 ft channel bend drops."
-                : diff < -2 && falling? "Low falling lake — blues stacking in the deepest holes. Tailwater below the dam can be excellent. Night bite peaks."
-                :                       "Stable pool — target main lake ledges, submerged timber, and creek channel bends in 15–30 ft.";
-    if (windMph >= 15) blueCat += " Wind-swept main lake points are bonus ambush spots.";
-    // Crappie
-    let crappie = diff > 3 && rising          ? "Rising water pushing crappie into flooded brush 2–8 ft. Work jigs slow through the timber — they'll be tight to wood."
-                : airTempF !== null && airTempF >= 75 ? "Warm temps — spawn or post-spawn. Fish shallow brush, dock pilings, stumps 2–6 ft. Jigs and minnows both produce."
-                : airTempF !== null && airTempF >= 62 ? "Pre-spawn crappie moving shallow. Hit brush piles 5–12 ft and dock pockets — morning bite is prime."
-                : airTempF !== null && airTempF >= 50 ? "Transitioning shallower. Fish brush and timber edges in 10–18 ft with slow jig presentations."
-                :                                       "Crappie holding deep. Slow-fish brush piles and submerged timber in 15–25 ft.";
-    return { blueCat, crappie, shadNote };
-  }
-  const _airTempF = c.temperature_2m !== undefined ? Math.round(c.temperature_2m) : null;
-  const _windMph  = c.wind_speed_10m  !== undefined ? Math.round(c.wind_speed_10m)  : 0;
-  const _windDir = c.wind_direction_10m !== undefined ? Math.round(c.wind_direction_10m) : null;
-  const _tips = getFishingTips(lake, _airTempF, _windMph);
-  _odWindDeg = _windDir; _odAirTempF = _airTempF; _odWindMph = _windMph; _odLake = lake; _odFishTips = _tips;
-
-  const fishingHtml = _tips
-    ? '<div class="w-fishing">'
-        + '<div class="w-fish-title">🎣 Fishing Conditions</div>'
-        + '<div class="w-fish-item"><span class="w-fish-label">🐟 Shad/Wind</span> ' + _tips.shadNote + '</div>'
-        + '<div class="w-fish-item"><span class="w-fish-label">🐱 Blue Cat</span> ' + _tips.blueCat + '</div>'
-        + '<div class="w-fish-item"><span class="w-fish-label">🎣 Crappie</span> ' + _tips.crappie + '</div>'
-      + '</div>'
-    : '';
-
-  weatherEl.className = "weather";
-  weatherEl.innerHTML =
-    '<div class="w-current">' +
-      '<span class="w-icon">' + entry[1] + '</span>' +
-      '<span class="w-temp">' + temp + '°F</span>' +
-      '<span class="w-cond">' + entry[0] + '</span>' +
-      '<span class="w-sep">·</span>' +
-      '<span class="w-cond">' + escapeHtml(WEATHER_LOCATION.name) + '</span>' +
-      '<span class="w-meta">' +
-        '<span>H ' + (isFinite(hi) ? hi : "—") + '° L ' + (isFinite(lo) ? lo : "—") + '°</span>' +
-        '<span>Feels ' + feels + '°</span>' +
-        '<span>💨 ' + wind + ' mph</span>' +
-        '<span>💧 ' + hum + '%</span>' +
-        lakeHtml +
-      '</span>' +
-    '</div>' +
-    '<div class="w-forecast">' +
-      forecastHtml +
-      '<a class="w-radar" target="_blank" href="' + radarHref + '">📡 Radar →</a>' +
-    '</div>';
+  const radarHref="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My43NzgsMzguMzY4Nl0sImxvY2F0aW9uIjpudWxsLCJ6b29tIjo4LCJmaWx0ZXJpbmciOnRydWUsImxheWVyIjoiYnJlZiIsInN0YXRpb24iOiJLRUFYIn19";
+  const lakeHtml = lake&&isFinite(lake.stage)
+    ? '<a class="w-lake" href="https://water.noaa.gov/gauges/tumm7" target="_blank" rel="noopener">🌊 Truman <strong>'+lake.stage.toFixed(1)+' ft</strong></a>'
+    : '<a class="w-lake" href="https://water.usace.army.mil/overview/nwk/locations/hast" target="_blank" rel="noopener">🌊 Truman Lake →</a>';
+  weatherEl.className="weather";
+  weatherEl.innerHTML=
+    '<div class="w-current">'+
+      '<span class="w-icon">'+entry[1]+'</span>'+
+      '<span class="w-temp">'+temp+'°F</span>'+
+      '<span class="w-cond">'+entry[0]+'</span>'+
+      '<span class="w-sep">·</span>'+
+      '<span class="w-cond">'+escapeHtml(WEATHER_LOCATION.name)+'</span>'+
+      '<span class="w-meta">'+
+        '<span>H '+(isFinite(hi)?hi:"—")+'° L '+(isFinite(lo)?lo:"—")+'°</span>'+
+        '<span>Feels '+feels+'°</span>'+
+        '<span>💨 '+wind+' mph</span>'+
+        '<span>💧 '+hum+'%</span>'+
+        lakeHtml+
+      '</span>'+
+    '</div>'+
+    '<div class="w-forecast">'+forecastHtml+'<a class="w-radar" target="_blank" href="'+radarHref+'">📡 Radar →</a></div>';
 }
 
 // ========== NEWS FEEDS ==========
 function parseXmlFeed(xmlText, source) {
   const doc = new DOMParser().parseFromString(xmlText, "application/xml");
   if (doc.querySelector("parsererror")) return [];
-  const isAtom = doc.documentElement.nodeName.toLowerCase() === "feed";
-  const entries = Array.from(doc.querySelectorAll(isAtom ? "entry" : "item"));
+  const isAtom = doc.documentElement.nodeName.toLowerCase()==="feed";
+  const entries = Array.from(doc.querySelectorAll(isAtom?"entry":"item"));
   return entries.slice(0, PER_FEED_LIMIT).map(el => {
-    const get = sel => { const n = el.querySelector(sel); return n ? n.textContent.trim() : ""; };
-    let link = "";
+    const get = sel => { const n=el.querySelector(sel); return n?n.textContent.trim():""; };
+    let link="";
     if (isAtom) {
-      const a = el.querySelector("link[rel='alternate']") || el.querySelector("link");
-      link = a ? (a.getAttribute("href") || a.textContent.trim()) : "";
-    } else { link = get("link"); }
-    const title = get("title");
-    const desc = get("description") || get("summary") || get("content");
-    const pubStr = get("pubDate") || get("published") || get("updated");
-    const enclosure = el.querySelector("enclosure[url]");
-    let thumb = enclosure ? enclosure.getAttribute("url") : extractImg(desc);
-    return {
-      title, link,
-      description: stripHtml(desc).slice(0, 240),
-      pubDate: pubStr ? new Date(pubStr).getTime() : Date.now(),
-      thumbnail: thumb || "",
-      source
-    };
-  }).filter(x => x.title && x.link);
-}
-async function fetchViaProxy(proxy, feed) {
-  const res = await fetchWithTimeout(proxy.url(feed.url), FEED_TIMEOUT_MS);
-  if (!res.ok) throw new Error(proxy.name + " HTTP " + res.status);
-  if (proxy.parse === "json") {
-    const data = await res.json();
-    if (data.status !== "ok" || !Array.isArray(data.items)) throw new Error("bad rss2json");
-    return data.items.slice(0, PER_FEED_LIMIT).map(it => ({
-      title: (it.title || "").trim(),
-      link: it.link,
-      description: stripHtml(it.description || it.content || "").slice(0, 240),
-      pubDate: it.pubDate ? new Date(it.pubDate).getTime() : Date.now(),
-      thumbnail: it.thumbnail || (it.enclosure && it.enclosure.link) || extractImg(it.content || it.description) || "",
-      source: feed.source
-    })).filter(x => x.title && x.link);
-  }
-  if (proxy.parse === "allorigins") {
-    const data = await res.json();
-    if (!data.contents) throw new Error("empty allorigins");
-    return parseXmlFeed(data.contents, feed.source);
-  }
-  throw new Error("unknown parse mode");
-}
-async function fetchFeed(feed) {
-  const cacheKey = "news.cache." + feed.url;
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) {
-    try { const p = JSON.parse(cached); if (Date.now() - p.ts < CACHE_TTL_MS) return p.items; } catch {}
-  }
-  for (const proxy of PROXIES) {
-    try {
-      const items = await fetchViaProxy(proxy, feed);
-      if (items.length) {
-        try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), items })); } catch {}
-        return items;
-      }
-    } catch (err) {
-      console.warn("[" + feed.source + "] " + proxy.name + " failed:", (err && err.message) || err);
-    }
-  }
-  return [];
-}
-
-// ========== STOCKS ==========
-function getWatchlist() {
-  let list = null;
-  try { const raw = localStorage.getItem("news.watchlist"); if (raw) list = JSON.parse(raw); } catch {}
-  if (!list) list = DEFAULT_TICKERS.slice();
-  const savedVersion = parseInt(localStorage.getItem("news.watchlist.version") || "1", 10);
-  if (savedVersion < WATCHLIST_VERSION) {
-    DEFAULT_TICKERS.forEach(t => { if (!list.includes(t)) list.push(t); });
-    try {
-      localStorage.setItem("news.watchlist", JSON.stringify(list));
-      localStorage.setItem("news.watchlist.version", String(WATCHLIST_VERSION));
-    } catch {}
-  }
-  return list;
-}
-function setWatchlist(list) { localStorage.setItem("news.watchlist", JSON.stringify(list)); }
-async function fetchTextThroughProxies(targetUrl) {
-  let lastErr;
-  for (const proxy of CORS_PROXIES) {
-    try {
-      const res = await fetchWithTimeout(proxy.url(targetUrl), FEED_TIMEOUT_MS);
-      if (!res.ok) { lastErr = new Error(proxy.name + " HTTP " + res.status); continue; }
-      const text = await res.text();
-      if (!text || text.length < 10) { lastErr = new Error(proxy.name + " empty"); continue; }
-      return text;
-    } catch (err) {
-      lastErr = err;
-      console.warn("Stock proxy " + proxy.name + " failed:", (err && err.message) || err);
-    }
-  }
-  throw lastErr || new Error("all stock proxies failed");
-}
-async function fetchQuoteYahoo(ticker) {
-  const yahooUrl = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(ticker) + "?interval=1d&range=1mo";
-  const text = await fetchTextThroughProxies(yahooUrl);
-  const data = JSON.parse(text);
-  const result = data && data.chart && data.chart.result && data.chart.result[0];
-  if (!result) throw new Error("no chart data");
-  const meta = result.meta || {};
-  const closesRaw = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
-  const closes = closesRaw.filter(x => x !== null && x !== undefined);
-  const price = (meta.regularMarketPrice !== undefined && meta.regularMarketPrice !== null) ? meta.regularMarketPrice : closes[closes.length - 1];
-  // Use closes[last] as prevClose — avoids chartPreviousClose bug where Yahoo returns
-  // start-of-period close (not yesterday's close) causing fake +30-40% swings on volatile stocks
-  const prevClose = closes.length >= 2 ? closes[closes.length - 2] : (meta.previousClose || meta.chartPreviousClose || closes[closes.length - 1]);
-  const change = price - prevClose;
-  return {
-    ticker, name: meta.shortName || meta.longName || ticker,
-    price, change,
-    changePct: (change / prevClose) * 100,
-    currency: meta.currency || "USD",
-    closes: closes.slice(-30),
-    source: "Yahoo"
-  };
-}
-async function fetchQuoteStooq(ticker) {
-  const sym = ticker.toLowerCase() + (ticker.indexOf(".") === -1 ? ".us" : "");
-  const histUrl = "https://stooq.com/q/d/l/?s=" + encodeURIComponent(sym) + "&i=d";
-  const csv = await fetchTextThroughProxies(histUrl);
-  if (!csv || csv.indexOf("Date") === -1) throw new Error("no stooq data");
-  const lines = csv.trim().split(/\r?\n/);
-  const rows = lines.slice(1).map(l => l.split(",")).filter(r => r.length >= 5);
-  if (rows.length < 2) throw new Error("not enough rows");
-  const recent = rows.slice(-30);
-  const closes = recent.map(r => parseFloat(r[4])).filter(x => !isNaN(x));
-  if (closes.length < 2) throw new Error("bad closes");
-  const price = closes[closes.length - 1];
-  const prevClose = closes[closes.length - 2];
-  const change = price - prevClose;
-  return {
-    ticker, name: ticker,
-    price, change,
-    changePct: (change / prevClose) * 100,
-    currency: "USD", closes, source: "Stooq"
-  };
-}
-async function fetchQuote(ticker, force) {
-  const cacheKey = "news.quote." + ticker;
-  if (!force) {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      try { const p = JSON.parse(cached); if (Date.now() - p.ts < STOCKS_CACHE_TTL_MS) return p.data; } catch {}
-    }
-  }
-  const attempts = [fetchQuoteYahoo, fetchQuoteStooq];
-  for (const fn of attempts) {
-    try {
-      const info = await fn(ticker);
-      if (info && isFinite(info.price) && isFinite(info.change)) {
-        try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: info })); } catch {}
-        return info;
-      }
-    } catch (err) {
-      console.warn("[" + ticker + "] " + fn.name + " failed:", (err && err.message) || err);
-    }
-  }
-  return null;
-}
-function sparklineSvg(closes) {
-  if (!closes || closes.length < 2) return '<div class="stock-spark"></div>';
-  const w = 70, h = 30, pad = 2;
-  const min = Math.min.apply(null, closes);
-  const max = Math.max.apply(null, closes);
-  const range = max - min || 1;
-  const points = closes.map((c, i) => {
-    const x = pad + (i / (closes.length - 1)) * (w - 2 * pad);
-    const y = h - pad - ((c - min) / range) * (h - 2 * pad);
-    return x.toFixed(1) + "," + y.toFixed(1);
-  }).join(" ");
-  const up = closes[closes.length - 1] >= closes[0];
-  const color = up ? "#22c55e" : "#ef4444";
-  return '<svg class="stock-spark" viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg"><polyline fill="none" stroke="' + color + '" stroke-width="1.5" points="' + points + '"/></svg>';
-}
-function fmtMoney(n, currency) {
-  if (n === null || n === undefined || !isFinite(n)) return "—";
-  const sym = currency === "USD" ? "$" : "";
-  return sym + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-function fmtChange(abs, pct) {
-  if (abs === null || abs === undefined || !isFinite(abs)) return "—";
-  const sign = abs >= 0 ? "+" : "";
-  return sign + abs.toFixed(2) + " (" + sign + pct.toFixed(2) + "%)";
-}
-
-async function loadStockNews(force) {
-  const newsSection = document.getElementById("stockNewsSection");
-  if (!newsSection) return;
-  newsSection.innerHTML =
-    '<div class="stock-news-header">' +
-      '<div class="stock-news-title">📰 Stock News</div>' +
-      '<div class="stock-news-sub">Live market headlines</div>' +
-    '</div>' +
-    '<div class="stock-news-loading"><span class="spinner"></span>Loading stock news…</div>';
-
-  if (force) STOCK_NEWS_FEEDS.forEach(f => localStorage.removeItem("news.cache." + f.url));
-
-  const results = await Promise.all(STOCK_NEWS_FEEDS.map(f => fetchFeed(f)));
-  const all = results.flatMap(r => r).sort((a, b) => b.pubDate - a.pubDate);
-
-  // Deduplicate by title
-  const seen = new Set();
-  const deduped = all.filter(item => {
-    const key = item.title.toLowerCase().slice(0, 60);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  if (deduped.length === 0) {
-    newsSection.querySelector(".stock-news-loading").textContent = "No stock news loaded — proxies may be slow.";
-    return;
-  }
-  newsSection.querySelector(".stock-news-loading").remove();
-  const frag = document.createDocumentFragment();
-  deduped.slice(0, 40).forEach(item => {
-    const wrapper = document.createElement("div");
-    wrapper.style.cssText = "border-bottom:1px solid var(--border);";
-    const a = document.createElement("a");
-    a.className = "item";
-    a.href = item.link;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.setAttribute("role","article");
-    a.style.borderBottom = "none";
-    const hasImg = item.thumbnail && /^https?:\/\//.test(item.thumbnail);
-    a.innerHTML =
-      '<div class="item-text">' +
-        '<div class="meta"><span class="source">' + escapeHtml(item.source) + '</span><span class="dot">·</span><span>' + relativeTime(item.pubDate) + '</span></div>' +
-        '<div class="title">' + escapeHtml(item.title) + '</div>' +
-        (item.description ? '<div class="desc">' + escapeHtml(item.description) + '</div>' : '') +
-      '</div>' +
-      (hasImg ? '<img class="thumb" src="' + escapeHtml(item.thumbnail) + '" alt="" loading="lazy" onerror="this.remove()">' : '');
-    const sBtn = document.createElement("button");
-    sBtn.className = "tldr-btn";
-    sBtn.textContent = "✶ AI Summary";
-    sBtn.addEventListener("click", function(e) { e.preventDefault(); e.stopPropagation(); openTldr(item.title, item.link, item.description); });
-    wrapper.appendChild(a);
-    wrapper.appendChild(sBtn);
-    frag.appendChild(wrapper);
-  });
-  newsSection.appendChild(frag);
-}
-
-async function loadStocks(force) {
-  listEl.innerHTML = "";
-  statusEl.style.display = "none";
-  const watchlist = getWatchlist();
-
-  // Input row
-  const inputRow = document.createElement("div");
-  inputRow.className = "stock-input-row";
-  inputRow.innerHTML =
-    '<input class="stock-input" id="stockInput" placeholder="Add ticker (e.g. NVDA)" maxlength="10" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">' +
-    '<button class="stock-add-btn" id="stockAddBtn">Add</button>';
-  listEl.appendChild(inputRow);
-
-  // Stock price rows
-  const rowsContainer = document.createElement("div");
-  rowsContainer.id = "stockRows";
-  listEl.appendChild(rowsContainer);
-
-  if (watchlist.length === 0) {
-    rowsContainer.innerHTML = '<div class="status">Your watchlist is empty. Add a ticker above.</div>';
-  } else {
-    watchlist.forEach(t => {
-      const row = document.createElement("div");
-      row.className = "stock-row stock-loading";
-      row.id = "stock-row-" + t;
-      const displayTicker = TICKER_DISPLAY[t] || t;
-      row.innerHTML =
-        '<div class="stock-main"><div class="stock-ticker">' + escapeHtml(displayTicker) + '</div><div class="stock-name">Loading…</div></div>' +
-        '<div class="stock-spark"></div>' +
-        '<div class="stock-price"><div class="price">—</div><div class="change">—</div></div>' +
-        '<button class="stock-remove" data-ticker="' + escapeHtml(t) + '" title="Remove">×</button>';
-      rowsContainer.appendChild(row);
-    });
-  }
-
-  // Stock news section placeholder
-  const newsSection = document.createElement("div");
-  newsSection.id = "stockNewsSection";
-  listEl.appendChild(newsSection);
-
-  // Wire up input
-  const input = document.getElementById("stockInput");
-  const addBtn = document.getElementById("stockAddBtn");
-  const addTicker = () => {
-    const v = (input.value || "").trim().toUpperCase().replace(/[^A-Z0-9.\-=]/g, "");
-    if (!v) return;
-    const wl = getWatchlist();
-    if (wl.includes(v)) { input.value = ""; return; }
-    wl.push(v);
-    setWatchlist(wl);
-    input.value = "";
-    loadStocks();
-  };
-  addBtn.addEventListener("click", addTicker);
-  input.addEventListener("keydown", e => { if (e.key === "Enter") addTicker(); });
-  rowsContainer.querySelectorAll(".stock-remove").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const t = btn.getAttribute("data-ticker");
-      setWatchlist(getWatchlist().filter(x => x !== t));
-      loadStocks();
-    });
-  });
-
-  // Load prices and news in parallel
-  await Promise.all([
-    Promise.all(watchlist.map(async t => {
-      const q = await fetchQuote(t, force);
-      const row = document.getElementById("stock-row-" + t);
-      if (!row) return;
-      row.classList.remove("stock-loading");
-      if (!q) {
-        row.querySelector(".stock-name").textContent = "Couldn't load — proxies rate-limited";
-        return;
-      }
-      const up = q.change >= 0;
-      row.querySelector(".stock-name").textContent = q.name + (q.source ? " · " + q.source : "");
-      const oldSpark = row.querySelector(".stock-spark");
-      if (oldSpark) oldSpark.outerHTML = sparklineSvg(q.closes);
-      const priceEl = row.querySelector(".stock-price");
-      priceEl.innerHTML =
-        '<div class="price">' + fmtMoney(q.price, q.currency) + '</div>' +
-        '<div class="change ' + (up ? "up" : "down") + '">' + fmtChange(q.change, q.changePct) + '</div>';
-    })),
-    loadStockNews(force)
-  ]);
-}
-
-// ========== LOAD CATEGORY ==========
-async function loadCategory(force) {
-  var _odc = document.getElementById("od-container"); if (_odc) _odc.remove();
-  if (activeCat === "pulse") { loadPulse(); return; }
-  if (activeCat === "outdoors") { loadOutdoors(); return; }
-  const cat = CATEGORIES.find(c => c.id === activeCat);
-  if (cat.isStocks) return loadStocks(force);
-  listEl.innerHTML = "";
-  statusEl.style.display = "block";
-  let done = 0;
-  const total = cat.feeds.length;
-  const updateStatus = () => {
-    statusEl.innerHTML = '<span class="spinner"></span>Loading ' + cat.label.toLowerCase() + ' &nbsp;<span style="opacity:.6">(' + done + '/' + total + ' sources)</span>';
-  };
-  updateStatus();
-  if (force) cat.feeds.forEach(f => localStorage.removeItem("news.cache." + f.url));
-  const results = await Promise.all(cat.feeds.map(async f => {
-    const items = await fetchFeed(f);
-    done++;
-    updateStatus();
-    return { source: f.source, items };
-  }));
-  const all = results.flatMap(r => r.items).sort((a, b) => b.pubDate - a.pubDate);
-
-  // Deduplicate
-  const seen = new Set();
-  const deduped = all.filter(item => {
-    const key = item.title.toLowerCase().slice(0, 60);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  if (deduped.length === 0) {
-    statusEl.innerHTML = "Couldn't load any stories. The RSS proxies may be slow or down.<br><span style=\"opacity:.6\">Tried: " + cat.feeds.map(f => f.source).join(", ") + "</span><br><button class=\"retry-btn\" onclick=\"loadCategory(true)\">Try again</button>";
-    return;
-  }
-  statusEl.style.display = "none";
-  renderNews(deduped);
-}
-window.loadCategory = loadCategory;
-
-function renderNews(items) {
-  const frag = document.createDocumentFragment();
-  items.forEach(item => {
-    const wrapper = document.createElement("div");
-    wrapper.style.cssText = "border-bottom:1px solid var(--border);";
-    const a = document.createElement("a");
-    a.className = "item";
-    a.href = item.link;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.setAttribute("role","article");
-    a.style.borderBottom = "none";
-    const hasImg = item.thumbnail && /^https?:\/\//.test(item.thumbnail);
-    a.innerHTML =
-      '<div class="item-text">' +
-        '<div class="meta"><span class="source">' + escapeHtml(item.source) + '</span><span class="dot">·</span><span>' + relativeTime(item.pubDate) + '</span></div>' +
-        '<div class="title">' + escapeHtml(item.title) + '</div>' +
-        (item.description ? '<div class="desc">' + escapeHtml(item.description) + '</div>' : '') +
-      '</div>' +
-      (hasImg ? '<img class="thumb" src="' + escapeHtml(item.thumbnail) + '" alt="" loading="lazy" onerror="this.remove()">' : '');
-    const tldrRow = document.createElement("div");
-    tldrRow.style.cssText = "padding:0 0 12px;";
-    const btn = document.createElement("button");
-    btn.className = "tldr-btn";
-    btn.textContent = "✦ AI Summary";
-    btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openTldr(item.title, item.link, item.description); });
-    tldrRow.appendChild(btn);
-    wrapper.appendChild(a);
-    wrapper.appendChild(tldrRow);
-    frag.appendChild(wrapper);
-  });
-  listEl.innerHTML = "";
-  listEl.appendChild(frag);
-}
-
-// ========== TLDR ==========
-// API key stored in localStorage only — never in source code
-function getClaudeKey() {
-  let k = localStorage.getItem("claude_api_key");
-  if (!k) {
-    k = prompt("Enter your Anthropic API key to enable AI summaries:\n(It will be saved in your browser only, never uploaded anywhere)");
-    if (k && k.trim().startsWith("sk-ant-")) {
-      localStorage.setItem("claude_api_key", k.trim());
-    } else {
-      return null;
-    }
-  }
-  return k;
-}
-const tldrModal    = document.getElementById("tldrModal");
-const tldrBackdrop = document.getElementById("tldrBackdrop");
-const tldrClose    = document.getElementById("tldrClose");
-const tldrHeadline = document.getElementById("tldrHeadline");
-const tldrSource   = document.getElementById("tldrSource");
-const tldrMessages = document.getElementById("tldrMessages");
-const tldrInput    = document.getElementById("tldrInput");
-const tldrSendBtn  = document.getElementById("tldrSendBtn");
-
-let _tldrConvo = [];   // full conversation history
-let _tldrTitle = "";   // current article title
-let _tldrBusy  = false;
-
-function closeTldr() {
-  tldrModal.classList.remove("open");
-  document.body.style.overflow = "";
-}
-tldrClose.addEventListener("click", closeTldr);
-tldrBackdrop.addEventListener("click", closeTldr);
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeTldr(); });
-
-function _tldrAddBubble(role, text) {
-  var div = document.createElement("div");
-  div.className = "tldr-bubble tldr-bubble-" + (role === "user" ? "user" : "ai");
-  if (text === null) {
-    div.innerHTML = '<span class="spinner"></span>';
-  } else {
-    div.textContent = text;
-  }
-  tldrMessages.appendChild(div);
-  tldrMessages.scrollTop = tldrMessages.scrollHeight;
-  return div;
-}
-
-async function _tldrCall() {
-  _tldrBusy = true;
-  tldrSendBtn.disabled = true;
-  var bubble = _tldrAddBubble("ai", null); // spinner
-  const apiKey = getClaudeKey();
-  if (!apiKey) {
-    bubble.textContent = "No API key — reload the page and enter your Anthropic key when prompted.";
-    _tldrBusy = false; tldrSendBtn.disabled = false; return;
-  }
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true"
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1200,
-        system: "You are a sharp, experienced news analyst — part investigative journalist, part policy expert, part historian. The user is reading a news article and wants real depth, not a headline summary. Your job: explain what is actually happening and why it matters, provide the background and context the article likely skips, identify the key players and their motivations, flag what's contested or unresolved, and note the broader implications. Be specific and substantive — no vague generalities, no restating the headline. Write in clear prose, not bullet points, unless the user asks for bullets. Always invite a follow-up question at the end.",
-        messages: _tldrConvo
-      })
-    });
-    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error((e.error && e.error.message) || "API error " + res.status); }
-    const data = await res.json();
-    const reply = data.content[0].text;
-    _tldrConvo.push({ role: "assistant", content: reply });
-    bubble.textContent = reply;
-  } catch (err) {
-    bubble.textContent = "Error: " + err.message;
-  }
-  tldrMessages.scrollTop = tldrMessages.scrollHeight;
-  _tldrBusy = false;
-  tldrSendBtn.disabled = false;
-  tldrInput.focus();
-}
-
-async function openTldr(title, url, description) {
-  _tldrTitle  = title;
-  _tldrConvo  = [];
-  _tldrBusy   = false;
-  tldrMessages.innerHTML = "";
-  tldrInput.value = "";
-  tldrSendBtn.disabled = false;
-  tldrHeadline.textContent = title;
-  tldrSource.innerHTML = '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer">View original article ↗</a>';
-  tldrModal.classList.add("open");
-  document.body.style.overflow = "hidden";
-
-  // Try to get article text (Jina → allorigins → description snippet → title only)
-  var articleText = "";
-  try {
-    const jr = await fetch("https://r.jina.ai/" + encodeURIComponent(url),
-      { headers: { "Accept": "text/plain", "X-Return-Format": "text" } });
-    if (jr.ok) articleText = (await jr.text()).slice(0, 6000);
-  } catch(e) {}
-  if (!articleText) {
-    try {
-      const pr = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
-      if (pr.ok) {
-        const raw = await pr.text();
-        articleText = raw.replace(/<style[^>]*>[\s\S]*?<\/style>/gi,"")
-                         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi,"")
-                         .replace(/<[^>]+>/g," ").replace(/\s{2,}/g," ").trim().slice(0,6000);
-      }
-    } catch(e) {}
-  }
-
-  // Build first user message — always gives Claude enough context
-  var firstMsg;
-  if (articleText && articleText.length > 300) {
-    firstMsg = "Headline: \"" + title + "\"\n\nArticle text:\n" + articleText + "\n\n---\nDon't just summarize this — go deeper. What is actually going on here? Give me the real background and context behind this story, who the key players are and what their motivations are, what's contested or unresolved, and why this matters. Write analytically, like you're briefing someone who wants to actually understand the story, not just know what happened.";
-  } else if (description && description.length > 40) {
-    firstMsg = "I'm reading an article: \"" + title + "\"\n\nExcerpt: " + description + "\n\nUsing your knowledge of this topic, give me a real analytical breakdown. What's actually going on here — the background, the key players, what's at stake, and what the headline doesn't tell me. Don't just restate the excerpt; give me depth and context.";
-  } else {
-    firstMsg = "I'm reading a news article: \"" + title + "\"\n\nUsing your knowledge, give me a real analytical take on this story. What's the background and history here, who are the key players and what do they want, what's contested or unresolved, and why does this matter? Go beyond the headline.";
-  }
-
-  _tldrConvo.push({ role: "user", content: firstMsg });
-  await _tldrCall();
-}
-
-function _tldrSend() {
-  if (_tldrBusy) return;
-  var text = tldrInput.value.trim();
-  if (!text) return;
-  tldrInput.value = "";
-  _tldrAddBubble("user", text);
-  _tldrConvo.push({ role: "user", content: text });
-  _tldrCall();
-}
-
-tldrSendBtn.addEventListener("click", _tldrSend);
-tldrInput.addEventListener("keydown", function(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); _tldrSend(); } });
-window.openTldr = openTldr;
-
-// ========== PULSE ROOMS PAGE ==========
-function loadPulse() {
-  listEl.innerHTML = "";
-  statusEl.style.display = "none";
-  const container = document.createElement("div");
-  container.style.cssText = "padding:24px 0; display:flex; flex-direction:column; gap:20px;";
-  container.innerHTML =
-    '<h2 style="font-family:\'Iowan Old Style\',\'Palatino\',Georgia,serif;font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px;">🌱 Grow Room Dashboards</h2>' +
-    '<p style="font-size:14px;color:var(--text-muted);">Live Pulse sensor data for your rooms. Click a card to open the full Pulse dashboard.</p>' +
-    '<a href="https://app.pulsegrow.com/devices/21089/data" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:16px;padding:20px;border-radius:14px;border:1px solid #86efac;background:color-mix(in srgb,#22c55e 10%,var(--bg));text-decoration:none;">' +
-    '  <div style="font-size:40px;line-height:1;">🌿</div>' +
-    '  <div><div style="font-size:18px;font-weight:700;color:#15803d;">Veg Room</div><div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Device #21089 · Tap to view live sensor data →</div></div>' +
-    '</a>' +
-    '<a href="https://app.pulsegrow.com/devices/21083/data" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:16px;padding:20px;border-radius:14px;border:1px solid #fdba74;background:color-mix(in srgb,#f97316 10%,var(--bg));text-decoration:none;">' +
-    '  <div style="font-size:40px;line-height:1;">🌸</div>' +
-    '  <div><div style="font-size:18px;font-weight:700;color:#c2410c;">Flower Room</div><div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Device #21083 · Tap to view live sensor data →</div></div>' +
-    '</a>';
-  listEl.appendChild(container);
-}
-
-function loadOutdoors() {
-  /* Panel lives in #od-container (above #list), news lives in #list — they never interfere */
-  listEl.innerHTML = "";
-  statusEl.style.display = "none";
-  var odc = document.getElementById("od-container");
-  if (!odc) {
-    odc = document.createElement("div");
-    odc.id = "od-container";
-    listEl.parentNode.insertBefore(odc, listEl);
-  }
-
-  var now   = new Date();
-  var mo    = now.getMonth() + 1;
-  var dy    = now.getDate();
-  var mname = now.toLocaleString("default", { month: "long" });
-
-  /* ── helpers ── */
-  function wc(deg) {
-    if (deg == null) return null;
-    var d = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
-    return d[Math.round(deg / 22.5) % 16];
-  }
-  function shadWindHtml(windDeg, windMph) {
-    if (windMph < 4) return "Calm — shad scattered. Find diving birds or locate bait on sonar before casting.";
-    if (windDeg == null) return windMph + " mph wind — shad on the windward (downwind) bank. Refresh after weather loads for exact direction.";
-    var from = wc(windDeg), to = wc((windDeg + 180) % 360);
-    var spd  = windMph >= 15 ? "Strong" : windMph >= 8 ? "Moderate" : "Light";
-    return spd + " wind from the <strong>" + from + "</strong> — shad pushed to the <strong>" + to + " bank</strong>. Work " + to + " shoreline points and coves. Cast perpendicular to bank so the net opens as it falls.";
-  }
-  function shadSpawnHtml(month, day) {
-    if ((month === 4 && day >= 20) || (month === 5 && day <= 20))
-      return "<strong>🔴 SPAWN ALERT:</strong> Gizzard shad spawning now (water ~60–68°F). Fish 1–3 ft of calm cove banks at first light — visible splashing near shore. Easiest netting of the year.";
-    if (month === 5 && day > 20) return "Post-spawn: shad transitioning to open water. Check both shallow coves and main lake points near the surface.";
-    if (month >= 6 && month <= 8) return "Summer: shad schooling open water mid-lake. Dawn and dusk they push into shallows — follow diving birds.";
-    if (month === 9 || month === 10) return "Fall: shad moving shallow with cooling water — excellent cast-netting near creek mouths and main lake points.";
-    if (month >= 11 || month <= 2) return "Winter: shad sluggish and deep. Threadfin shad can die off in hard cold snaps; surviving schools bunch tight in warmest deep water near channel.";
-    return "Spring: shad becoming active and moving shallower. Start checking windward banks and main lake points.";
-  }
-
-  /* ── MUSHROOMS ── */
-  function mushroomGuide(month, day) {
-    var secs = [];
-    /* Morels */
-    var morelCls = (month === 4 && day <= 20) ? " od-gold" : "";
-    var morelText = month < 3 || (month === 3 && day < 15)
-      ? "Season hasn’t started. Watch for soil temps 50°F+ on south slopes — usually late March in SW Missouri."
-      : month === 3
-      ? "Early season starting in SW MO. Hit south-facing hillsides near dying elm/ash after warm soaking rain + 50°F nights."
-      : (month === 4 && day <= 20)
-      ? "🔴 PEAK season for most of MO! South-facing slopes first → east/west → north-facing last. Dying elm, ash, sycamore, old apple orchards. After warm rain + overnight temps above 50°F — GO."
-      : (month === 4)
-      ? "Late season — move to north-facing slopes, shaded ravines, and higher elevations."
-      : (month === 5 && day <= 15)
-      ? "Winding down. Try dense timber on north-facing slopes and shaded creek bottoms."
-      : "Season finished. Next season: late March. <em>Fall bonus: hen-of-the-woods near old oaks Oct–Nov.</em>";
-    secs.push({ emoji:"🍄", name:"Morel", season:"Late Mar – May", cls:morelCls,
-      rows:[ morelText, "Habitat: dying/dead elm, ash, old apple orchards, sycamore near creek bottoms. Trigger: warm soaking rain + nights above 50°F." ] });
-    /* Chanterelle */
-    secs.push({ emoji:"🟡", name:"Chanterelle", season:"June – Aug",
-      rows:["Golden egg-yolk yellow. Oak-hickory forest after rain. <strong>False gills</strong> (forking ridges, not true gills) — key ID point vs. toxic jack-o-lantern.", "Best summer edible in MO. Apricot-like aroma. Fry in butter."] });
-    /* Chicken of the Woods */
-    secs.push({ emoji:"🟠", name:"Chicken of the Woods", season:"July – Oct",
-      rows:["Unmistakable bright orange-yellow shelves on oaks, locust, and other hardwoods. No gills.", "Cook thoroughly — a small percentage of people react to specimens on locust or conifers. Tastes like chicken when sauteed."] });
-    /* Hen of the Woods */
-    secs.push({ emoji:"🟤", name:"Hen of the Woods (Maitake)", season:"Sept – Nov",
-      rows:["Overlapping gray-brown fronds at the base of OLD oaks (look for big gnarly oaks). Can be 20+ lbs!", "Mark your oak trees now — they fruit in the same spot year after year. Excellent sauteed or in soup."] });
-    /* Lion's Mane */
-    secs.push({ emoji:"️🦱", name:"Lion’s Mane", season:"Aug – Oct",
-      rows:["White shaggy waterfall on dying oaks and beeches. Completely unique look — no lookalikes.", "Crab-like flavor. Slice thick and sear in a hot dry pan until golden. Also used for brain health supplements."] });
-    /* Oyster */
-    secs.push({ emoji:"🧆", name:"Oyster Mushroom", season:"Spring &amp; Fall",
-      rows:["White to tan shelf clusters on dead elm, cottonwood, and willow. Gills run down the stem.", "Best after cool rainy periods. Mild flavor. Two flushes: April–May and September–November."] });
-    /* Giant Puffball */
-    secs.push({ emoji:"⚪", name:"Giant Puffball", season:"July – Oct",
-      rows:["Smooth white sphere, can be soccer-ball-sized, in fields and forest edges.", "<strong>Always slice in half</strong> — must be pure white inside (no gills, no figure). If white = edible. Any other color = discard (could be Amanita egg). Bread and fry like a steak."] });
-    /* Shaggy Mane */
-    secs.push({ emoji:"🗻", name:"Shaggy Mane", season:"Sept – Oct",
-      rows:["Tall shaggy white cap in disturbed soil, lawns, roadsides. Eat YOUNG before cap turns black and auto-digests.", "Do not mix alcohol within 24h — causes reaction. Eat same day picked."] });
-    var H2 = "";
-    secs.forEach(function(s) {
-      H2 += '<div class="od-mush' + (s.cls || "") + '">'
-        + '<div class="od-mush-head"><span>' + s.emoji + ' <strong>' + s.name + '</strong></span><span class="od-mush-season">' + s.season + '</span></div>'
-        + s.rows.map(function(r) { return '<div class="od-mush-row">' + r + '</div>'; }).join("")
-        + '</div>';
-    });
-    return H2;
-  }
-
-  /* ── WILDLIFE ── */
-  function wildlifeActivity(month, day) {
-    var items = [];
-    if (month === 1) {
-      items.push("🦅 <strong>Bald Eagles at Truman Lake</strong> (peak Jan–Feb) — up to 30+ visible near the dam and coves. Best viewed from Bucksaw Recreation Area.");
-      items.push("🦉 Great Horned Owls already on nests — eggs hatch in February. Listen for pairs hooting at dusk.");
-      items.push("🦊 Coyotes entering breeding season. Pair howling common at night.");
-      items.push("🦌 Bucks shedding antlers — younger bucks first. Shed hunting in timber can be productive.");
-    } else if (month === 2) {
-      items.push("🦅 Bald Eagles still concentrating at Truman Lake through February.");
-      items.push("🦉 Great Horned Owl eggs hatching — listen for begging young at night.");
-      items.push("🦋 Red-tailed Hawks beginning courtship flights over open fields.");
-      items.push("🦌 Older bucks shedding antlers now. Best shed hunting on south-facing slopes (deer lounge there in cold weather).");
-    } else if (month === 3) {
-      items.push("🦅 American Woodcock sky dance display at dusk in wet thickets (listen for buzzy ‘peent’). One of MO’s best spring wildlife experiences.");
-      items.push("🦃 Tom turkeys strutting and gobbling — can hear from 1/2 mile. Locate them now before season.");
-      items.push("🐦 Bluebirds checking nest boxes — have boxes cleaned and open by March 1.");
-      items.push("🐸 Spring peepers and chorus frogs calling from ponds and wetlands — first frogs of the year.");
-      items.push("🦔 Crayfish very active in creeks — good time to check crawdad traps or flip rocks.");
-    } else if (month === 4) {
-      items.push("🦆 Purple Martin scouts arriving — first birds choose the best houses. Have yours open and predator-guarded.");
-      items.push("🐺 Spring warbler migration peak (dozens of species passing through MO April–15 – May–1).");
-      items.push("🦃 Turkey hens beginning to sit on nests in early April.");
-      items.push("🦌 Does and ewes heavily pregnant — fawns born in 4–6 weeks.");
-      items.push("🐥 Goslings and ducklings appearing by late April — geese aggressive near nests.");
-      items.push("🐢 Box turtles emerging from hibernation, starting to cross roads — drive carefully.");
-    } else if (month === 5) {
-      items.push("🦌 <strong>FAWNS BEING BORN! (late May – June)</strong> — If you find a spotted fawn alone, leave it. Mom hides fawns deliberately and returns every few hours. It is NOT abandoned.");
-      items.push("🧹 Fireflies appear late May — first flickers in fields near woods after dark.");
-      items.push("🦃 Turkey poults hatching — hens are secretive and protective. Give them space.");
-      items.push("🐰 Baby rabbits (cottontails) being born — litters every 28 days through September. Nests are shallow depressions in grass.");
-      items.push("🐢 Snapping turtles begin nesting near water — watch for them crossing roads.");
-    } else if (month === 6) {
-      items.push("🧹 <strong>FIREFLY PEAK</strong> (mid-June) — Best viewing 9:30–10:30 pm in fields near woods. Synchronous flashing in some years.");
-      items.push("🦌 Fawns spotted everywhere — still small and wobbly, beginning to follow does.");
-      items.push("🐢 Box turtles crossing roads to lay eggs (June) — move them in the direction they were heading, never take them home.");
-      items.push("🦝 Coyote pups emerging from den and learning to hunt.");
-      items.push("🦋 Baby raccoons and opossums following mother in evening.");
-      items.push("🦌 Bucks growing velvet antlers — visible at dawn and dusk in fields.");
-    } else if (month === 7) {
-      items.push("🦌 Velvet antlers at peak growth — dawn and dusk field viewing excellent. Best month for wildlife photography of bucks.");
-      items.push("🦃 Turkey broods in open fields at dawn — hens herding poults.");
-      items.push("🧹 Fireflies winding down mid-July.");
-      items.push("🐿️ Young squirrels now fully independent — harvest squirrel season opens May 25.");
-      items.push("🌺 Hummingbird activity intensifying as young of year join adults at feeders.");
-    } else if (month === 8) {
-      items.push("🦌 Bucks’ velvet hardening and beginning to shed (late August) — bucks becoming secretive as rut prep starts.");
-      items.push("🐦 <strong>Purple Martins departing mid-to-late August</strong> — large pre-migration roosts forming. Close house after they leave.");
-      items.push("🌺 <strong>Hummingbird FEEDING FRENZY</strong> — birds fattening up for migration. Keep feeders fresh every 2 days.");
-      items.push("🦅 Broad-winged Hawk migration beginning late August — watch for kettles on warm afternoons.");
-    } else if (month === 9) {
-      items.push("🦌 <strong>Pre-rut begins</strong> — bucks making scrapes and rubs. Find clusters of rubs = primary travel corridor.");
-      items.push("🌰 First acorns dropping (white oak) — deer, turkey, and squirrels concentrate here. Best scouting month.");
-      items.push("🦅 Peak fall hawk migration (Broad-winged Hawk peak ~Sept 15). Look for kettles circling on thermal days.");
-      items.push("🐢 Box turtles, snakes, and frogs fattening up before hibernation.");
-      items.push("🦔 Crayfish very active in warm fall creek water — prime cast-netting time.");
-    } else if (month === 10) {
-      items.push("🌰 <strong>PEAK ACORN DROP</strong> (red oak now dropping) — deer, turkey, and squirrels all concentrated at mast trees. Find the acorns, find the animals.");
-      items.push("🦌 Pre-rut intensifying — bucks sparring, scrapes being refreshed daily. Rub lines leading to scrapes = stand locations.");
-      items.push("🦇 Peak fall songbird and bat migration. Spider webs heavy with dew in morning — garden spiders at peak size.");
-      items.push("🦌 Antlers fully hardened and polished — trophy quality at peak.");
-    } else if (month === 11) {
-      items.push("🦌 <strong>WHITETAIL RUT PEAK (Nov 15–25)</strong> — bucks chasing does all day, ignoring danger. Most car-deer collisions happen now — drive carefully.");
-      items.push("🦆 Waterfowl migration in full swing — ducks and geese moving through. Scout flooded fields and lake coves.");
-      items.push("🦅 Bald Eagles starting to arrive at Truman Lake for winter — look near the dam.");
-    } else if (month === 12) {
-      items.push("🦅 <strong>Bald Eagles at Truman Lake</strong> — peak Dec–Feb. Best viewing near Bucksaw Recreation Area and the dam area.");
-      items.push("🦌 Post-rut bucks exhausted and eating constantly to recover weight. Best mid-day sits on cold sunny days (deer move when it warms).");
-      items.push("🦌 Deer grouping in winter herds near shelter and food. Food plots and standing corn hold deer well now.");
-    }
-    return items;
-  }
-
-  /* ── BIRDS ── */
-  function birdMigration(month, day) {
-    var lines = [];
-    if (month === 2 && day >= 20) lines.push("🐦 Purple Martin scouts arriving any day (late Feb–early Mar). Open your house — scouts choose sites first, colony follows.");
-    if (month === 3 || (month === 4 && day <= 20)) lines.push("🐦 Purple Martins arriving (March–April). House open, predator guards on pole. Play martin calls at dawn to attract scouts.");
-    if (month >= 5 && month <= 7) lines.push("🐦 Purple Martins actively nesting. Weekly nest checks help catch problems early.");
-    if (month === 8) lines.push("🐦 Purple Martins gathering to depart (August). Close house after they leave to block sparrows and starlings over winter.");
-    if (month === 9 && day <= 15) lines.push("🐦 Purple Martins have departed. Close house now to block invasive birds.");
-    if (month === 4 && day >= 10) lines.push("🌺 Put hummingbird feeders out NOW — Ruby-throated Hummingbirds arriving mid-to-late April. 1:4 sugar:water, no red dye.");
-    if (month >= 5 && month <= 8) lines.push("🌺 Hummingbirds actively feeding. Refresh every 3–5 days (every 2 days in summer heat). Multiple feeders out of sight of each other reduces aggression.");
-    if (month === 9) lines.push("🌺 Keep feeders up through mid-October — northern migrants still passing through. They migrate by day length, NOT food availability.");
-    if (month === 10 && day <= 15) lines.push("🌺 Late hummingbirds possible through mid-October — keep one feeder out.");
-    if ((month === 3 && day >= 1) || month === 4) lines.push("🦅 American Woodcock displaying at dusk in wet thickets (March–April). Listen for the buzzy ‘peent’ call near wet fields at last light.");
-    if ((month === 9 && day >= 15) || month === 10 || (month === 11 && day <= 15)) lines.push("🦆 Peak fall waterfowl migration for west-central MO (Sept–Nov). Scout flooded fields and lake coves early morning.");
-    if (month >= 12 || month <= 2) lines.push("🦅 Bald Eagle viewing season — check Truman Lake near the dam. Also look at Lake of the Ozarks and Swan Lake NWR.");
-    return lines;
-  }
-
-  /* ── SEASONS ── */
-  function huntingSeasons(month, day) {
-    var active = [], upcoming = [];
-    if (month === 9 || month === 10 || (month === 11 && day <= 1)) active.push("🕊️ Dove Season (Sept 1 – Nov 1)");
-    else if (month === 8 && day >= 20) upcoming.push("🕊️ Dove opens Sept 1 — " + (32 - day) + " days away");
-    if (month === 10 || (month === 11 && day <= 14)) active.push("🦌 Archery Deer Season (Oct 1 – Nov 14)");
-    else if (month === 9 && day >= 15) upcoming.push("🦌 Archery deer opens Oct 1 — hang your stand now");
-    if (month === 12 || (month === 1 && day <= 15)) active.push("🦌 Late Archery/Muzzleloader (Dec 1 – Jan 15)");
-    if (month === 11 && day >= 15 && day <= 25) active.push("🦌🔫 FIREARMS DEER SEASON OPEN (Nov 15–25) — prime time!");
-    else if (month === 11 && day >= 1 && day < 15) upcoming.push("🦌🔫 Firearms deer opens Nov 15 — " + (15 - day) + " days away!");
-    else if (month === 10 && day >= 20) upcoming.push("🦌 Firearms deer season Nov 15 — scout your stand locations now");
-    if ((month === 4 && day >= 18) || (month === 5 && day <= 10)) active.push("🦃 Spring Turkey Season (late Apr – May 10)");
-    else if (month === 4 && day < 18) upcoming.push("🦃 Spring turkey opens ~April 18 — " + (18 - day) + " days. Scout strutting areas.");
-    else if (month === 3 && day >= 15) upcoming.push("🦃 Spring turkey ~3–4 weeks away. Practice your calls.");
-    if (month === 11 || month === 12 || (month === 1 && day <= 31)) active.push("🦆 Waterfowl Season open (check MDC for exact zone dates)");
-    else if (month === 10 && day >= 20) upcoming.push("🦆 Duck/goose opens Nov 1 — scout flooded fields now");
-    if ((month === 5 && day >= 25) || month >= 6 || month <= 2) active.push("🐿️ Squirrel Season (May 25 – Feb 15)");
-    if (month === 10 || month === 11 || month === 12 || month <= 2) active.push("🐰 Rabbit Season (Oct 1 – Feb 15)");
-    if (month >= 6 && month <= 10) active.push("🎣 Fishing: no closed season for most MO species. Trout parks have special regs.");
-    return { active: active, upcoming: upcoming };
-  }
-
-  /* ── PLANTING ── */
-  function plantingGuide(month, day) {
-    var tips = [];
-    if (month <= 2 || (month === 3 && day <= 10)) {
-      tips.push("🌱 Start onion and leek seeds indoors (Jan–Feb). Order bare-root trees, strawberry plants, asparagus crowns before they sell out.");
-      tips.push("🌳 Dormant-prune fruit trees, grapes, and roses through early March before bud break.");
-      tips.push("🦌 Deer food plot planning: order clover, chicory, brassica seed now for spring planting.");
-    }
-    if (month === 3) {
-      tips.push("🌱 Start tomatoes and peppers indoors (6–8 weeks before last frost ~May 1–10 in central MO).");
-      tips.push("🌳 Best time for bare-root trees: oaks, pecans, persimmons, pawpaws, serviceberry, elderberry. Plant before they leaf out.");
-      tips.push("🌾 Cool-season crops outdoors: peas, spinach, lettuce, onion sets, radishes (handle light frost).");
-      tips.push("🦌 Spring food plots: frost-seed clover into existing grass in late March (freeze/thaw works it in).");
-    }
-    if (month === 4 && day <= 20) {
-      tips.push("🌱 Harden off tomato/pepper transplants outdoors daily. Plant potatoes now.");
-      tips.push("🌳 Plant native shrubs: serviceberry, elderberry, wild plum, hawthorn — great for wildlife and table. Native plants go in fast this time of year.");
-    }
-    if (month === 4 && day > 20) tips.push("🌱 After April 20: warm-season transplants safe in sheltered spots. Watch the 10-day forecast for late frost.");
-    if (month === 5) {
-      tips.push("🌱 After May 10–15: transplant tomatoes, peppers, squash, cucumbers, melons outdoors in central MO.");
-      tips.push("🦌 Clover and chicory food plots: plant after May 15. Needs moisture to establish — watch the rain forecast.");
-      tips.push("🌼 Native wildflowers: butterfly milkweed, purple coneflower, black-eyed Susan. Attract pollinators and hummingbirds. Direct sow or transplant now.");
-    }
-    if (month === 6) {
-      tips.push("🌱 Full garden underway. Direct-sow beans, squash, melons, okra, sweet potatoes.");
-      tips.push("🦌 Summer annual food plots: cowpeas, sunflowers, sorghum-sudan grass for late summer and fall wildlife.");
-      tips.push("🌳 Avoid transplanting trees in summer heat. Water established plantings deeply once a week.");
-    }
-    if (month === 7 || month === 8) {
-      tips.push("🌱 Start fall garden indoors: broccoli, cabbage, kale (start late July, transplant mid-August).");
-      if (month === 8) tips.push("🦌 <strong>Plant fall food plots NOW</strong>: turnips, radishes, rape, kale by Aug 1–15. This timing is critical for full establishment before deer season.");
-      tips.push("🌳 Late summer tree planting OK with heavy watering. Fall planting 6 weeks away — plan your mast tree additions.");
-    }
-    if (month === 9) {
-      tips.push("🌱 Plant spinach, kale, arugula now for fall harvest. Garlic goes in mid-October.");
-      tips.push("🌳 <strong>Best tree-planting season</strong> — warm soil, cooling air, fall rains. Plant oaks, pecans, persimmons, pawpaws, dogwood, redbud. They’ll establish all fall and winter.");
-      tips.push("🦌 Perennial food plots: clover, chicory, cereal rye. Mid-September target for central MO.");
-    }
-    if (month === 10) {
-      tips.push("🌳 Fall tree planting prime time. Oaks, hickories, persimmons, chestnuts for long-term mast production.");
-      tips.push("🌱 Plant garlic cloves 4–6 inches deep, cover with 3–4 inches mulch. Harvest next July.");
-      tips.push("🦌 Last chance for cereal rye and winter wheat food plots — should be in the ground by mid-October in central MO.");
-    }
-    if (month === 11 || month === 12) {
-      tips.push("🌳 Dormant-season tree planting OK on mild days above 32°F. Bare-root orders arrive Dec–Feb — order now for best variety selection.");
-      tips.push("🌱 Plan next year’s garden and food plots. Popular seed varieties sell out by February.");
-    }
-    return tips;
-  }
-
-  /* ── BUILD PANEL HTML ── */
-  var wildlife  = wildlifeActivity(mo, dy);
-  var mushHtml  = mushroomGuide(mo, dy);
-  var birds     = birdMigration(mo, dy);
-  var seasons   = huntingSeasons(mo, dy);
-  var plants    = plantingGuide(mo, dy);
-
-  var H = '<div class="od-panel">';
-
-  /* Shad / Cast Net */
-  H += '<div class="od-section">'
-    + '<div class="od-section-title">🩣 Cast Net — Shad Report</div>'
-    + '<div id="od-shad-wind" class="od-row"><span class="od-label">📍 Best Bank</span>'
-    + shadWindHtml(null, 0) + '</div>'
-    + '<div class="od-row"><span class="od-label">📅 Spawn Status</span>'
-    + shadSpawnHtml(mo, dy) + '</div>'
-    + '</div>';
-
-  /* Fishing Conditions */
-  H += '<div class="od-section">'
-    + '<div class="od-section-title">🎣 Truman Lake Fishing Conditions</div>'
-    + '<div id="od-fish-body"><div class="od-row" style="color:var(--text-soft);font-style:italic;">⏳ Fetching lake data…</div></div>'
-    + '</div>';
-
-  /* Wildlife */
-  if (wildlife.length) {
-    H += '<div class="od-section">'
-      + '<div class="od-section-title">🐾 Wildlife Activity &amp; Nature Now</div>'
-      + wildlife.map(function(w) { return '<div class="od-row">' + w + '</div>'; }).join("")
-      + '</div>';
-  }
-
-  /* Mushrooms */
-  H += '<div class="od-section">'
-    + '<div class="od-section-title">🍄 Missouri Edible Mushrooms — Field Guide</div>'
-    + '<div class="od-mush-grid">' + mushHtml + '</div>'
-    + '<div class="od-tip">Always use multiple field guides. When in doubt, throw it out. Slice all puffballs to verify pure-white inside. <a href="https://momushroomhunters.com/" target="_blank" rel="noopener">MO Mushroom Hunters Club →</a></div>'
-    + '</div>';
-
-  /* Birds */
-  if (birds.length) {
-    H += '<div class="od-section">'
-      + '<div class="od-section-title">🐦 Bird Migration &amp; Feeders</div>'
-      + birds.map(function(b) { return '<div class="od-row">' + b + '</div>'; }).join("")
-      + '</div>';
-  }
-
-  /* Seasons */
-  if (seasons.active.length || seasons.upcoming.length) {
-    H += '<div class="od-section">'
-      + '<div class="od-section-title">🦌 Hunting &amp; Fishing Seasons</div>'
-      + seasons.active.map(function(s) { return '<div class="od-row od-season">✅ ' + s + '</div>'; }).join("")
-      + seasons.upcoming.map(function(s) { return '<div class="od-row">⏳ ' + s + '</div>'; }).join("")
-      + '<div class="od-tip"><a href="https://huntfish.mdc.mo.gov/hunting-trapping/regulations" target="_blank" rel="noopener">📋 MDC Official Regulations →</a></div>'
-      + '</div>';
-  }
-
-  /* Planting */
-  if (plants.length) {
-    H += '<div class="od-section">'
-      + '<div class="od-section-title">🌱 ' + mname + ' Planting Guide</div>'
-      + plants.map(function(p) { return '<div class="od-row">' + p + '</div>'; }).join("")
-      + '<div class="od-tip"><a href="https://extension.missouri.edu/programs/agebb" target="_blank" rel="noopener">📚 MU Extension →</a></div>'
-      + '</div>';
-  }
-
-  /* Quick Links */
-  H += '<div class="od-links">'
-    + '<a href="https://huntfish.mdc.mo.gov/" target="_blank" rel="noopener" class="od-link">🏠 MDC HuntFish</a>'
-    + '<a href="https://mdc.mo.gov/fishing/fishing-reports" target="_blank" rel="noopener" class="od-link">🎣 MDC Fishing Reports</a>'
-    + '<a href="https://waterdata.usgs.gov/monitoring-location/06922440/" target="_blank" rel="noopener" class="od-link">🌊 Truman Lake Level</a>'
-    + '<a href="https://www.purplemartin.org/scout-arrival-study/" target="_blank" rel="noopener" class="od-link">🐦 Martin Scout Map</a>'
-    + '<a href="https://www.hummingbirdcentral.com/hummingbird-migration-spring-missouri.htm" target="_blank" rel="noopener" class="od-link">🌺 Hummingbird Map</a>'
-    + '<a href="https://huntfish.mdc.mo.gov/hunting-trapping/regulations" target="_blank" rel="noopener" class="od-link">📋 MDC Regs</a>'
-    + '<a href="https://extension.missouri.edu/publications" target="_blank" rel="noopener" class="od-link">📚 MU Extension</a>'
-    + '<a href="https://momushroomhunters.com/" target="_blank" rel="noopener" class="od-link">🍄 MO Mushroom Hunters</a>'
-    + '</div>';
-
-  H += '<div class="od-news-header">📰 Latest Missouri Outdoors News</div>';
-  H += '</div>';
-  odc.innerHTML = H;
-
-  /* ── Fetch live lake + weather data ── */
-  var wxUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + WEATHER_LOCATION.lat
-    + "&longitude=" + WEATHER_LOCATION.lon
-    + "&current=temperature_2m,wind_speed_10m,wind_direction_10m"
-    + "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto";
-
-  Promise.all([
-    fetchTrumanLake(),
-    fetch(wxUrl).then(function(r) { return r.json(); }).catch(function() { return null; })
-  ]).then(function(res) {
-    var lake = res[0];
-    var wx   = res[1];
-    var airTempF = wx && wx.current ? Math.round(wx.current.temperature_2m) : null;
-    var windMph  = wx && wx.current ? Math.round(wx.current.wind_speed_10m)  : 0;
-    var windDeg  = wx && wx.current ? Math.round(wx.current.wind_direction_10m) : null;
-
-    /* Update shad wind bank */
-    var shadEl = document.getElementById("od-shad-wind");
-    if (shadEl) shadEl.innerHTML = '<span class="od-label">📍 Best Bank</span>' + shadWindHtml(windDeg, windMph);
-
-    /* Update fishing conditions */
-    var fishEl = document.getElementById("od-fish-body");
-    if (!fishEl) return;
-    if (!lake || !isFinite(lake.stage)) {
-      fishEl.innerHTML = '<div class="od-row" style="color:var(--text-soft);font-style:italic;">Lake data unavailable. <a href="https://waterdata.usgs.gov/monitoring-location/06922440/" target="_blank" rel="noopener">Check USGS →</a></div>';
-      return;
-    }
-    var diff = lake.stage - TRUMAN_NORMAL_POOL_FT;
-    var ch = lake.change24h;
-    var rising  = ch !== null && ch > 0.05;
-    var falling = ch !== null && ch < -0.05;
-    var fastMov = ch !== null && Math.abs(ch) > 0.5;
-    var stageStr = lake.stage.toFixed(1) + " ft";
-    var diffStr  = (diff >= 0 ? "+" : "") + diff.toFixed(1) + " ft";
-    var trendStr = rising ? " ↑" : falling ? " ↓" : " →";
-
-    /* Shad wind (already done above) */
-    var shadNote = shadWindHtml(windDeg, windMph);
-
-    /* Blue cat */
-    var blueCat = diff > 5 && rising  ? (fastMov ? "Fast-rising flood pool — blues scattered in flooded timber and creek arms 2–8 ft. Fresh-cut bait near flooded brush edges." : "High rising pool — blues pushed into flooded timber and creek arms. Chunk shad near wood edges.")
-                : diff > 5 && falling ? "High falling lake — blues moving back to main channel ledges and creek mouths. Target 15–25 ft drops with cut shad."
-                : diff > 5            ? "High stable pool — blues spread through timber and channel bends. Drift cut shad along 10–20 ft structure."
-                : diff > 1 && rising  ? "Rising water activating blues. Hit creek channel bends and flooded timber edges with skipjack or cut shad."
-                : diff > 1 && falling ? "Slight drop — blues staging on main lake ledges and deeper humps. Try 20–30 ft channel bend drops."
-                : diff < -2 && falling? "Low falling lake — blues stacking in deepest holes. Tailwater below the dam can be excellent. Night bite peaks."
-                :                       "Stable pool — target main lake ledges, submerged timber, and creek channel bends in 15–30 ft.";
-    if (windMph >= 15) blueCat += " Wind-swept main lake points are bonus ambush spots.";
-
-    /* Crappie */
-    var crappie = diff > 3 && rising            ? "Rising water pushing crappie into flooded brush 2–8 ft. Work jigs slow through the timber — they’ll be tight to wood."
-                : airTempF !== null && airTempF >= 75 ? "Warm temps — spawn or post-spawn. Fish shallow brush, dock pilings, stumps 2–6 ft. Jigs and minnows both produce."
-                : airTempF !== null && airTempF >= 62 ? "Pre-spawn crappie moving shallow. Hit brush piles 5–12 ft and dock pockets — morning bite is prime."
-                : airTempF !== null && airTempF >= 50 ? "Transitioning shallower. Fish brush and timber edges in 10–18 ft with slow jig presentations."
-                :                                       "Crappie holding deep. Slow-fish brush piles and submerged timber in 15–25 ft.";
-
-    var tempStr = airTempF !== null ? airTempF + "°F air" : "";
-    fishEl.innerHTML = '<div class="od-row" style="font-size:12px;color:var(--text-soft);margin-bottom:8px;">Truman Lake: <strong>' + stageStr + '</strong> (' + diffStr + trendStr + ') &nbsp;···&nbsp; ' + tempStr + '</div>'
-      + '<div class="od-row"><span class="od-label">🐶 Blue Catfish</span>' + blueCat + '</div>'
-      + '<div class="od-row"><span class="od-label">🐟 Crappie</span>' + crappie + '</div>'
-      + '<div class="od-row"><span class="od-label">🩣 Shad/Wind</span>' + shadNote + '</div>';
-  });
-
-  /* ── Load news feeds into #list ── */
-  statusEl.style.display = "block";
-  statusEl.innerHTML = '<span class="spinner"></span>Loading Missouri outdoors news…';
-  var cat = CATEGORIES.find(function(c) { return c.id === "outdoors"; });
-  var done2 = 0, total2 = cat.feeds.length;
-  Promise.all(cat.feeds.map(function(f) {
-    return fetchFeed(f).then(function(items) {
-      done2++;
-      statusEl.innerHTML = '<span class="spinner"></span>Loading outdoors news… (' + done2 + '/' + total2 + ')';
-      return { source: f.source, items: items };
-    });
-  })).then(function(res) {
-    var all2 = res.reduce(function(acc, r) { return acc.concat(r.items); }, []).sort(function(a, b) { return b.pubDate - a.pubDate; });
-    var seen2 = new Set();
-    var deduped2 = all2.filter(function(item) {
-      var key = item.title.toLowerCase().slice(0, 60);
-      if (seen2.has(key)) return false;
-      seen2.add(key);
-      return true;
-    });
-    statusEl.style.display = "none";
-    if (deduped2.length > 0) renderNews(deduped2);
-    else statusEl.innerHTML = "No outdoors news found right now. Try again in a minute.";
-  });
-}
-window.loadOutdoors = loadOutdoors;
-
-// ========== INIT ==========
-document.getElementById("refreshBtn").addEventListener("click", () => {
-  localStorage.removeItem("news.nws.alerts");
-  fetchNWSAlerts();
-  loadWeather(true);
-  loadCategory(true);
-});
-
-// Pull-to-refresh
-let startY = 0, pulling = false;
-document.addEventListener("touchstart", e => { if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; } }, { passive: true });
-document.addEventListener("touchend", e => {
-  if (!pulling) return;
-  const dy = e.changedTouches[0].clientY - startY;
-  if (dy > 80) { fetchNWSAlerts(); loadWeather(true); loadCategory(true); }
-  pulling = false;
-});
-
-// Keyboard: Escape closes drawer
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
-
-renderDrawer();
-updateSectionLabel();
-fetchNWSAlerts();
-loadWeather();
-loadCategory();
-</script>
-</body>
-</html>
+      const a = el.querySelector("link[rel='alternate']")||el.querySelector("link");
+      link = a?(a.getAttribute("href")||a.textConten

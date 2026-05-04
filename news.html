@@ -1236,52 +1236,42 @@ async function loadCategory(force) {
   if (cat.isStocks) return loadStocks(force);
 
   if (cat.isSaved) {
-    const saved = getSaved();
     statusEl.style.display = "none";
+    const saved = getSaved();
     if (!saved.length) {
       listEl.innerHTML = '<div class="status">No saved stories yet. Hover any article and tap 🏷️ to save it.</div>';
-      return;
+    } else {
+      currentItems = saved;
+      renderNews(saved);
     }
-    currentItems = saved;
-    renderNews(saved);
     return;
   }
 
-  // Show skeleton while loading
   showSkeleton(7);
   statusEl.style.display = "none";
   newPillEl.style.display = "none";
 
   if (force) cat.feeds.forEach(f => localStorage.removeItem("news.cache." + f.url));
 
-  // Track last-visit timestamp for new-since-visit counter
   const lastVisit = parseInt(localStorage.getItem("news.lastVisit."+cat.id) || "0");
   localStorage.setItem("news.lastVisit."+cat.id, String(Date.now()));
-
-  // Load all feeds in parallel, render progressively as each arrives
-  const seen = new Set();
-  let allItems = [];
-  let rendered = false;
-
   const cutoffMs = cat.maxAgeHours ? Date.now() - cat.maxAgeHours * 3600000 : 0;
 
-  const feedPromises = cat.feeds.map(f =>
-    fetchFeed(f).then(items => {
-      // Merge new items into running list and re-render
-      allItems = mergeAndSort([...allItems, ...items], seen, cutoffMs);
-      if (allItems.length > 0) {
-        markTrending(allItems);
-        allItems.forEach(i => { i.isNew = lastVisit > 0 && i.pubDate > lastVisit; });
-        currentItems = allItems;
-        renderNews(allItems);
-        rendered = true;
-      }
-    }).catch(() => {}) // individual feed failures are silent
-  );
+  // Fetch all feeds in parallel, catch individual failures so one bad feed doesn't break everything
+  const results = await Promise.all(cat.feeds.map(f => fetchFeed(f).catch(() => [])));
+  const all = results.flat();
 
-  await Promise.all(feedPromises);
+  // Deduplicate, apply recency window, sort by heat score
+  const seen = new Set();
+  const deduped = all.filter(item => {
+    if (cutoffMs && item.pubDate < cutoffMs) return false;
+    const key = item.title.toLowerCase().slice(0, 60);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => heatScore(b) - heatScore(a));
 
-  if (!rendered || allItems.length === 0) {
+  if (deduped.length === 0) {
     listEl.innerHTML = "";
     statusEl.style.display = "block";
     statusEl.innerHTML = "Couldn't load any stories. The RSS proxies may be slow or down.<br>" +
@@ -1290,24 +1280,16 @@ async function loadCategory(force) {
     return;
   }
 
-  // Show new-since-visit pill
-  const newCount = allItems.filter(i => i.isNew).length;
+  markTrending(deduped);
+  deduped.forEach(i => { i.isNew = lastVisit > 0 && i.pubDate > lastVisit; });
+  currentItems = deduped;
+  renderNews(deduped);
+
+  const newCount = deduped.filter(i => i.isNew).length;
   if (newCount > 0 && lastVisit > 0) {
     newPillEl.textContent = newCount + " new";
     newPillEl.style.display = "";
   }
-}
-
-function mergeAndSort(items, seen, cutoffMs) {
-  // Deduplicate by title prefix, apply recency window, sort by heat score
-  const deduped = items.filter(item => {
-    if (cutoffMs && item.pubDate < cutoffMs) return false;
-    const key = item.title.toLowerCase().slice(0, 60);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-  return deduped.sort((a, b) => heatScore(b) - heatScore(a));
 }
 
 window.loadCategory = loadCategory;

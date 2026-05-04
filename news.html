@@ -193,6 +193,35 @@
     .skel-img { width:84px; height:84px; }
     .font-btn { display:none; }
   }
+
+  /* ── OUTDOOR / FISHING ADVISOR ── */
+  .fish-advisor { background:color-mix(in srgb,var(--accent) 5%,var(--bg)); border:1px solid var(--border); border-radius:12px; padding:20px; margin:8px 0 20px; }
+  .fish-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .fish-title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:18px; font-weight:700; }
+  .fish-date { font-size:12px; color:var(--text-muted); }
+  .fish-bite-meter { display:flex; align-items:center; gap:16px; padding:14px; background:var(--card-hover); border-radius:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .fish-bite-score { font-size:38px; line-height:1; flex-shrink:0; }
+  .fish-bite-info { flex:1; min-width:80px; }
+  .fish-bite-label { font-weight:700; font-size:16px; }
+  .fish-bite-sub { font-size:13px; color:var(--accent); margin-top:2px; letter-spacing:0.02em; }
+  .fish-conditions { display:flex; gap:16px; flex-wrap:wrap; }
+  .fish-lake-stat { text-align:center; min-width:48px; }
+  .fish-stat-val { font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; }
+  .fish-stat-lbl { font-size:11px; color:var(--text-muted); }
+  .fish-stat-trend { font-size:11px; font-weight:700; margin-top:2px; }
+  .fish-stat-trend.rising { color:#15803d; } [data-theme="dark"] .fish-stat-trend.rising { color:#4ade80; }
+  .fish-stat-trend.falling { color:#b91c1c; } [data-theme="dark"] .fish-stat-trend.falling { color:#f87171; }
+  .fish-stat-trend.stable { color:var(--text-muted); }
+  .fish-section { margin:12px 0; }
+  .fish-section-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:6px; }
+  .fish-chip { display:inline-block; padding:4px 10px; border-radius:999px; background:color-mix(in srgb,var(--accent) 13%,transparent); color:var(--accent); font-size:12px; font-weight:600; margin:2px 3px 2px 0; }
+  .fish-chip-bait { background:color-mix(in srgb,#2563eb 10%,transparent); color:#2563eb; }
+  [data-theme="dark"] .fish-chip-bait { color:#60a5fa; background:color-mix(in srgb,#60a5fa 13%,transparent); }
+  .fish-chip-spot { background:color-mix(in srgb,#059669 10%,transparent); color:#059669; font-size:11px; }
+  [data-theme="dark"] .fish-chip-spot { color:#34d399; background:color-mix(in srgb,#34d399 13%,transparent); }
+  .fish-tip { font-size:14px; color:var(--text); line-height:1.5; padding:9px 12px; background:var(--card-hover); border-radius:6px; margin:5px 0; }
+  .outdoor-news-header { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:18px; font-weight:700; padding:16px 0 8px; border-bottom:2px solid var(--border); margin-bottom:4px; }
+  .fish-loading { padding:24px 0; text-align:center; color:var(--text-muted); font-size:14px; }
 </style>
 </head>
 <body>
@@ -266,11 +295,11 @@ const WEATHER_LOCATION = { name:"Clinton, MO", lat:38.3686, lon:-93.7780, tz:"Am
 const CATEGORY_ICONS = {
   saved:"🔖", stocks:"📈", top:"🌍", local:"📍", ukraine:"🇺🇦", iran:"🕌",
   scs:"⚓", tech:"💻", business:"💼", science:"🔬", sports:"🏆",
-  culture:"🎭", philippines:"🇵🇭", cannabis:"🌿"
+  culture:"🎭", philippines:"🇵🇭", cannabis:"🌿", outdoor:"🎣"
 };
 
 // Quick-access tab bar — these show as pills at the top
-const QUICK_TAB_IDS = ["top","local","ukraine","tech","stocks","sports","cannabis","saved"];
+const QUICK_TAB_IDS = ["top","local","outdoor","tech","stocks","sports","cannabis","saved"];
 
 const CATEGORIES = [
   { id:"saved", label:"Saved", isSaved:true, feeds:[] },
@@ -415,6 +444,18 @@ const CATEGORIES = [
     { source:"THC/CBD Research", url:"https://news.google.com/rss/search?q=THC+OR+CBD+OR+cannabinoid+research+study+2025+2026&hl=en-US&gl=US&ceid=US:en" },
     { source:"Cannabis Competitions", url:"https://news.google.com/rss/search?q=%22Cannabis+Cup%22+OR+%22Emerald+Cup%22+OR+cannabis+award&hl=en-US&gl=US&ceid=US:en" },
     { source:"Missouri Cannabis", url:"https://news.google.com/rss/search?q=Missouri+cannabis+marijuana&hl=en-US&gl=US&ceid=US:en" }
+  ]},
+  { id:"outdoor", label:"MO Outdoor", isOutdoor:true, maxAgeHours:168, feeds:[
+    { source:"Truman Lake Fishing", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+fishing+OR+crappie+OR+bass+OR+catfish&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Missouri Fishing", url:"https://news.google.com/rss/search?q=Missouri+fishing+crappie+bass+catfish+walleye&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MO Conservation", url:"https://news.google.com/rss/search?q=site:mdc.mo.gov+fishing+OR+hunting&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MO Hunting", url:"https://news.google.com/rss/search?q=Missouri+hunting+deer+turkey+duck+dove+season&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Lake of the Ozarks Fishing", url:"https://news.google.com/rss/search?q=%22Lake+of+the+Ozarks%22+fishing+OR+boating&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Midwest Fishing Report", url:"https://news.google.com/rss/search?q=midwest+fishing+report+bass+crappie+catfish+walleye&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Outdoor Life", url:"https://www.outdoorlife.com/rss/" },
+    { source:"Field & Stream", url:"https://www.fieldandstream.com/rss/" },
+    { source:"In-Fisherman", url:"https://www.in-fisherman.com/rss/" },
+    { source:"MO State Parks", url:"https://news.google.com/rss/search?q=Missouri+state+park+OR+%22Corps+of+Engineers%22+campground+lake&hl=en-US&gl=US&ceid=US:en" }
   ]}
 ];
 
@@ -805,26 +846,93 @@ const WEATHER_CODE_MAP = {
   85:["Snow Showers","🌨️"],86:["Heavy Snow Showers","❄️"],
   95:["Thunderstorm","⛈️"],96:["Thunderstorm + Hail","⛈️"],99:["Severe Thunderstorm","⛈️"]
 };
+// Normal pool elevation for Truman Lake = 706.0 ft NGVD
+const TRUMAN_NORMAL_POOL = 706.0;
+const TRUMAN_READINGS_KEY = "news.truman.history";
+
 async function fetchTrumanLake() {
-  const endpoints = [
-    "https://api.water.noaa.gov/nwps/v1/gauges/TUMM7/stageflow/observed",
-    "https://api.water.noaa.gov/nwps/v1/gauges/WRSM7/stageflow/observed"
-  ];
-  for (const ep of endpoints) {
-    try {
-      const res = await fetchWithTimeout(ep, 5000);
-      if (!res.ok) continue;
+  let stage = null, time = null, source = null;
+
+  // 1) USGS site 06922540 — Truman Lake pool elevation (most reliable)
+  try {
+    const res = await fetchWithTimeout(
+      "https://waterservices.usgs.gov/nwis/iv/?sites=06922540&parameterCd=00062&format=json&siteStatus=all", 7000
+    );
+    if (res.ok) {
       const data = await res.json();
-      const rows = (data&&data.data)||[];
-      if (!rows.length) continue;
-      const last = [...rows].reverse().find(r => r.primary!==null&&r.primary!==undefined);
-      if (!last) continue;
-      const stage = parseFloat(last.primary);
-      if (!isFinite(stage)) continue;
-      return { stage, time:last.validTime, gauge:ep.includes("WRSM7")?"Warsaw":"Truman" };
-    } catch(e) { console.warn("Lake endpoint:", ep, e); }
+      const ts = data?.value?.timeSeries?.[0];
+      const vals = ts?.values?.[0]?.value || [];
+      const last = [...vals].reverse().find(v => v.value && v.value !== "-999999");
+      if (last) {
+        const val = parseFloat(last.value);
+        if (isFinite(val) && val > 500) { stage = val; time = last.dateTime; source = "USGS pool elev"; }
+      }
+    }
+  } catch(e) { console.warn("USGS Truman:", e); }
+
+  // 2) USGS outflow gauge fallback
+  if (stage === null) {
+    try {
+      const res = await fetchWithTimeout(
+        "https://waterservices.usgs.gov/nwis/iv/?sites=06922550&parameterCd=00065&format=json&siteStatus=all", 6000
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const ts = data?.value?.timeSeries?.[0];
+        const vals = ts?.values?.[0]?.value || [];
+        const last = [...vals].reverse().find(v => v.value && v.value !== "-999999");
+        if (last) {
+          const val = parseFloat(last.value);
+          if (isFinite(val) && val >= 0) { stage = val; time = last.dateTime; source = "USGS stage"; }
+        }
+      }
+    } catch(e) { console.warn("USGS stage:", e); }
   }
-  return null;
+
+  // 3) NOAA NWS fallback
+  if (stage === null) {
+    for (const ep of [
+      "https://api.water.noaa.gov/nwps/v1/gauges/TUMM7/stageflow/observed",
+      "https://api.water.noaa.gov/nwps/v1/gauges/WRSM7/stageflow/observed"
+    ]) {
+      try {
+        const res = await fetchWithTimeout(ep, 5000);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const rows = (data?.data) || [];
+        const last = [...rows].reverse().find(r => r.primary != null);
+        if (!last) continue;
+        const val = parseFloat(last.primary);
+        if (!isFinite(val)) continue;
+        stage = val; time = last.validTime; source = ep.includes("WRSM7") ? "Warsaw" : "Truman";
+        break;
+      } catch(e) { console.warn("NOAA lake:", e); }
+    }
+  }
+
+  if (stage === null) return null;
+
+  // Track rise/fall: store rolling history in localStorage
+  let history = [];
+  try { history = JSON.parse(localStorage.getItem(TRUMAN_READINGS_KEY) || "[]"); } catch {}
+  history.push({ stage, ts: Date.now() });
+  history = history.filter(r => Date.now() - r.ts < 24 * 3600000).slice(-48);
+  try { localStorage.setItem(TRUMAN_READINGS_KEY, JSON.stringify(history)); } catch {}
+
+  // Compare to reading ~3 hours ago for trend
+  let trend = "stable", trendDiff = 0;
+  const threeHoursAgo = Date.now() - 3 * 3600000;
+  const oldReading = [...history].reverse().find(r => r.ts <= threeHoursAgo);
+  if (oldReading) {
+    trendDiff = stage - oldReading.stage;
+    if (trendDiff > 0.05) trend = "rising";
+    else if (trendDiff < -0.05) trend = "falling";
+  }
+
+  const isElevation = source === "USGS pool elev";
+  const aboveBelow = isElevation ? (stage - TRUMAN_NORMAL_POOL).toFixed(1) : null;
+
+  return { stage, time, source, trend, trendDiff: Math.abs(trendDiff).toFixed(2), isElevation, aboveBelow };
 }
 async function loadWeather(force) {
   const cacheKey="news.weather", lakeCacheKey="news.truman";
@@ -872,9 +980,10 @@ function renderWeather(data, lake) {
       (isFinite(pop)&&pop>0?' <span style="color:var(--text-soft)">💧'+pop+'%</span>':'')+' </span>';
   }
   const radarHref="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My43NzgsMzguMzY4Nl0sImxvY2F0aW9uIjpudWxsLCJ6b29tIjo4LCJmaWx0ZXJpbmciOnRydWUsImxheWVyIjoiYnJlZiIsInN0YXRpb24iOiJLRUFYIn19";
+  const trendArrow = lake?.trend==="rising"?"▲":lake?.trend==="falling"?"▼":"—";
   const lakeHtml = lake&&isFinite(lake.stage)
-    ? '<a class="w-lake" href="https://water.noaa.gov/gauges/tumm7" target="_blank" rel="noopener">🌊 Truman <strong>'+lake.stage.toFixed(1)+' ft</strong></a>'
-    : '<a class="w-lake" href="https://water.usace.army.mil/overview/nwk/locations/hast" target="_blank" rel="noopener">🌊 Truman Lake →</a>';
+    ? '<a class="w-lake" href="https://water.noaa.gov/gauges/tumm7" target="_blank" rel="noopener">🌊 Truman <strong>'+lake.stage.toFixed(1)+'ft</strong> '+trendArrow+'</a>'
+    : '<a class="w-lake" href="https://water.noaa.gov/gauges/tumm7" target="_blank" rel="noopener">🌊 Truman Lake →</a>';
   weatherEl.className="weather";
   weatherEl.innerHTML=
     '<div class="w-current">'+
@@ -978,6 +1087,209 @@ async function fetchFeed(feed) {
     });
   });
   return items;
+}
+
+// ========== OUTDOOR / FISHING ADVISOR ==========
+function getCachedWeather() {
+  try { const p=JSON.parse(localStorage.getItem("news.weather")||"null"); return (p&&p.data)?p.data:null; } catch { return null; }
+}
+
+function generateFishingAdvice(lake, weather) {
+  const now = new Date();
+  const month = now.getMonth(); // 0-11
+  const hour = now.getHours();
+  const c = weather?.current || {};
+  const airTempF = isFinite(c.temperature_2m) ? c.temperature_2m : 68;
+  const windMph  = isFinite(c.wind_speed_10m) ? c.wind_speed_10m : 5;
+  const weatherCode = c.weather_code ?? 0;
+
+  const season = (month<=1||month===11)?"winter":(month<=4)?"spring":(month<=7)?"summer":"fall";
+  const isRaining = weatherCode >= 51 && weatherCode < 95;
+  const isStormy  = weatherCode >= 95;
+  const isDawn    = hour>=5 && hour<8;
+  const isEvening = hour>=17 && hour<20;
+  const isMidDay  = hour>=11 && hour<16;
+  const isNight   = hour>=20 || hour<5;
+
+  let bite = 3; // 1–5
+  let tips = [], topSpecies = [], baits = [], hotspots = [];
+
+  // ── SEASON BASE ──
+  if (season==="spring") {
+    bite=4;
+    topSpecies=["White Crappie","Largemouth Bass","White Bass"];
+    tips.push("Spring is prime time on Truman. Crappie are spawning in the shallows near flooded timber (3–8 ft). White bass are running hard up the Grand and Osage River arms — look for surface action wherever shad are busting.");
+    baits=["1/16 oz chartreuse/white jig","live minnow under a slip float","small shad-colored crankbait (size 5)","white Road Runner spinnerbait"];
+    hotspots=["Grand River arm brushy coves","Tebo Creek inlet","South Grand spawning flats","Any protected cove with 4–8 ft standing timber"];
+  } else if (season==="summer") {
+    bite = airTempF>88 ? 2 : 3;
+    topSpecies=["Channel Catfish","Flathead Catfish","Largemouth Bass","Crappie"];
+    if (airTempF>86) {
+      tips.push("Summer heat is on — fish are pushed deep or resting. Your windows are 5–9 AM and 7 PM–midnight. Midday is mostly a waste unless you're targeting deep structure with a drop shot or Carolina rig (20–35 ft).");
+    } else {
+      tips.push("Early summer pattern: bass are chasing shad along submerged creek channel edges. Hit topwater at dawn, then go deep as the sun rises. Catfish are excellent right now — night fishing from shore near current breaks is hard to beat.");
+    }
+    baits=["Cut shad or skipjack (catfish)","Texas-rigged green pumpkin Senko","Whopper Plopper at dawn","Deep-diving shad crankbait (15–20 ft)"];
+    hotspots=["Main lake submerged creek channels (25–35 ft)","Dam tailwaters for big cats","Night-lit boat docks","Rocky points at dawn"];
+  } else if (season==="fall") {
+    bite=4;
+    topSpecies=["Largemouth Bass","White Crappie","White Bass","Walleye"];
+    tips.push("Fall is the second best season on Truman. Bass are aggressively chasing shad onto flats and points — match the hatch with shad-colored baits. Crappie stack on deeper timber (15–25 ft) as temps drop. Walleye start moving shallower at night.");
+    baits=["Shad-colored squarebill crankbait","White 3/8 oz spinnerbait","1/8 oz marabou jig (white/chartreuse)","Jerkbait worked slow near deep timber"];
+    hotspots=["Shad-covered windward points","Creek channel drop-offs (15–25 ft)","Rock humps near the main lake","Timber edges in 10–20 ft at night for walleye"];
+  } else {
+    bite=2;
+    topSpecies=["White Crappie","Channel Catfish"];
+    tips.push("Winter crappie on Truman can be excellent if you slow way down. They're stacked on deep main-lake structure (25–40 ft). Use the lightest jig that will still reach bottom and barely twitch it. Patience is everything — a bite might take 30 seconds of no movement.");
+    baits=["1/32 oz tube jig (pink/white)","Live minnow on a long-line rig","Blade bait worked very slowly","Drop shot with small finesse worm"];
+    hotspots=["Main lake points 25–40 ft","Deep river channel bends","Submerged roadbeds at depth","Deepest standing timber you can find"];
+  }
+
+  // ── LAKE LEVEL MODIFIER ──
+  if (lake?.trend==="rising") {
+    bite = Math.min(5, bite+1);
+    tips.push("Rising water is triggering a feeding response — bass and crappie are pushing into newly flooded timber edges and shoreline brush. Work the freshest flooded cover you can find, especially grass and brush in 2–5 ft.");
+  } else if (lake?.trend==="falling") {
+    tips.push("Falling water is pushing fish off the flats. Follow them to the nearest channel edge or deep timber. Concentrate on the last structural piece before the drop.");
+  }
+  if (lake?.isElevation && lake?.aboveBelow !== null) {
+    const diff = parseFloat(lake.aboveBelow);
+    if (diff > 2) tips.push("Pool is "+Math.abs(diff).toFixed(1)+" ft above normal — bank fishing access may be limited but flooded brush and timber are prime ambush spots.");
+    else if (diff < -2) tips.push("Pool is "+Math.abs(diff).toFixed(1)+" ft below normal — fish are concentrated in the remaining deep water. Main lake structure is your best bet.");
+  }
+
+  // ── WIND MODIFIER ──
+  if (windMph>20) {
+    bite = Math.max(1, bite-1);
+    tips.push("High winds ("+Math.round(windMph)+" mph) — seek the protected coves and river arm backwaters. Wind-blown rocky points can still be productive for bass; the wave action oxygenates the water and pushes baitfish.");
+  } else if (windMph>=7 && windMph<=18) {
+    bite = Math.min(5, bite+0.5);
+    tips.push("The "+Math.round(windMph)+" mph breeze is your friend — fish the banks the wind is blowing into. Wave action breaks up the surface and pushes baitfish against the bank, concentrating feeding fish.");
+  }
+
+  // ── RAIN / STORM ──
+  if (isStormy) {
+    bite=1;
+    tips=["⚠️ Storm conditions — stay off the water. Lightning and open water are a deadly combination. Wait it out."];
+    baits=[]; hotspots=[];
+  } else if (isRaining) {
+    bite = Math.min(5, bite+0.5);
+    tips.push("Light rain reduces surface glare and can trigger aggressive feeding, especially for bass and catfish. Runoff points where tributary creeks enter the lake are prime — fish congregate where fresh, oxygenated water flows in.");
+  }
+
+  // ── TIME OF DAY ──
+  if (isDawn || isEvening) {
+    bite = Math.min(5, bite+0.5);
+    tips.push((isDawn?"Dawn":"Evening")+" hour: topwater is the move right now. Work a Whopper Plopper, buzzbait, or popper along timber edges and points in 2–6 ft. This is your best window of the day.");
+  } else if (isMidDay && airTempF>78 && !isRaining) {
+    tips.push("Midday sun — go deep or go slow. Drop shot or Carolina rig at 20+ ft, or target shaded dock areas. The bite will slow significantly until evening.");
+  } else if (isNight && !isStormy) {
+    tips.push("Night fishing on Truman: catfish are your primary target — set up on a creek channel bend with cut shad on circle hooks. Largemouth bass also feed actively on surface lures and big swimbaits after dark near lighted docks.");
+  }
+
+  bite = Math.round(Math.max(1, Math.min(5, bite)));
+  return { bite, tips, topSpecies, baits, hotspots, season };
+}
+
+function renderFishingAdvisor(lake, weather, advice) {
+  if (!advice) return '<div class="fish-advisor"><div class="fish-loading">Could not generate fishing report.</div></div><div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
+  const BITE_EMOJI  = ["😴","🐢","🎣","🔥","💥"];
+  const BITE_LABEL  = ["Dead Slow","Slow — Be Patient","Moderate — Worth Going","Good — Get Out There","On Fire!"];
+  const c = weather?.current || {};
+  const temp = isFinite(c.temperature_2m) ? Math.round(c.temperature_2m)+"°F" : "—";
+  const wind = isFinite(c.wind_speed_10m) ? Math.round(c.wind_speed_10m)+" mph" : "—";
+  const trendArrow = lake?.trend==="rising"?"▲ Rising":lake?.trend==="falling"?"▼ Falling":"— Stable";
+  const trendCls   = lake?.trend || "stable";
+
+  const lakeStatHtml = lake && isFinite(lake.stage)
+    ? `<div class="fish-lake-stat">
+        <div class="fish-stat-val">${lake.stage.toFixed(1)} ft</div>
+        <div class="fish-stat-lbl">${lake.isElevation?"Pool Elev.":"Lake Stage"}</div>
+        <div class="fish-stat-trend ${trendCls}">${trendArrow}</div>
+       </div>`
+    : `<div class="fish-lake-stat"><div class="fish-stat-lbl" style="color:var(--text-soft)">Level unavailable</div></div>`;
+
+  const speciesHtml  = advice.topSpecies.map(s=>`<span class="fish-chip">${s}</span>`).join("");
+  const baitsHtml    = advice.baits.map(b=>`<span class="fish-chip fish-chip-bait">${escapeHtml(b)}</span>`).join("");
+  const hotspotsHtml = advice.hotspots.map(h=>`<span class="fish-chip fish-chip-spot">📍 ${escapeHtml(h)}</span>`).join("");
+  const tipsHtml     = advice.tips.map(t=>`<div class="fish-tip">💡 ${escapeHtml(t)}</div>`).join("");
+  const stars = "★".repeat(advice.bite)+"☆".repeat(5-advice.bite);
+  const dateStr = new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
+
+  return `<div class="fish-advisor">
+  <div class="fish-header">
+    <div class="fish-title">🎣 Truman Lake Fishing Report</div>
+    <div class="fish-date">${dateStr}</div>
+  </div>
+  <div class="fish-bite-meter">
+    <div class="fish-bite-score">${BITE_EMOJI[advice.bite-1]}</div>
+    <div class="fish-bite-info">
+      <div class="fish-bite-label">${BITE_LABEL[advice.bite-1]}</div>
+      <div class="fish-bite-sub">Bite Rating: ${stars}</div>
+    </div>
+    <div class="fish-conditions">
+      ${lakeStatHtml}
+      <div class="fish-lake-stat"><div class="fish-stat-val">${temp}</div><div class="fish-stat-lbl">Air Temp</div></div>
+      <div class="fish-lake-stat"><div class="fish-stat-val">${wind}</div><div class="fish-stat-lbl">Wind</div></div>
+    </div>
+  </div>
+  <div class="fish-section"><div class="fish-section-label">🎯 Target Species</div>${speciesHtml}</div>
+  ${tipsHtml}
+  <div class="fish-section"><div class="fish-section-label">🪝 Recommended Baits &amp; Rigs</div>${baitsHtml}</div>
+  <div class="fish-section"><div class="fish-section-label">📍 Hot Spots Right Now</div>${hotspotsHtml}</div>
+</div>
+<div class="outdoor-news-header">🗞️ MO Outdoor News</div>`;
+}
+
+async function loadOutdoor(force) {
+  listEl.innerHTML = "";
+  statusEl.style.display = "none";
+  newPillEl.style.display = "none";
+
+  // Show loading state immediately
+  const advisorDiv = document.createElement("div");
+  advisorDiv.innerHTML = '<div class="fish-advisor"><div class="fish-header"><div class="fish-title">🎣 Truman Lake Fishing Report</div></div><div class="fish-loading"><span class="spinner"></span> Loading live conditions…</div></div><div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
+  listEl.appendChild(advisorDiv);
+
+  // Skeleton for news
+  const newsDiv = document.createElement("div");
+  newsDiv.innerHTML = Array.from({length:5}, ()=>
+    '<div class="skel"><div class="skel-body"><div class="skel-line s1"></div><div class="skel-line s2"></div><div class="skel-line s3"></div><div class="skel-line s4"></div></div><div class="skel-img"></div></div>'
+  ).join("");
+  listEl.appendChild(newsDiv);
+
+  const cat = CATEGORIES.find(c => c.id==="outdoor");
+  if (force) cat.feeds.forEach(f => localStorage.removeItem("news.cache."+f.url));
+
+  // Fetch lake data and news in parallel
+  const [lakeData, newsResults] = await Promise.all([
+    fetchTrumanLake(),
+    Promise.all(cat.feeds.map(f => fetchFeed(f).catch(()=>[])))
+  ]);
+
+  const weatherData = getCachedWeather();
+  const advice = generateFishingAdvice(lakeData, weatherData);
+  advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice);
+
+  // Render news
+  const all = newsResults.flat();
+  const seen = new Set();
+  const deduped = all.filter(item => {
+    const key = item.title.toLowerCase().slice(0,60);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a,b) => heatScore(b)-heatScore(a));
+
+  newsDiv.innerHTML = "";
+  if (deduped.length) {
+    currentItems = deduped;
+    const frag = document.createDocumentFragment();
+    deduped.forEach((item,i) => frag.appendChild(buildArticle(item, false)));
+    newsDiv.appendChild(frag);
+  } else {
+    newsDiv.innerHTML = '<div class="status">No outdoor news loaded. Tap ↺ to retry.</div>';
+  }
 }
 
 // ========== STOCKS ==========
@@ -1233,7 +1545,8 @@ function showSkeleton(n) {
 async function loadCategory(force) {
   const cat = CATEGORIES.find(c => c.id === activeCat);
 
-  if (cat.isStocks) return loadStocks(force);
+  if (cat.isStocks)  return loadStocks(force);
+  if (cat.isOutdoor) return loadOutdoor(force);
 
   if (cat.isSaved) {
     statusEl.style.display = "none";

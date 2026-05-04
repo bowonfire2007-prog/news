@@ -913,9 +913,13 @@ const TRUMAN_NORMAL_POOL = 706.0;
 const TRUMAN_READINGS_KEY = "news.truman.history";
 
 async function fetchTrumanLake() {
-  // Truman pool elevation should be in the 690-720 ft NGVD range under any conditions.
-  // We use this to validate we're actually getting POOL ELEVATION, not tailwater stage.
-  const isValidPoolElevation = v => isFinite(v) && v >= 680 && v <= 730;
+  // Truman pool elevation should be in 690-740 ft NGVD range under any conditions.
+  // Normal pool = 706.0, flood pool max = 739.6. We use this range to validate we're
+  // getting actual POOL ELEVATION (NGVD ft), not raw stage above the gauge zero.
+  const isValidPoolElevation = v => isFinite(v) && v >= 690 && v <= 745;
+  // NOAA TUMM7 gauge zero datum (ft NGVD 1929) — stage values from this gauge
+  // are reported above this datum and must be added to it to get true pool elevation.
+  const TUMM7_DATUM_NGVD = 686.32;
 
   // Pull a reading + 24h-ago reading from a series of {value, time} objects.
   // findHoursAgo returns the reading closest to N hours ago, or null if no
@@ -936,9 +940,10 @@ async function fetchTrumanLake() {
 
   let stage = null, time = null, source = null, dayAgo = null, isElevation = false;
 
-  // 1) NOAA NWS gauge TUMM7 = Truman Reservoir at Truman Dam (pool elevation, in feet NGVD).
-  //    This is the Corps of Engineers official gauge — most reliable for the actual
-  //    pool elevation Sparrowfoot/Grand-arm fishermen care about.
+  // 1) NOAA NWS gauge TUMM7 = Truman Reservoir at Truman Dam.
+  //    The gauge reports STAGE (ft above gauge zero), so we add the datum (686.32 ft
+  //    NGVD) to convert to true pool elevation matching what the Corps publishes
+  //    at water.usace.army.mil. e.g. stage 28.8 + 686.32 = 715.12 ft pool elevation.
   try {
     const res = await fetchWithTimeout(
       "https://api.water.noaa.gov/nwps/v1/gauges/TUMM7/stageflow/observed?period=P2D", 7000
@@ -947,8 +952,9 @@ async function fetchTrumanLake() {
       const data = await res.json();
       const rows = (data?.data) || [];
       const series = rows
-        .filter(r => r.primary != null && isValidPoolElevation(parseFloat(r.primary)))
-        .map(r => ({ value: parseFloat(r.primary), time: r.validTime }));
+        .filter(r => r.primary != null && isFinite(parseFloat(r.primary)))
+        .map(r => ({ value: parseFloat(r.primary) + TUMM7_DATUM_NGVD, time: r.validTime }))
+        .filter(r => isValidPoolElevation(r.value));
       if (series.length) {
         const last = series[series.length - 1];
         stage = last.value; time = last.time; source = "NOAA TUMM7"; isElevation = true;
@@ -1051,9 +1057,10 @@ async function loadWeather(force) {
   weatherEl.className="weather loading";
   weatherEl.innerHTML='<span class="spinner"></span><span>Loading weather…</span>';
   const url = "https://api.open-meteo.com/v1/forecast?latitude="+WEATHER_LOCATION.lat+"&longitude="+WEATHER_LOCATION.lon+
-    "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m" +
+    "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m" +
+    "&hourly=wind_direction_10m,wind_speed_10m" +
     "&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max" +
-    "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone="+encodeURIComponent(WEATHER_LOCATION.tz)+"&forecast_days=3";
+    "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone="+encodeURIComponent(WEATHER_LOCATION.tz)+"&forecast_days=3&past_days=1";
   try {
     const [wRes, lakeData] = await Promise.all([fetchWithTimeout(url, FEED_TIMEOUT_MS), fetchTrumanLake()]);
     if (!wRes.ok) throw new Error("HTTP "+wRes.status);
@@ -1077,6 +1084,7 @@ function renderWeather(data, lake) {
   const temp=Math.round(c.temperature_2m), feels=Math.round(c.apparent_temperature);
   const hi=d.temperature_2m_max&&Math.round(d.temperature_2m_max[0]), lo=d.temperature_2m_min&&Math.round(d.temperature_2m_min[0]);
   const wind=Math.round(c.wind_speed_10m), hum=c.relative_humidity_2m;
+  const windDirText = isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m)+" " : "";
   let forecastHtml="";
   for (let i=0; i<Math.min(3,(d.time||[]).length); i++) {
     const e=WEATHER_CODE_MAP[(d.weather_code||[])[i]]||["","🌡️"];
@@ -1105,7 +1113,7 @@ function renderWeather(data, lake) {
       '<span class="w-meta">'+
         '<span>H '+(isFinite(hi)?hi:"—")+'° L '+(isFinite(lo)?lo:"—")+'°</span>'+
         '<span>Feels '+feels+'°</span>'+
-        '<span>💨 '+wind+' mph</span>'+
+        '<span>💨 '+windDirText+wind+' mph</span>'+
         '<span>💧 '+hum+'%</span>'+
         lakeHtml+
       '</span>'+
@@ -1204,6 +1212,80 @@ function getCachedWeather() {
   try { const p=JSON.parse(localStorage.getItem("news.weather")||"null"); return (p&&p.data)?p.data:null; } catch { return null; }
 }
 
+// ── WIND HELPERS ──
+// Convert wind direction in degrees (0=N, 90=E, 180=S, 270=W) into a 16-point compass label.
+function compassFromDegrees(deg) {
+  if (!isFinite(deg)) return "—";
+  const dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+  return dirs[Math.floor(((deg % 360) / 22.5) + 0.5) % 16];
+}
+
+// Walk back through hourly wind direction data and count how many consecutive hours
+// the wind has been within ±30° of the current direction. This is "sustained hours".
+function computeSustainedWindHours(hourly, currentDir) {
+  if (!hourly || !hourly.time || !hourly.wind_direction_10m || !isFinite(currentDir)) return 0;
+  const times = hourly.time;
+  const dirs  = hourly.wind_direction_10m;
+  const now = Date.now();
+  // Find the index of the most recent past hour
+  let nowIdx = -1;
+  for (let i = 0; i < times.length; i++) {
+    const t = new Date(times[i]).getTime();
+    if (!isFinite(t)) continue;
+    if (t <= now) nowIdx = i;
+    else break;
+  }
+  if (nowIdx < 0) return 0;
+  // Walk back; stop when direction diverges by more than 30°
+  let hours = 0;
+  for (let i = nowIdx; i >= 0; i--) {
+    const d = dirs[i];
+    if (!isFinite(d)) break;
+    // Compute angular difference (always 0-180)
+    const diff = Math.abs(((d - currentDir + 540) % 360) - 180);
+    if (diff > 30) break;
+    hours++;
+  }
+  return hours;
+}
+
+// Translate current wind direction + sustained duration + speed into a Grand-arm-specific
+// shad bank recommendation. The Grand River arm runs roughly NW–SE; Sparrowfoot Park sits
+// on the south shore near the upper (NW) end. So a north wind pushes shad onto Sparrowfoot's
+// shore, a south wind pushes them across to the opposite bank, and so on.
+function shadBankAdvice(windDir, windMph, sustainedHours) {
+  if (!isFinite(windDir) || !isFinite(windMph) || windMph < 5) return null;
+  const fromDir = compassFromDegrees(windDir);
+
+  let bankSide, sparrowfootNote;
+  if (windDir >= 315 || windDir < 45) {
+    bankSide = "south-facing banks of the Grand arm";
+    sparrowfootNote = "that's Sparrowfoot's side — walk the south shoreline and look for shad piled tight against the bank.";
+  } else if (windDir >= 45 && windDir < 135) {
+    bankSide = "west-facing banks (upper Grand arm)";
+    sparrowfootNote = "Sparrowfoot's west coves are getting fetch — bait piles up in the back of those coves.";
+  } else if (windDir >= 135 && windDir < 225) {
+    bankSide = "north-facing banks of the Grand arm";
+    sparrowfootNote = "Sparrowfoot's south shore will be slack — by boat, run across to the north bank; from shore, drive around to the opposite shoreline.";
+  } else {
+    bankSide = "east-facing banks (lower Grand arm)";
+    sparrowfootNote = "wind is pushing bait DOWN the arm — head east toward the lower cuts and points by boat.";
+  }
+
+  let strength;
+  if (sustainedHours >= 6 && windMph >= 12) {
+    strength = "stacked tight — best cast-netting window of the day, hit it now";
+  } else if (sustainedHours >= 4 && windMph >= 8) {
+    strength = "concentrated and tightening";
+  } else if (sustainedHours >= 2) {
+    strength = "starting to pile up";
+  } else {
+    strength = "just starting to push — give it another hour or two to fully concentrate";
+  }
+
+  return "Wind from "+fromDir+" at "+Math.round(windMph)+" mph for "+sustainedHours+"h — shad "+strength+" on "+bankSide+". "+sparrowfootNote;
+}
+
 function generateFishingAdvice(lake, weather) {
   // Tailored to Matt's targets at Sparrowfoot / Grand River arm:
   //   Blue Catfish, Flathead Catfish, Crappie, Shad (cast netting), Farm Pond Bluegill
@@ -1213,6 +1295,9 @@ function generateFishingAdvice(lake, weather) {
   const c = weather?.current || {};
   const airTempF = isFinite(c.temperature_2m) ? c.temperature_2m : 68;
   const windMph  = isFinite(c.wind_speed_10m) ? c.wind_speed_10m : 5;
+  const windDir  = isFinite(c.wind_direction_10m) ? c.wind_direction_10m : null;
+  const sustainedHours = windDir !== null ? computeSustainedWindHours(weather?.hourly, windDir) : 0;
+  const windBankAdvice = shadBankAdvice(windDir, windMph, sustainedHours);
   const weatherCode = c.weather_code ?? 0;
 
   const season = (month<=1||month===11)?"winter":(month<=4)?"spring":(month<=7)?"summer":"fall";
@@ -1328,7 +1413,7 @@ function generateFishingAdvice(lake, weather) {
   }
 
   bite = Math.round(Math.max(1, Math.min(5, bite)));
-  return { bite, tips, topSpecies, baits, hotspots, season, shadTip, pondTip };
+  return { bite, tips, topSpecies, baits, hotspots, season, shadTip, pondTip, windBankAdvice };
 }
 
 function renderFishingAdvisor(lake, weather, advice) {
@@ -1337,7 +1422,8 @@ function renderFishingAdvisor(lake, weather, advice) {
   const BITE_LABEL  = ["Dead Slow","Slow — Be Patient","Moderate — Worth Going","Good — Get Out There","On Fire!"];
   const c = weather?.current || {};
   const temp = isFinite(c.temperature_2m) ? Math.round(c.temperature_2m)+"°F" : "—";
-  const wind = isFinite(c.wind_speed_10m) ? Math.round(c.wind_speed_10m)+" mph" : "—";
+  const windDirInline = isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m)+" " : "";
+  const wind = isFinite(c.wind_speed_10m) ? windDirInline+Math.round(c.wind_speed_10m)+" mph" : "—";
   const trendArrow = lake?.trend==="rising"?"▲ Rising":lake?.trend==="falling"?"▼ Falling":"— Stable";
   const trendCls   = lake?.trend || "stable";
 
@@ -1361,8 +1447,11 @@ function renderFishingAdvisor(lake, weather, advice) {
   const baitsHtml    = advice.baits.map(b=>`<span class="fish-chip fish-chip-bait">${escapeHtml(b)}</span>`).join("");
   const hotspotsHtml = advice.hotspots.map(h=>`<span class="fish-chip fish-chip-spot">📍 ${escapeHtml(h)}</span>`).join("");
   const tipsHtml     = advice.tips.map(t=>`<div class="fish-tip">💡 ${escapeHtml(t)}</div>`).join("");
+  const windBankHtml = advice.windBankAdvice
+    ? `<div class="fish-tip" style="border-left:3px solid var(--mustard);padding-left:10px;margin-top:6px"><strong>📍 Right now:</strong> ${escapeHtml(advice.windBankAdvice)}</div>`
+    : "";
   const shadHtml     = advice.shadTip
-    ? `<div class="fish-section"><div class="fish-section-label">🐟 Shad / Cast Netting</div><div class="fish-tip" style="border-left:3px solid #2563eb;padding-left:10px">${escapeHtml(advice.shadTip)}</div></div>`
+    ? `<div class="fish-section"><div class="fish-section-label">🐟 Shad / Cast Netting</div><div class="fish-tip" style="border-left:3px solid #2563eb;padding-left:10px">${escapeHtml(advice.shadTip)}</div>${windBankHtml}</div>`
     : "";
   const pondHtml     = advice.pondTip
     ? `<div class="fish-section"><div class="fish-section-label">🪣 Farm Pond Bluegill</div><div class="fish-tip" style="border-left:3px solid var(--sage);padding-left:10px">${escapeHtml(advice.pondTip)}</div></div>`

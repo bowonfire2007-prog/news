@@ -10,8 +10,8 @@
 <meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)">
 <title>Matt's Daily Read</title>
 <style>
-  :root { --bg:#faf9f7; --text:#0a0a0a; --text-muted:#6b6b6b; --text-soft:#9a9a9a; --border:#e8e6e0; --accent:#b8331a; --card-hover:#f0ede8; }
-  [data-theme="dark"] { --bg:#0f0e0d; --text:#f5f5f4; --text-muted:#a3a3a3; --text-soft:#6b6b6b; --border:#2a2825; --accent:#ff6b4a; --card-hover:#1c1b19; }
+  :root { --bg:#f8f4ec; --text:#1a1410; --text-muted:#6b6258; --text-soft:#9a9286; --border:#e3ddcf; --accent:#b8331a; --sage:#7a8b6f; --mustard:#c49b3f; --card-hover:#ede8dc; }
+  [data-theme="dark"] { --bg:#0f0e0d; --text:#f5f1e8; --text-muted:#a39c8f; --text-soft:#6b6258; --border:#2a2825; --accent:#ff6b4a; --sage:#9ab18d; --mustard:#e0b552; --card-hover:#1c1b19; }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html,body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.5; -webkit-font-smoothing:antialiased; transition:background-color .25s ease,color .25s ease; }
   a { color:inherit; text-decoration:none; }
@@ -85,9 +85,12 @@
   .w-lake:hover { text-decoration:underline; }
 
   /* ── QUOTE OF DAY ── */
-  .quote-bar { max-width:760px; margin:0 auto; padding:8px 0 6px; border-top:1px solid var(--border); }
-  .quote-text { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:13px; color:var(--text-muted); font-style:italic; line-height:1.5; }
-  .quote-author { font-size:11px; color:var(--text-soft); margin-top:2px; letter-spacing:0.02em; }
+  .quote-bar { max-width:760px; margin:0 auto; padding:12px 0 12px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-bottom:6px; position:relative; }
+  .quote-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.16em; color:var(--accent); margin-bottom:5px; display:flex; align-items:center; gap:8px; }
+  .quote-label::before, .quote-label::after { content:""; flex:1; height:1px; background:color-mix(in srgb,var(--accent) 30%,transparent); }
+  .quote-text { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:15px; color:var(--text); font-style:italic; line-height:1.55; text-align:center; padding:0 8px; }
+  .quote-author { font-size:10px; color:var(--text-soft); margin-top:7px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; text-align:center; }
+  @media (max-width:520px) { .quote-text { font-size:14px; } }
 
   /* ── SECTION BAR ── */
   .section-bar { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:8px 0 4px; }
@@ -123,11 +126,31 @@
   .skel-img { width:110px; height:110px; flex-shrink:0; border-radius:8px; background:var(--card-hover); animation:shimmer 1.5s ease-in-out infinite; }
 
   /* ── NEWS ITEMS ── */
-  article.item { display:flex; gap:16px; padding:20px 0; border-bottom:1px solid var(--border); cursor:pointer; position:relative; }
+  .item-wrap { border-bottom:1px solid var(--border); }
+  article.item { display:flex; gap:16px; padding:20px 0 14px; cursor:pointer; position:relative; }
   article.item:hover .title { color:var(--accent); }
   article.item.read { opacity:0.52; }
   article.item.read:hover { opacity:0.82; }
   article.item.kb-focus { outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
+
+  /* ── AI BRIEF ── */
+  .brief-btn { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); background:color-mix(in srgb,var(--accent) 7%,transparent); color:var(--accent); font-size:11px; font-weight:700; letter-spacing:0.04em; cursor:pointer; font-family:inherit; text-transform:uppercase; transition:background .12s,color .12s; }
+  .brief-btn:hover { background:var(--accent); color:#fff; }
+  .brief-btn.is-loading { pointer-events:none; opacity:0.7; }
+  .brief-btn.is-open { background:var(--accent); color:#fff; }
+  .brief-btn .spark { font-size:10px; line-height:1; }
+  .brief-panel { margin:0 0 14px; padding:0 16px; max-height:0; overflow:hidden; transition:max-height .25s ease, padding .2s ease; background:color-mix(in srgb,var(--accent) 4%,var(--card-hover)); border-left:3px solid var(--accent); border-radius:0 6px 6px 0; }
+  .brief-panel.open { max-height:1000px; padding:14px 16px; margin:0 0 18px; }
+  .brief-header { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); margin-bottom:8px; }
+  .brief-loading { display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:13px; padding:4px 0; }
+  .brief-text { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:14.5px; line-height:1.65; color:var(--text); }
+  .brief-text p { margin-bottom:8px; }
+  .brief-text p:last-child { margin-bottom:0; }
+  .brief-meta { margin-top:10px; padding-top:8px; border-top:1px solid color-mix(in srgb,var(--accent) 18%,var(--border)); display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--text-soft); letter-spacing:0.04em; text-transform:uppercase; }
+  .brief-refresh { background:none; border:none; color:var(--accent); font-weight:700; cursor:pointer; font-size:10px; font-family:inherit; letter-spacing:0.04em; text-transform:uppercase; padding:0; }
+  .brief-refresh:hover { text-decoration:underline; }
+  .brief-error { color:#b91c1c; font-size:13px; line-height:1.5; }
+  [data-theme="dark"] .brief-error { color:#f87171; }
   .item-text { flex:1; min-width:0; }
   .meta { display:flex; align-items:center; gap:6px; font-size:12px; margin-bottom:5px; flex-wrap:wrap; }
   .source-chip { background:var(--card-hover); color:var(--text-muted); font-size:10px; font-weight:700; padding:2px 6px; border-radius:3px; letter-spacing:0.04em; text-transform:uppercase; }
@@ -294,12 +317,12 @@ const WEATHER_LOCATION = { name:"Clinton, MO", lat:38.3686, lon:-93.7780, tz:"Am
 
 const CATEGORY_ICONS = {
   saved:"🔖", stocks:"📈", top:"🌍", local:"📍", ukraine:"🇺🇦", iran:"🕌",
-  scs:"⚓", tech:"💻", business:"💼", science:"🔬", sports:"🏆",
-  culture:"🎭", philippines:"🇵🇭", cannabis:"🌿", outdoor:"🎣"
+  scs:"⚓", tech:"💻", business:"💼", science:"🔬",
+  philippines:"🇵🇭", cannabis:"🌿", outdoor:"🎣"
 };
 
 // Quick-access tab bar — these show as pills at the top
-const QUICK_TAB_IDS = ["top","local","outdoor","tech","stocks","sports","cannabis","saved"];
+const QUICK_TAB_IDS = ["top","local","outdoor","tech","stocks","cannabis","saved"];
 
 const CATEGORIES = [
   { id:"saved", label:"Saved", isSaved:true, feeds:[] },
@@ -402,22 +425,6 @@ const CATEGORIES = [
     { source:"Nature", url:"https://www.nature.com/nature.rss" },
     { source:"NASA", url:"https://www.nasa.gov/news-release/feed/" }
   ]},
-  { id:"sports", label:"Sports", maxAgeHours:24, feeds:[
-    { source:"ESPN", url:"https://www.espn.com/espn/rss/news" },
-    { source:"BBC Sport", url:"https://feeds.bbci.co.uk/sport/rss.xml" },
-    { source:"CBS Sports", url:"https://www.cbssports.com/rss/headlines/" },
-    { source:"Yahoo Sports", url:"https://sports.yahoo.com/rss/" },
-    { source:"Chiefs (Google)", url:"https://news.google.com/rss/search?q=Kansas+City+Chiefs&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Royals (Google)", url:"https://news.google.com/rss/search?q=Kansas+City+Royals&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Cardinals (Google)", url:"https://news.google.com/rss/search?q=St+Louis+Cardinals&hl=en-US&gl=US&ceid=US:en" }
-  ]},
-  { id:"culture", label:"Culture", maxAgeHours:96, feeds:[
-    { source:"NYT Arts", url:"https://rss.nytimes.com/services/xml/rss/nyt/Arts.xml" },
-    { source:"Guardian Culture", url:"https://www.theguardian.com/culture/rss" },
-    { source:"NPR Arts", url:"https://feeds.npr.org/1008/rss.xml" },
-    { source:"The Atlantic", url:"https://www.theatlantic.com/feed/channel/entertainment/" },
-    { source:"Variety", url:"https://variety.com/feed/" }
-  ]},
   { id:"philippines", label:"Philippines", maxAgeHours:72, feeds:[
     { source:"Panay News", url:"https://www.panaynews.net/feed/" },
     { source:"Iloilo (Google)", url:"https://news.google.com/rss/search?q=Iloilo+Panay&hl=en-PH&gl=PH&ceid=PH:en" },
@@ -499,10 +506,10 @@ const TICKER_DISPLAY = { "BZ=F":"BRENT","CL=F":"WTI","BTC-USD":"BITCOIN","XRP-US
 // ── SOURCE TRUST WEIGHTS ──
 const SOURCE_WEIGHT = {
   "AP (via Google)":2.0,"Reuters (via Google)":2.0,
-  "BBC":1.9,"BBC Middle East":1.9,"BBC Europe":1.9,"BBC Asia":1.9,"BBC Business":1.9,"BBC Science":1.9,"BBC Sport":1.9,
-  "NPR":1.7,"NPR Arts":1.7,
-  "Guardian":1.6,"Guardian Ukraine":1.6,"Guardian ME":1.6,"Guardian Culture":1.6,
-  "NYT World":1.6,"NYT Arts":1.6,"Al Jazeera":1.5,"Washington Post":1.5,
+  "BBC":1.9,"BBC Middle East":1.9,"BBC Europe":1.9,"BBC Asia":1.9,"BBC Business":1.9,"BBC Science":1.9,
+  "NPR":1.7,
+  "Guardian":1.6,"Guardian Ukraine":1.6,"Guardian ME":1.6,
+  "NYT World":1.6,"Al Jazeera":1.5,"Washington Post":1.5,
   "DW (Germany)":1.4,"CNN":1.4,"ABC News":1.4,
   "Kyiv Independent":1.8,"Ukrainska Pravda":1.7,"RFE/RL Ukraine":1.6,"Ukrinform":1.5,"United24 Media":1.4,"Kyiv Post":1.4,
   "Times of Israel":1.6,"Iran International":1.6,"Haaretz":1.5,"Jerusalem Post":1.4,"Middle East Eye":1.4,
@@ -511,43 +518,97 @@ const SOURCE_WEIGHT = {
   "Bloomberg (Google)":1.8,"CNBC":1.5,"MarketWatch":1.5,"Fortune":1.4,"Yahoo Finance":1.3,
   "Nature":1.9,"Scientific American":1.7,"New Scientist":1.6,"NASA":1.5,
   "Missouri Independent":1.7,"KCUR":1.5,"St. Louis Public Radio":1.4,"Missouri Times":1.3,
-  "ESPN":1.5,"CBS Sports":1.4,
   "Marijuana Moment":1.6,"MJBizDaily":1.5,
   "default":1.0
 };
 
-// ── GARDEN / GROW QUOTES (rotates daily) ──
-const GARDEN_QUOTES = [
-  { text:"To plant a garden is to believe in tomorrow.", author:"Audrey Hepburn" },
-  { text:"The love of gardening is a seed once sown that never dies.", author:"Gertrude Jekyll" },
-  { text:"All the flowers of all the tomorrows are in the seeds of today.", author:"Indian Proverb" },
-  { text:"The glory of gardening: hands in the dirt, head in the sun, heart with nature.", author:"Alfred Austin" },
-  { text:"He who plants a tree plants a hope.", author:"Lucy Larcom" },
-  { text:"The secret of improved plant breeding, apart from scientific knowledge, is love.", author:"Luther Burbank" },
-  { text:"A garden requires patient labor and attention. Plants thrive because someone expended effort on them.", author:"Liberty Hyde Bailey" },
-  { text:"A garden is a grand teacher. It teaches patience and careful watchfulness.", author:"Gertrude Jekyll" },
-  { text:"Gardens are not made by singing 'Oh, how beautiful' and sitting in the shade.", author:"Rudyard Kipling" },
-  { text:"The best fertilizer is the gardener's shadow falling over the garden daily.", author:"Old Proverb" },
+// ── CANNABIS QUOTE OF THE DAY (curated, rotates daily) ──
+const CANNABIS_QUOTES = [
+  { text:"The illegality of cannabis is outrageous, an impediment to full utilization of a drug which helps produce the serenity and insight, sensitivity and fellowship so desperately needed in this increasingly mad and dangerous world.", author:"Carl Sagan" },
+  { text:"Cannabis brings us an awareness that we spend a lifetime being trained to overlook and forget and put out of our minds.", author:"Carl Sagan" },
+  { text:"I do not consider myself a religious person in the usual sense, but there is a religious aspect to some highs.", author:"Carl Sagan" },
+  { text:"I think people need to be educated to the fact that marijuana is not a drug. Marijuana is an herb and a flower. God put it here.", author:"Willie Nelson" },
+  { text:"I think marijuana should be legal. It's just an herb that grows in the ground.", author:"Willie Nelson" },
+  { text:"The biggest killer on the planet is stress and I still think the best medicine is and always has been cannabis.", author:"Willie Nelson" },
+  { text:"When you smoke the herb, it reveals you to yourself.", author:"Bob Marley" },
+  { text:"Herb is the healing of a nation; alcohol is the destruction.", author:"Bob Marley" },
+  { text:"The herb is the unification of mankind.", author:"Bob Marley" },
+  { text:"Herb make you meditate. Herb is for the meditation of the people.", author:"Bob Marley" },
+  { text:"I have always loved marijuana. It has been a source of joy and comfort to me for many years.", author:"Hunter S. Thompson" },
+  { text:"Anything worth doing is worth doing right.", author:"Hunter S. Thompson" },
+  { text:"If the words life, liberty, and the pursuit of happiness don't include the right to experiment with your own consciousness, then the Declaration of Independence isn't worth the hemp it was written on.", author:"Terence McKenna" },
+  { text:"Nature loves courage. You make the commitment and nature will respond to that commitment by removing impossible obstacles.", author:"Terence McKenna" },
+  { text:"Nothing lasts, but nothing is lost.", author:"Terence McKenna" },
+  { text:"You are an explorer, and you represent our species, and the greatest good you can do is to bring back a new idea.", author:"Terence McKenna" },
+  { text:"This is the real secret of life — to be completely engaged with what you are doing in the here and now. And instead of calling it work, realize it is play.", author:"Alan Watts" },
+  { text:"You are an aperture through which the universe is looking at and exploring itself.", author:"Alan Watts" },
+  { text:"Trying to define yourself is like trying to bite your own teeth.", author:"Alan Watts" },
+  { text:"Smoking grass eased the strain for me.", author:"Maya Angelou" },
+  { text:"Cannabis will one day be seen as a wonder drug, as was penicillin in the forties.", author:"Lester Grinspoon, Harvard Medical School" },
+  { text:"Marijuana is far less of a problem than the laws against it.", author:"Lester Grinspoon" },
+  { text:"It really puzzles me to see marijuana connected with narcotics — dope and all that crap. It is a thousand times better than whiskey.", author:"Louis Armstrong" },
+  { text:"We always looked at pot as a sort of medicine, a cheap drunk and with much better thoughts.", author:"Louis Armstrong" },
+  { text:"Marijuana is a useful catalyst for specific optical and aural aesthetic perceptions.", author:"Allen Ginsberg" },
+  { text:"Marijuana is a metaphysical herb, less habituating than tobacco, whose smoke is no more disruptive than insight.", author:"Allen Ginsberg" },
+  { text:"Make the most of the Indian hemp seed, and sow it everywhere.", author:"George Washington" },
+  { text:"Hemp is of first necessity to the wealth and protection of the country.", author:"Thomas Jefferson" },
+  { text:"Why use up the forests which were centuries in the making and the mines which required ages to lay down, if we can get the equivalent of forest and mineral products in the annual growth of the hemp fields?", author:"Henry Ford" },
+  { text:"The hemp plant has the potential to save the world.", author:"Jack Herer" },
+  { text:"Wine makes a man happy with himself; hashish makes him happy with others.", author:"Charles Baudelaire" },
+  { text:"It is my considered opinion as an anthropologist that marijuana is not harmful. The real harm is the law against it.", author:"Margaret Mead, before the U.S. Senate, 1969" },
+  { text:"It is beyond my comprehension that any humane person would withhold such a beneficial substance from people in such great need.", author:"Stephen Jay Gould, on medical cannabis" },
+  { text:"Why is marijuana against the law? It grows naturally upon our planet. Doesn't the idea of making nature against the law seem to you a bit unnatural?", author:"Bill Hicks" },
+  { text:"If you don't think drugs have done good things for us, then take all of your records, tapes, and CDs and burn them.", author:"Bill Hicks" },
+  { text:"Marijuana never kicks down your door in the middle of the night. Marijuana never locks up sick and dying people. Marijuana does not suppress medical research.", author:"William F. Buckley Jr." },
+  { text:"I really believe we should treat marijuana the way we treat beverage alcohol.", author:"Pat Robertson" },
+  { text:"I support decriminalization. People are smoking pot anyway, and to make them criminals is wrong.", author:"Paul McCartney" },
+  { text:"Cannabis is, in my opinion, one of the most important catalysts for new ideas and creative leaps of the imagination.", author:"Sebastian Marincolo" },
+  { text:"Marijuana smoking is about choice. It's about an adult having the right to relax in the privacy of their home with a substance that is far less dangerous than alcohol.", author:"Rick Steves" },
+  { text:"I see marijuana as a small but significant part of life — like wine in Europe.", author:"Rick Steves" },
+  { text:"We tell of the five kingdoms of herbs headed by Soma; may it and kusha grass and bhanga free us from distress.", author:"Atharva Veda, ~1500 BCE" },
+  { text:"Bhang is to Lord Shiva what mother's milk is to a child.", author:"Tantric Shaivite tradition" },
+  { text:"To the extent that I have caused myself to be ridiculed, I have caused myself to be free.", author:"Lenny Bruce" },
+  { text:"The earth laughs in flowers.", author:"Ralph Waldo Emerson" },
   { text:"What is a weed? A plant whose virtues have not yet been discovered.", author:"Ralph Waldo Emerson" },
-  { text:"Green fingers are the extension of a verdant heart.", author:"Russell Page" },
-  { text:"Life begins the day you start a garden.", author:"Chinese Proverb" },
-  { text:"To understand a plant, you have to spend time with it.", author:"Howard Garrett" },
-  { text:"There is no gardening without humility.", author:"Alfred Austin" },
-  { text:"Roots grow in darkness, yet emerge into light.", author:"Anonymous" },
-  { text:"Water, light, and patience — the holy trinity of the indoor garden.", author:"Anonymous" },
-  { text:"The most valuable thing in a garden is a quiet hour.", author:"Anonymous" },
-  { text:"A plant doesn't ask for your attention. It asks for your intention.", author:"Anonymous" },
-  { text:"Every harvest begins with the same act: a seed placed in soil with hope.", author:"Anonymous" },
-  { text:"Indoor growing is outdoor growing's focused, patient sibling.", author:"Anonymous" },
-  { text:"Know your plants, and your plants will know you.", author:"Anonymous" },
-  { text:"VPD, pH, and patience — the language of the indoor gardener.", author:"Anonymous" },
-  { text:"The best grow room upgrade is knowledge.", author:"Anonymous" },
-  { text:"Light is to plants what love is to people — both are necessary for survival.", author:"Anonymous" },
-  { text:"Trim what needs trimming, water what needs watering, and trust the rest to grow.", author:"Anonymous" },
-  { text:"Seeds are the greatest travelers.", author:"Bernd Heinrich" },
-  { text:"In every gardener there is a child who believes in the seed fairy.", author:"Robert Brault" },
-  { text:"God Almighty first planted a garden. Indeed, it is the purest of human pleasures.", author:"Francis Bacon" },
-  { text:"Everything that slows us down and forces patience sets us back into the slow circles of nature — and that is a help.", author:"May Sarton" }
+  { text:"Let food be thy medicine and medicine be thy food.", author:"Hippocrates" },
+  { text:"All things are poison, and nothing is without poison; only the dose makes a thing not a poison.", author:"Paracelsus" },
+  { text:"Nature does not hurry, yet everything is accomplished.", author:"Lao Tzu, Tao Te Ching" },
+  { text:"At the center of your being you have the answer; you know who you are and you know what you want.", author:"Lao Tzu" },
+  { text:"Knowing others is intelligence; knowing yourself is true wisdom.", author:"Lao Tzu" },
+  { text:"The earth is what we all have in common.", author:"Wendell Berry" },
+  { text:"I went to the woods because I wished to live deliberately, to front only the essential facts of life.", author:"Henry David Thoreau" },
+  { text:"All good things are wild and free.", author:"Henry David Thoreau" },
+  { text:"I exist as I am, that is enough.", author:"Walt Whitman" },
+  { text:"Resist much, obey little.", author:"Walt Whitman" },
+  { text:"Trees are poems that the earth writes upon the sky.", author:"Khalil Gibran" },
+  { text:"Out beyond ideas of wrongdoing and rightdoing, there is a field. I'll meet you there.", author:"Rumi" },
+  { text:"Set your life on fire. Seek those who fan your flames.", author:"Rumi" },
+  { text:"What you seek is seeking you.", author:"Rumi" },
+  { text:"Be soft. Do not let the world make you hard.", author:"Iain Thomas" },
+  { text:"The unexamined life is not worth living.", author:"Socrates" },
+  { text:"He who has a why to live for can bear almost any how.", author:"Friedrich Nietzsche" },
+  { text:"And those who were seen dancing were thought to be insane by those who could not hear the music.", author:"Friedrich Nietzsche" },
+  { text:"Doors and walls have minds. Listen to them sometimes.", author:"Robert Anton Wilson" },
+  { text:"Reality is what you can get away with.", author:"Robert Anton Wilson" },
+  { text:"Convictions are more dangerous foes of truth than lies.", author:"Friedrich Nietzsche" },
+  { text:"The privilege of a lifetime is to become who you truly are.", author:"Carl Jung" },
+  { text:"Until you make the unconscious conscious, it will direct your life and you will call it fate.", author:"Carl Jung" },
+  { text:"Your vision will become clear only when you can look into your own heart.", author:"Carl Jung" },
+  { text:"To plant a garden is to believe in tomorrow.", author:"Audrey Hepburn" },
+  { text:"All plants are our brothers and sisters. They talk to us and if we listen, we can hear them.", author:"Arapaho Proverb" },
+  { text:"In every walk with nature one receives far more than he seeks.", author:"John Muir" },
+  { text:"The clearest way into the Universe is through a forest wilderness.", author:"John Muir" },
+  { text:"Wisdom begins in wonder.", author:"Socrates" },
+  { text:"The cosmos is within us. We are made of star-stuff.", author:"Carl Sagan" },
+  { text:"Somewhere, something incredible is waiting to be known.", author:"Carl Sagan" },
+  { text:"Go slowly, breathe and smile.", author:"Thich Nhat Hanh" },
+  { text:"The present moment is filled with joy and happiness. If you are attentive, you will see it.", author:"Thich Nhat Hanh" },
+  { text:"Stop the war in you. Then you will be able to stop the war outside.", author:"Thich Nhat Hanh" },
+  { text:"Smile, breathe, and go slowly.", author:"Thich Nhat Hanh" },
+  { text:"Be here now.", author:"Ram Dass" },
+  { text:"We're all just walking each other home.", author:"Ram Dass" },
+  { text:"The quieter you become, the more you can hear.", author:"Ram Dass" },
+  { text:"The mind, once stretched by a new idea, never returns to its original dimensions.", author:"Ralph Waldo Emerson" }
 ];
 
 // ========== STATE ==========
@@ -632,9 +693,10 @@ function filterItems(q) {
 // ========== QUOTE OF DAY ==========
 function renderQuoteOfDay() {
   const day = Math.floor(Date.now() / 86400000); // stable index per calendar day
-  const q = GARDEN_QUOTES[day % GARDEN_QUOTES.length];
+  const q = CANNABIS_QUOTES[day % CANNABIS_QUOTES.length];
   quoteBarEl.innerHTML =
-    '<div class="quote-text">🌱 "' + escapeHtml(q.text) + '"</div>' +
+    '<div class="quote-label">🌿 Quote of the Day 🌿</div>' +
+    '<div class="quote-text">"' + escapeHtml(q.text) + '"</div>' +
     '<div class="quote-author">— ' + escapeHtml(q.author) + '</div>';
 }
 
@@ -1455,8 +1517,115 @@ async function loadStocks(force) {
   ]);
 }
 
+// ========== AI BRIEF ==========
+const BRIEF_ENDPOINT     = CF_WORKER.replace(/\/$/, "") + "/brief";
+const BRIEF_CACHE_TTL_MS = 7 * 24 * 3600000; // 7 days
+
+function briefHash(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; }
+  return Math.abs(h).toString(36);
+}
+function getBriefCache(url) {
+  try {
+    const raw = localStorage.getItem("news.brief." + briefHash(url));
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (Date.now() - obj.ts > BRIEF_CACHE_TTL_MS) return null;
+    return obj.data;
+  } catch { return null; }
+}
+function setBriefCache(url, data) {
+  try {
+    localStorage.setItem("news.brief." + briefHash(url), JSON.stringify({ ts: Date.now(), data }));
+  } catch {}
+}
+
+async function handleBriefClick(item, btn, panel) {
+  // Toggle close if already open and not loading
+  if (panel.classList.contains("open") && !btn.classList.contains("is-loading")) {
+    panel.classList.remove("open");
+    btn.classList.remove("is-open");
+    return;
+  }
+  const cached = getBriefCache(item.link);
+  if (cached && cached.brief) {
+    renderBriefPanel(panel, { ...cached, cached: true }, item, btn);
+    panel.classList.add("open");
+    btn.classList.add("is-open");
+    return;
+  }
+  await fetchAndShowBrief(item, btn, panel);
+}
+
+async function fetchAndShowBrief(item, btn, panel) {
+  btn.classList.add("is-loading");
+  btn.classList.add("is-open");
+  panel.innerHTML =
+    '<div class="brief-header"><span>✦</span> AI Brief</div>' +
+    '<div class="brief-loading"><span class="spinner"></span><span>Researching the story…</span></div>';
+  panel.classList.add("open");
+
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60000);
+  try {
+    const res = await fetch(BRIEF_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        url: item.link,
+        title: item.title,
+        description: item.description || "",
+        source: item.source || ""
+      })
+    });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { throw new Error("Bad JSON: " + text.slice(0, 200)); }
+    if (!res.ok || !data.brief) {
+      throw new Error(data.error || ("HTTP " + res.status));
+    }
+    setBriefCache(item.link, data);
+    renderBriefPanel(panel, data, item, btn);
+  } catch (err) {
+    const msg = err.name === "AbortError" ? "Research timed out — try again" : (err.message || String(err));
+    panel.innerHTML =
+      '<div class="brief-header"><span>✦</span> AI Brief</div>' +
+      '<div class="brief-error">Couldn\'t generate a brief: ' + escapeHtml(msg) + '</div>';
+  } finally {
+    clearTimeout(timer);
+    btn.classList.remove("is-loading");
+  }
+}
+
+function renderBriefPanel(panel, data, item, btn) {
+  const paras = String(data.brief)
+    .split(/\n\n+/)
+    .filter(p => p.trim())
+    .map(p => "<p>" + escapeHtml(p.trim()) + "</p>")
+    .join("");
+  const ts = data.generated_at ? new Date(data.generated_at) : null;
+  const tsStr = ts && isFinite(ts) ? ts.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
+  panel.innerHTML =
+    '<div class="brief-header"><span>✦</span> AI Brief</div>' +
+    '<div class="brief-text">' + paras + '</div>' +
+    '<div class="brief-meta">' +
+      '<span>' + (data.cached ? "Researched earlier" : "Researched just now") + (tsStr ? " · " + tsStr : "") + '</span>' +
+      '<button class="brief-refresh" type="button">Refresh</button>' +
+    '</div>';
+  panel.querySelector(".brief-refresh").addEventListener("click", e => {
+    e.preventDefault(); e.stopPropagation();
+    try { localStorage.removeItem("news.brief." + briefHash(item.link)); } catch {}
+    fetchAndShowBrief(item, btn, panel);
+  });
+}
+
 // ========== ARTICLE BUILDER ==========
 function buildArticle(item, isHero) {
+  const wrap = document.createElement("div");
+  wrap.className = "item-wrap";
+
   const a = document.createElement("a");
   a.className = "item" + (isHero?" hero":"") + (isRead(item.link)?" read":"") + (isSaved(item.link)?" bookmarked":"");
   a.href = item.link;
@@ -1482,6 +1651,7 @@ function buildArticle(item, isHero) {
         '<span class="source-chip">'+escapeHtml(item.source)+'</span>' +
         '<span class="meta-dot">·</span>' +
         '<span class="meta-age">'+relativeTime(item.pubDate)+'</span>' +
+        '<button class="brief-btn" type="button" title="Research this story with AI"><span class="spark">✦</span> AI Brief</button>' +
       '</div>' +
       badgeHtml +
       '<div class="title">'+escapeHtml(item.title)+'</div>' +
@@ -1490,9 +1660,19 @@ function buildArticle(item, isHero) {
     (hasImg?'<img class="thumb" src="'+escapeHtml(item.thumbnail)+'" alt="" loading="lazy" onerror="this.remove()">':'') +
     '<button class="bkmk-btn" title="'+(isSaved(item.link)?"Remove bookmark":"Bookmark")+'">'+(isSaved(item.link)?"🔖":"🏷️")+'</button>';
 
-  // Mark read on click
+  // Brief panel is a sibling of the article inside the wrapper
+  const panel = document.createElement("div");
+  panel.className = "brief-panel";
+
+  wrap.appendChild(a);
+  wrap.appendChild(panel);
+
+  // Mark read on click — but ignore clicks on action buttons
   a.addEventListener("click", e => {
-    if (e.target.classList.contains("bkmk-btn")) { e.preventDefault(); return; }
+    if (e.target.closest(".bkmk-btn") || e.target.closest(".brief-btn")) {
+      e.preventDefault();
+      return;
+    }
     markRead(item.link);
     a.classList.add("read");
   });
@@ -1507,7 +1687,14 @@ function buildArticle(item, isHero) {
     bkmkBtn.title = nowSaved ? "Remove bookmark" : "Bookmark";
   });
 
-  return a;
+  // AI Brief button
+  const briefBtn = a.querySelector(".brief-btn");
+  briefBtn.addEventListener("click", e => {
+    e.preventDefault(); e.stopPropagation();
+    handleBriefClick(item, briefBtn, panel);
+  });
+
+  return wrap;
 }
 
 // ========== RENDER NEWS ==========

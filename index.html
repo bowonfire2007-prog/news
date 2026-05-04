@@ -1047,7 +1047,9 @@ async function fetchTrumanLake() {
   };
 }
 async function loadWeather(force) {
-  const cacheKey="news.weather", lakeCacheKey="news.truman";
+  // Bumped cache keys to v2 so old cached values (e.g. raw TUMM7 stage 28.8 ft
+  // from the pre-datum-offset code) are automatically invalidated.
+  const cacheKey="news.weather.v2", lakeCacheKey="news.truman.v2";
   let data, lake;
   if (!force) {
     try { const p=JSON.parse(localStorage.getItem(cacheKey)||"null"); if(p&&Date.now()-p.ts<WEATHER_CACHE_TTL_MS) data=p.data; } catch {}

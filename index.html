@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f0e0d" media="(prefers-color-scheme: dark)">
@@ -898,5 +899,4 @@ function parseXmlFeed(xmlText, source) {
   const doc = new DOMParser().parseFromString(xmlText, "application/xml");
   if (doc.querySelector("parsererror")) return [];
   const isAtom = doc.documentElement.nodeName.toLowerCase()==="feed";
-  const entries = Array.from(doc.querySelectorAll(isAtom?"entry":"item"));
-  return entries.slice(0,
+  const entries = Array.from(doc.querySelectorAll

@@ -1106,9 +1106,11 @@ function renderWeather(data, lake) {
   const dailyText = dc !== null
     ? ' <span style="opacity:0.75;font-weight:500">('+(dc>=0?'+':'')+dc.toFixed(2)+'ft/24h)</span>'
     : '';
+  // Link to the USACE Corps page (matches the official numbers; same source we're using).
+  const TRUMAN_INFO_URL = "https://water.usace.army.mil/overview/nwk/locations/hast";
   const lakeHtml = lake&&isFinite(lake.stage)
-    ? '<a class="w-lake" href="https://water.noaa.gov/gauges/tumm7" target="_blank" rel="noopener">🌊 Truman <strong>'+lake.stage.toFixed(1)+'ft</strong> '+trendArrow+dailyText+'</a>'
-    : '<a class="w-lake" href="https://water.noaa.gov/gauges/tumm7" target="_blank" rel="noopener">🌊 Truman Lake →</a>';
+    ? '<a class="w-lake" href="'+TRUMAN_INFO_URL+'" target="_blank" rel="noopener">🌊 Truman <strong>'+lake.stage.toFixed(1)+'ft</strong> '+trendArrow+dailyText+'</a>'
+    : '<a class="w-lake" href="'+TRUMAN_INFO_URL+'" target="_blank" rel="noopener">🌊 Truman Lake →</a>';
   weatherEl.className="weather";
   weatherEl.innerHTML=
     '<div class="w-current">'+

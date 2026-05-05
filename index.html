@@ -913,67 +913,12 @@ const TRUMAN_NORMAL_POOL = 706.0;
 const TRUMAN_READINGS_KEY = "news.truman.history";
 
 async function fetchTrumanLake() {
-  // Truman pool elevation should be in 690-740 ft NGVD range under any conditions.
-  // Normal pool = 706.0, flood pool max = 739.6. We use this range to validate we're
-  // getting actual POOL ELEVATION (NGVD ft), not raw stage above the gauge zero.
+  // Truman pool elevation under any conditions: 690-745 ft NGVD.
+  // Normal pool = 706.0, flood pool max = 739.6.
   const isValidPoolElevation = v => isFinite(v) && v >= 690 && v <= 745;
-  // NOAA TUMM7 gauge zero datum (ft NGVD 1929) — stage values from this gauge
-  // are reported above this datum and must be added to it to get true pool elevation.
-  const TUMM7_DATUM_NGVD = 686.32;
 
-  // ── 0) USACE Corps NWK page (preferred — gives elevation, inflow, outflow, 24h change)
-  // Worker scrapes water.usace.army.mil/overview/nwk/locations/hast and returns JSON.
-  // Short timeout (5s) — if the worker is slow or doesn't have the /lake endpoint yet,
-  // fall through fast to the NOAA TUMM7 path so the spinner doesn't hang.
-  console.log("[lake] trying worker /lake endpoint...");
-  try {
-    const res = await fetchWithTimeout(CF_WORKER.replace(/\/$/, "") + "/lake", 5000);
-    console.log("[lake] /lake response status:", res.status);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && isValidPoolElevation(data.elevation)) {
-        // Build full lake record from Corps data
-        const stage = data.elevation;
-        let history = [];
-        try { history = JSON.parse(localStorage.getItem(TRUMAN_READINGS_KEY) || "[]"); } catch {}
-        history.push({ stage, ts: Date.now() });
-        history = history.filter(r => Date.now() - r.ts < 48 * 3600000).slice(-100);
-        try { localStorage.setItem(TRUMAN_READINGS_KEY, JSON.stringify(history)); } catch {}
-
-        // Short-term trend from rolling history
-        let trend = "stable", trendDiff = 0;
-        const threeHoursAgo = Date.now() - 3 * 3600000;
-        const old3hr = [...history].reverse().find(r => r.ts <= threeHoursAgo);
-        if (old3hr) {
-          trendDiff = stage - old3hr.stage;
-          if (trendDiff > 0.05) trend = "rising";
-          else if (trendDiff < -0.05) trend = "falling";
-        } else if (data.change24h !== null && isFinite(data.change24h)) {
-          // No 3hr history yet — derive trend from 24h change as a rough proxy
-          if (data.change24h > 0.1) trend = "rising";
-          else if (data.change24h < -0.1) trend = "falling";
-        }
-
-        const aboveBelow = (stage - TRUMAN_NORMAL_POOL).toFixed(1);
-        return {
-          stage,
-          time: data.fetched_at || null,
-          source: "USACE NWK",
-          trend,
-          trendDiff: Math.abs(trendDiff).toFixed(2),
-          dailyChange: (data.change24h !== null && isFinite(data.change24h)) ? parseFloat(data.change24h.toFixed(2)) : null,
-          inflow: (data.inflow !== null && isFinite(data.inflow)) ? data.inflow : null,
-          outflow: (data.outflow !== null && isFinite(data.outflow)) ? data.outflow : null,
-          isElevation: true,
-          aboveBelow
-        };
-      }
-    }
-  } catch(e) { console.warn("Worker /lake:", e); }
-
-  // Pull a reading + 24h-ago reading from a series of {value, time} objects.
-  // findHoursAgo returns the reading closest to N hours ago, or null if no
-  // reading is within ±4 hours of the target time.
+  // findHoursAgo: from a {value, time}[] series, return the reading closest to N hours ago,
+  // or null if no reading is within ±4 hours of the target.
   const findHoursAgo = (series, hoursAgo) => {
     if (!series || !series.length) return null;
     const target = Date.now() - hoursAgo * 3600000;
@@ -989,73 +934,69 @@ async function fetchTrumanLake() {
   };
 
   let stage = null, time = null, source = null, dayAgo = null, isElevation = false;
+  let inflow = null, outflow = null;
 
-  // 1) NOAA NWS gauge TUMM7 = Truman Reservoir at Truman Dam.
-  //    The gauge reports STAGE (ft above gauge zero), so we add the datum (686.32 ft
-  //    NGVD) to convert to true pool elevation matching what the Corps publishes
-  //    at water.usace.army.mil. e.g. stage 28.8 + 686.32 = 715.12 ft pool elevation.
-  console.log("[lake] trying NOAA TUMM7...");
+  // 1) PRIMARY: USGS gauge 06922440 = "Harry S. Truman Dam and Res. at Warsaw, MO".
+  //    Parameter 00062 returns reservoir water surface elevation in NGVD ft directly —
+  //    no offset math needed. This is the canonical USGS lake gauge for Truman.
+  //    We fetch ALL parameters in one call so we also pick up discharge (inflow/outflow)
+  //    if they're reported on this site.
+  console.log("[lake] fetching USGS 06922440 (Truman Dam) — all parameters, 2-day period");
   try {
     const res = await fetchWithTimeout(
-      "https://api.water.noaa.gov/nwps/v1/gauges/TUMM7/stageflow/observed?period=P2D", 5000
+      "https://waterservices.usgs.gov/nwis/iv/?sites=06922440&format=json&siteStatus=all&period=P2D", 7000
     );
     if (res.ok) {
       const data = await res.json();
-      const rows = (data?.data) || [];
-      console.log("[lake] TUMM7 returned", rows.length, "rows. Sample primary:", rows[rows.length-1]?.primary);
-      const series = rows
-        .filter(r => r.primary != null && isFinite(parseFloat(r.primary)))
-        .map(r => ({ value: parseFloat(r.primary) + TUMM7_DATUM_NGVD, time: r.validTime }))
-        .filter(r => isValidPoolElevation(r.value));
-      console.log("[lake] TUMM7 valid series after offset:", series.length, "last value:", series[series.length-1]?.value);
-      if (series.length) {
-        const last = series[series.length - 1];
-        stage = last.value; time = last.time; source = "NOAA TUMM7"; isElevation = true;
-        dayAgo = findHoursAgo(series, 24);
-      }
-    }
-  } catch(e) { console.warn("NOAA TUMM7:", e); }
+      const seriesList = data?.value?.timeSeries || [];
+      console.log("[lake] USGS returned", seriesList.length, "parameter series");
 
-  // 2) USGS Truman pool elevation fallback (parameter 00062 = NGVD elevation, ft).
-  if (stage === null) {
-    try {
-      const res = await fetchWithTimeout(
-        "https://waterservices.usgs.gov/nwis/iv/?sites=06922540&parameterCd=00062&format=json&siteStatus=all&period=P2D", 5000
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const vals = data?.value?.timeSeries?.[0]?.values?.[0]?.value || [];
-        const series = vals
-          .filter(v => v.value && v.value !== "-999999" && isValidPoolElevation(parseFloat(v.value)))
+      for (const ts of seriesList) {
+        const paramCode = ts.variable?.variableCode?.[0]?.value || "";
+        const paramName = ts.variable?.variableName || "";
+        const vals = ts.values?.[0]?.value || [];
+        if (!vals.length) continue;
+
+        const numeric = vals
+          .filter(v => v.value && v.value !== "-999999" && isFinite(parseFloat(v.value)))
           .map(v => ({ value: parseFloat(v.value), time: v.dateTime }));
-        if (series.length) {
-          const last = series[series.length - 1];
-          stage = last.value; time = last.time; source = "USGS 06922540"; isElevation = true;
-          dayAgo = findHoursAgo(series, 24);
+        if (!numeric.length) continue;
+        const last = numeric[numeric.length - 1];
+
+        console.log("[lake] param", paramCode, "(" + paramName.slice(0,60) + "): last value =", last.value);
+
+        if (paramCode === "00062" && isValidPoolElevation(last.value)) {
+          // Pool elevation, NGVD ft — exactly what we want
+          stage = last.value; time = last.time; source = "USGS 06922440"; isElevation = true;
+          dayAgo = findHoursAgo(numeric, 24);
+        } else if (paramCode === "00060" && isFinite(last.value)) {
+          // Discharge (cfs). On a dam gauge this is typically the outflow / release.
+          outflow = Math.round(last.value);
         }
       }
-    } catch(e) { console.warn("USGS Truman:", e); }
-  }
+    } else {
+      console.warn("[lake] USGS HTTP", res.status);
+    }
+  } catch(e) { console.warn("[lake] USGS error:", e); }
 
-  // 3) NOAA Warsaw gauge (WRSM7) — last resort, this is upstream stage not pool.
+  // 2) Fallback: Cloudflare Worker /lake (USACE scrape) — rarely useful since the page is
+  //    a JS SPA, but kept in case the worker is enhanced later to hit the CWMS API.
   if (stage === null) {
+    console.log("[lake] USGS failed, trying worker /lake...");
     try {
-      const res = await fetchWithTimeout(
-        "https://api.water.noaa.gov/nwps/v1/gauges/WRSM7/stageflow/observed?period=P2D", 6000
-      );
+      const res = await fetchWithTimeout(CF_WORKER.replace(/\/$/, "") + "/lake", 5000);
       if (res.ok) {
         const data = await res.json();
-        const rows = (data?.data) || [];
-        const series = rows
-          .filter(r => r.primary != null && isFinite(parseFloat(r.primary)))
-          .map(r => ({ value: parseFloat(r.primary), time: r.validTime }));
-        if (series.length) {
-          const last = series[series.length - 1];
-          stage = last.value; time = last.time; source = "NOAA Warsaw"; isElevation = false;
-          dayAgo = findHoursAgo(series, 24);
+        if (data && isValidPoolElevation(data.elevation)) {
+          stage = data.elevation;
+          source = "USACE NWK";
+          isElevation = true;
+          time = data.fetched_at || null;
+          if (data.inflow !== null && isFinite(data.inflow))   inflow  = data.inflow;
+          if (data.outflow !== null && isFinite(data.outflow)) outflow = data.outflow;
         }
       }
-    } catch(e) { console.warn("NOAA Warsaw:", e); }
+    } catch(e) { console.warn("[lake] worker /lake error:", e); }
   }
 
   if (stage === null) return null;
@@ -1091,12 +1032,14 @@ async function fetchTrumanLake() {
 
   const aboveBelow = isElevation ? (stage - TRUMAN_NORMAL_POOL).toFixed(1) : null;
 
+  console.log("[lake] returning stage =", stage, "ft (source: " + source + ")");
+
   return {
     stage, time, source, trend,
     trendDiff: Math.abs(trendDiff).toFixed(2),
     dailyChange: dailyChange !== null ? parseFloat(dailyChange.toFixed(2)) : null,
-    inflow: null,
-    outflow: null,
+    inflow,
+    outflow,
     isElevation,
     aboveBelow
   };

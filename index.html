@@ -910,7 +910,10 @@ const WEATHER_CODE_MAP = {
 };
 // Normal pool elevation for Truman Lake = 706.0 ft NGVD
 const TRUMAN_NORMAL_POOL = 706.0;
-const TRUMAN_READINGS_KEY = "news.truman.history";
+// Bumped to v2 so old contaminated readings (raw stage values from before the
+// gauge switch — e.g. 28.8 ft instead of 715 ft) get discarded. The trend
+// calculation comparing current to those old values produced false "rising" labels.
+const TRUMAN_READINGS_KEY = "news.truman.history.v2";
 
 async function fetchTrumanLake() {
   // Truman pool elevation under any conditions: 690-745 ft NGVD.
@@ -1010,19 +1013,21 @@ async function fetchTrumanLake() {
 
   if (stage === null) return null;
 
-  // Maintain rolling history (48h) for fine-grained 3-hour trend.
-  // The 24-hour change comes from the API series above (more accurate); we only
-  // fall back to rolling history if the API didn't return a 24h-ago point.
+  // Maintain rolling history (48h) for fine-grained 3-hour trend. We filter every
+  // reading to the valid pool-elevation range (690-745 ft) so any leftover bad data
+  // from older code can't poison the trend calculation.
   let history = [];
   try { history = JSON.parse(localStorage.getItem(TRUMAN_READINGS_KEY) || "[]"); } catch {}
+  history = history.filter(r => isValidPoolElevation(r.stage) && Date.now() - r.ts < 48 * 3600000);
   history.push({ stage, ts: Date.now() });
-  history = history.filter(r => Date.now() - r.ts < 48 * 3600000).slice(-100);
+  history = history.slice(-100);
   try { localStorage.setItem(TRUMAN_READINGS_KEY, JSON.stringify(history)); } catch {}
 
-  // 3-hour trend (rising/falling/stable) from rolling history
+  // 3-hour trend from rolling history. If history is too thin to be trustworthy,
+  // we'll override below with the API's 24h direction (more reliable).
   let trend = "stable", trendDiff = 0;
   const threeHoursAgo = Date.now() - 3 * 3600000;
-  const old3hr = [...history].reverse().find(r => r.ts <= threeHoursAgo);
+  const old3hr = [...history].reverse().find(r => r.ts <= threeHoursAgo && isValidPoolElevation(r.stage));
   if (old3hr) {
     trendDiff = stage - old3hr.stage;
     if (trendDiff > 0.05) trend = "rising";
@@ -1031,12 +1036,26 @@ async function fetchTrumanLake() {
 
   // 24-hour change — prefer the API's actual 24h-ago reading; fall back to rolling history
   let dailyChange = null;
-  if (dayAgo && isFinite(dayAgo.value)) {
+  if (dayAgo && isFinite(dayAgo.value) && isValidPoolElevation(dayAgo.value)) {
     dailyChange = stage - dayAgo.value;
   } else {
     const oneDayAgo = Date.now() - 24 * 3600000;
-    const old24 = [...history].reverse().find(r => r.ts <= oneDayAgo);
+    const old24 = [...history].reverse().find(r => r.ts <= oneDayAgo && isValidPoolElevation(r.stage));
     if (old24) dailyChange = stage - old24.stage;
+  }
+
+  // Sanity-check trend against dailyChange. If rolling history says one direction
+  // but the API's 24h delta says the opposite, trust the 24h delta — that data comes
+  // straight from USGS rather than potentially-stale localStorage.
+  if (dailyChange !== null && isFinite(dailyChange)) {
+    const apiTrend = dailyChange > 0.1 ? "rising" : dailyChange < -0.1 ? "falling" : null;
+    if (apiTrend && trend !== "stable" && trend !== apiTrend) {
+      console.log("[lake] trend conflict — rolling history said", trend, "but 24h delta says", apiTrend, "→ using 24h delta");
+      trend = apiTrend;
+    } else if (!old3hr && apiTrend) {
+      // No 3hr history yet — derive trend from 24h direction
+      trend = apiTrend;
+    }
   }
 
   const aboveBelow = isElevation ? (stage - TRUMAN_NORMAL_POOL).toFixed(1) : null;

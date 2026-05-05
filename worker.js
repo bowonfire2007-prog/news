@@ -220,9 +220,10 @@ async function handleLake(url, ctx) {
 
   // ── Strategy 1: USACE CDA timeseries API ──
   const cda = await fetchUsaceCdaTimeseries();
-  if (cda && cda.elevation !== null) {
+  const cdaHasData = cda && !cda._empty && cda.elevation !== null;
+  if (cdaHasData) {
     // Strip the debug trail from the production response — only expose it when ?debug=1.
-    const { debug: cdaDebug, ...cdaPublic } = cda;
+    const { debug: cdaDebug, _empty, ...cdaPublic } = cda;
     const result = {
       ...cdaPublic,
       source: "USACE CDA NWK",
@@ -263,7 +264,7 @@ async function handleLake(url, ctx) {
     return jsonResponse({
       strategy: "scrape",
       parsed,
-      cdaTried: cda,
+      cdaTried: cda,        // include CDA debug trail (steps, sampleNames, what was tried)
       htmlLength: html.length,
       htmlSample: html.slice(0, 4000),
       htmlMid: html.slice(Math.floor(html.length / 2), Math.floor(html.length / 2) + 4000)
@@ -300,26 +301,37 @@ async function fetchUsaceCdaTimeseries() {
   const debug = { steps: [] };
 
   // ── Catalog discovery ──
+  // CDA's `like` parameter uses Java regex — bare strings don't match. Need ".*" wildcards.
+  // Try multiple regex patterns and office combos to be resilient against naming changes.
   // Cache the catalog for 24h since timeseries names don't change often.
   let catalogEntries = [];
-  try {
-    const catUrl = "https://cwms-data.usace.army.mil/cwms-data/catalog/TIMESERIES?" +
-      "office=" + office + "&like=" + encodeURIComponent("HAST") + "&page-size=500";
-    const res = await fetch(catUrl, {
-      headers: { "Accept": "application/json;version=2" },
-      cf: { cacheTtl: 86400, cacheEverything: true }
-    });
-    if (res.ok) {
+  const catalogQueries = [
+    { like: "HAST.*",       office: office },
+    { like: "Truman.*",     office: office },
+    { like: ".*HAST.*",     office: office },
+    { like: ".*Truman.*",   office: office },
+    { like: "HAST.*",       office: null   }, // last resort: drop office filter
+  ];
+  for (const q of catalogQueries) {
+    let catUrl = "https://cwms-data.usace.army.mil/cwms-data/catalog/TIMESERIES?" +
+      "like=" + encodeURIComponent(q.like) + "&page-size=500";
+    if (q.office) catUrl += "&office=" + q.office;
+    try {
+      const res = await fetch(catUrl, {
+        headers: { "Accept": "application/json;version=2" },
+        cf: { cacheTtl: 86400, cacheEverything: true }
+      });
+      if (!res.ok) {
+        debug.steps.push({ step: "catalog", like: q.like, office: q.office, status: res.status });
+        continue;
+      }
       const data = await res.json();
-      // CDA catalog v2 returns { entries: [{name, units, ...}, ...] }; older returns
-      // { "time-series-catalog": { entries: [...] } }. Handle either.
-      catalogEntries = data?.entries || data?.["time-series-catalog"]?.entries || [];
-      debug.steps.push({ step: "catalog", count: catalogEntries.length });
-    } else {
-      debug.steps.push({ step: "catalog", status: res.status });
+      const entries = data?.entries || data?.["time-series-catalog"]?.entries || [];
+      debug.steps.push({ step: "catalog", like: q.like, office: q.office, count: entries.length });
+      if (entries.length) { catalogEntries = entries; break; }
+    } catch (err) {
+      debug.steps.push({ step: "catalog-error", like: q.like, message: err.message });
     }
-  } catch (err) {
-    debug.steps.push({ step: "catalog-error", message: err.message });
   }
 
   // Pull names out of the catalog response. Each entry might have name as a string
@@ -445,7 +457,8 @@ async function fetchUsaceCdaTimeseries() {
   if (result.outflow !== null && Math.abs(result.outflow) > 1000000) result.outflow = null;
 
   if (result.elevation === null && result.inflow === null && result.outflow === null) {
-    return null;
+    // Return the debug trail anyway so ?debug=1 can show what we tried.
+    return { ...result, _empty: true };
   }
   return result;
 }

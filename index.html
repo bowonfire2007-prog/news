@@ -1220,7 +1220,10 @@ async function fetchFeed(feed) {
 
 // ========== OUTDOOR / FISHING ADVISOR ==========
 function getCachedWeather() {
-  try { const p=JSON.parse(localStorage.getItem("news.weather")||"null"); return (p&&p.data)?p.data:null; } catch { return null; }
+  // Read from the v2 cache key so we match what loadWeather() writes — older code
+  // looked at "news.weather" which no longer exists, leaving the fishing report
+  // bite meter without temp/wind values.
+  try { const p=JSON.parse(localStorage.getItem("news.weather.v2")||"null"); return (p&&p.data)?p.data:null; } catch { return null; }
 }
 
 // ── WIND HELPERS ──

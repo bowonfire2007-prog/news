@@ -302,15 +302,17 @@ async function fetchUsaceCdaTimeseries() {
 
   // ── Catalog discovery ──
   // CDA's `like` parameter uses Java regex — bare strings don't match. Need ".*" wildcards.
-  // Try multiple regex patterns and office combos to be resilient against naming changes.
-  // Cache the catalog for 24h since timeseries names don't change often.
+  // Empirical: the office=NWK filter on the catalog endpoint returns 0 entries for HAST,
+  // but dropping the office filter and filtering by name prefix returns 29 entries (all
+  // genuinely NWK). So the no-office query is the one that actually works for this lake.
+  // We still try with office first so other lakes work, then fall through.
   let catalogEntries = [];
   const catalogQueries = [
-    { like: "HAST.*",       office: office },
-    { like: "Truman.*",     office: office },
-    { like: ".*HAST.*",     office: office },
-    { like: ".*Truman.*",   office: office },
-    { like: "HAST.*",       office: null   }, // last resort: drop office filter
+    { like: "HAST.*",     office: null   }, // ← the one that works for Truman
+    { like: "HAST.*",     office: office },
+    { like: ".*HAST.*",   office: null   },
+    { like: "Truman.*",   office: office },
+    { like: ".*Truman.*", office: office },
   ];
   for (const q of catalogQueries) {
     let catUrl = "https://cwms-data.usace.army.mil/cwms-data/catalog/TIMESERIES?" +
@@ -341,37 +343,59 @@ async function fetchUsaceCdaTimeseries() {
     .filter(n => n && n.indexOf("HAST") === 0);
 
   // Score each candidate name and pick the best one. Higher-score name wins.
-  // For each field we want: short interval, "Inst" or "Ave" type, recent revision suffix.
-  function pickBest(filterRe) {
-    const matches = allNames.filter(n => filterRe.test(n));
+  // Empirical scoring tuned for what NWK actually publishes for HAST:
+  //   - .Best-NWK suffix is the canonical observed/processed series
+  //   - Fcst-* is FORECAST, not measurement → reject
+  //   - For elevation: must NOT contain "Tailwater" (that's the river below the dam)
+  //   - For flow: hourly observed isn't published; daily Ave is what's available
+  function pickBest(filterRe, mustNotMatch) {
+    const matches = allNames.filter(n =>
+      filterRe.test(n) && (!mustNotMatch || !mustNotMatch.test(n))
+    );
     if (!matches.length) return null;
     function score(name) {
       let s = 0;
-      if (/~1Hour/.test(name)) s += 5;
-      else if (/1Hour/.test(name)) s += 3;
-      else if (/15Minutes/.test(name)) s += 4;
-      else if (/6Hours/.test(name)) s += 2;
-      if (/\.Inst\./.test(name)) s += 2;
+      // Reject forecasts — they're projections, not measurements
+      if (/\.Fcst-/i.test(name)) s -= 100;
+      // Suffix preference: Best-NWK is canonical for this district
+      if (/Best-NWK$/i.test(name)) s += 10;
+      else if (/NWK-Cmb-Rev$/i.test(name)) s += 8;
+      else if (/Ccp-Rev$/i.test(name)) s += 5;
+      else if (/Rev$/i.test(name)) s += 3;
+      else if (/Production$/i.test(name)) s += 2;
+      // Interval preference: hourly > daily for elevation; either is fine for flow
+      if (/\.~1Hour\./.test(name)) s += 5;
+      else if (/\.1Hour\./.test(name)) s += 4;
+      else if (/\.15Minutes\./.test(name)) s += 5;
+      else if (/\.6Hours\./.test(name)) s += 2;
+      else if (/\.1Day\./.test(name)) s += 1;
+      // Aggregation preference depends on context — caller filter narrows that already
+      if (/\.Inst\./.test(name)) s += 1;
       else if (/\.Ave\./.test(name)) s += 1;
-      if (/NWK-Cmb-Rev$/i.test(name)) s += 3;
-      else if (/Ccp-Rev$/i.test(name)) s += 2;
-      else if (/Rev$/i.test(name)) s += 1;
-      else if (/Production$/i.test(name)) s += 1;
       return s;
     }
     return matches.sort((a, b) => score(b) - score(a))[0];
   }
 
-  const elevName = pickBest(/\.Elev[-\.]?Pool\./i) || pickBest(/\.Elev\./i);
-  const inflowName = pickBest(/\.Flow[-\.]?In(?:[-\.]?Total)?\./i);
-  const outflowName = pickBest(/\.Flow[-\.]?Out(?:[-\.]?Total)?\./i) || pickBest(/\.Flow[-\.]?Total\./i);
+  // For pool elevation: match HAST.Elev or HAST.Elev-Pool, but EXCLUDE Tailwater
+  // (HAST-Tailwater.Elev is the discharge tailrace below the dam — wrong).
+  const elevName =
+    pickBest(/^HAST\.Elev[-\.]?Pool\./i, /Tailwater/i) ||
+    pickBest(/^HAST\.Elev\./i, /Tailwater/i);
+  // For inflow/outflow: match the lake-level series, NOT tailwater. Forecasts rejected
+  // by the score function via the .Fcst- penalty.
+  const inflowName  = pickBest(/^HAST\.Flow[-\.]?In(?:[-\.]?Total)?\./i, /Tailwater/i);
+  const outflowName =
+    pickBest(/^HAST\.Flow[-\.]?Out(?:[-\.]?Total)?\./i, /Tailwater/i) ||
+    pickBest(/^HAST\.Flow[-\.]?Total\./i, /Tailwater/i);
 
-  debug.steps.push({ step: "selected", elevName, inflowName, outflowName, sampleNames: allNames.slice(0, 8) });
+  debug.steps.push({ step: "selected", elevName, inflowName, outflowName, sampleNames: allNames.slice(0, 40) });
 
-  // If catalog discovery failed, fall back to a small set of educated guesses.
-  const fallbackElev    = ["HAST.Elev-Pool.Inst.~1Hour.0.NWK-Cmb-Rev","HAST.Elev-Pool.Inst.1Hour.0.NWK-Cmb-Rev","HAST.Elev-Pool.Inst.~1Hour.0.Ccp-Rev"];
-  const fallbackInflow  = ["HAST.Flow-In.Ave.~1Hour.1Hour.NWK-Cmb-Rev","HAST.Flow-In.Inst.~1Hour.0.NWK-Cmb-Rev","HAST.Flow-In-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev"];
-  const fallbackOutflow = ["HAST.Flow-Out-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev","HAST.Flow-Out.Ave.~1Hour.1Hour.NWK-Cmb-Rev","HAST.Flow-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev"];
+  // If catalog discovery failed, fall back to the actual NWK names we discovered live
+  // (Best-NWK suffix, no -Pool tag on elev, daily Ave on flows).
+  const fallbackElev    = ["HAST.Elev.Inst.1Hour.0.Best-NWK"];
+  const fallbackInflow  = ["HAST.Flow-In.Ave.1Day.1Day.Best-NWK"];
+  const fallbackOutflow = ["HAST.Flow-Out.Ave.1Day.1Day.Best-NWK"];
 
   const elevTry    = elevName    ? [elevName,    ...fallbackElev]    : fallbackElev;
   const inflowTry  = inflowName  ? [inflowName,  ...fallbackInflow]  : fallbackInflow;

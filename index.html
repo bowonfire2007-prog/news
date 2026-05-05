@@ -942,7 +942,9 @@ async function fetchTrumanLake() {
   //    We route this through the Cloudflare worker proxy so it works regardless of origin
   //    (file://, GitHub Pages, anywhere). USGS sometimes returns empty/no-CORS responses
   //    when called directly from non-https origins, which broke direct fetches.
-  const usgsUrl = "https://waterservices.usgs.gov/nwis/iv/?sites=06922440&parameterCd=00062,00060&format=json&siteStatus=all&period=P2D";
+  // 00062 = NGVD elevation, 00065 = gage height (this gauge reports pool elev under 00065),
+  // 00060 = discharge in cfs. Request all three so we pick up whichever the site publishes.
+  const usgsUrl = "https://waterservices.usgs.gov/nwis/iv/?sites=06922440&parameterCd=00062,00065,00060&format=json&siteStatus=all&period=P2D";
   const usgsViaProxy = CF_WORKER + "?url=" + encodeURIComponent(usgsUrl);
   console.log("[lake] fetching USGS 06922440 via worker proxy");
   try {

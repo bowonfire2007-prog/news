@@ -11,6 +11,9 @@
 //   POST /brief                   AI research brief
 //                                 body: { url, title, description?, source? }
 //                                 returns: { brief, model, generated_at, cached }
+//   GET  /lake                    Truman Lake data scraped from USACE NWK Corps page
+//                                 returns: { elevation, inflow, outflow, change24h, ... }
+//                                 ?debug=1 returns raw HTML for tuning regex
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -27,6 +30,9 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/brief") {
       return handleBrief(request, env, ctx);
+    }
+    if (url.pathname === "/lake") {
+      return handleLake(url, ctx);
     }
     return handleRssProxy(url);
   }
@@ -191,6 +197,204 @@ INSTRUCTIONS
 6. If you cannot find enough information to write a substantive brief, say so honestly in one sentence rather than padding.
 
 Format: a single, clean paragraph or two of plain prose. No bullet points, no headers, no meta-commentary about your research process — just the briefing itself, ready to read.`;
+}
+
+// ─────────────── TRUMAN LAKE — USACE NWK SCRAPE ───────────────
+// Fetches the official Corps page for Harry S Truman Dam & Reservoir and extracts
+// pool elevation, inflow, outflow, and 24-hour change. Falls through gracefully if
+// the page format changes — the client side has its own NOAA TUMM7 fallback.
+async function handleLake(url, ctx) {
+  const debug = url.searchParams.get("debug") === "1";
+  const cache = caches.default;
+  const cacheReq = new Request("https://lake-cache.local/hast", { method: "GET" });
+
+  if (!debug) {
+    const cached = await cache.match(cacheReq);
+    if (cached) {
+      const cachedJson = await cached.json();
+      return jsonResponse({ ...cachedJson, cached: true });
+    }
+  }
+
+  let html;
+  try {
+    const res = await fetch("https://water.usace.army.mil/overview/nwk/locations/hast", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9"
+      },
+      cf: { cacheTtl: 600, cacheEverything: true }
+    });
+    if (!res.ok) {
+      return jsonResponse({ error: "USACE HTTP " + res.status }, 502);
+    }
+    html = await res.text();
+  } catch (err) {
+    return jsonResponse({ error: "USACE fetch failed: " + err.message }, 502);
+  }
+
+  // If the page is a JS-rendered SPA, the data may live inside an embedded JSON blob
+  // rather than rendered HTML. We try several extraction strategies and use whichever
+  // one yields valid values.
+  const parsed = parseUsaceHast(html);
+
+  if (debug) {
+    return jsonResponse({
+      parsed,
+      htmlLength: html.length,
+      htmlSample: html.slice(0, 4000),
+      htmlMid: html.slice(Math.floor(html.length / 2), Math.floor(html.length / 2) + 4000)
+    });
+  }
+
+  if (parsed.elevation === null) {
+    return jsonResponse({ error: "Could not parse pool elevation from USACE page", parsed }, 502);
+  }
+
+  const result = {
+    ...parsed,
+    source: "USACE NWK HAST",
+    fetched_at: new Date().toISOString()
+  };
+
+  const cacheRes = new Response(JSON.stringify(result), {
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=600"
+    }
+  });
+  ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+
+  return jsonResponse({ ...result, cached: false });
+}
+
+function parseUsaceHast(html) {
+  const result = {
+    elevation: null,    // ft NGVD (e.g. 715.12)
+    inflow: null,       // cfs (e.g. 1234)
+    outflow: null,      // cfs (e.g. 567)
+    change24h: null,    // ft (e.g. +0.42 or -0.15)
+    timestamp: null
+  };
+
+  // Strategy 1: look for an embedded JSON blob (SPA hydration data).
+  // Common patterns: __NEXT_DATA__, window.__INITIAL_STATE__, or labeled data tags.
+  const jsonBlobMatches = [
+    /<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i,
+    /window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\});/,
+    /window\.__DATA__\s*=\s*(\{[\s\S]*?\});/,
+    /<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i
+  ];
+  for (const pat of jsonBlobMatches) {
+    const m = html.match(pat);
+    if (!m) continue;
+    try {
+      const obj = JSON.parse(m[1]);
+      const found = scanObjectForLakeValues(obj, result);
+      if (found.elevation !== null) Object.assign(result, found);
+      if (result.elevation !== null) break;
+    } catch {}
+  }
+
+  // Strategy 2: regex against rendered HTML — look for labeled values.
+  // Patterns are written generously so they survive minor format changes.
+  if (result.elevation === null) {
+    const elevPats = [
+      /Pool\s+Elev(?:ation)?[^<>\d-]*?(\d{3}\.\d{1,2})/i,
+      /Elev(?:ation)?[^<>\d-]*?(\d{3}\.\d{1,2})/i,
+      /Lake\s+Level[^<>\d-]*?(\d{3}\.\d{1,2})/i,
+      // Last resort: any 3-digit-decimal number that looks like Truman pool elevation
+      /(\b7[01]\d\.\d{1,2}\b)/
+    ];
+    for (const pat of elevPats) {
+      const m = html.match(pat);
+      if (m) {
+        const v = parseFloat(m[1]);
+        if (v >= 690 && v <= 745) { result.elevation = v; break; }
+      }
+    }
+  }
+
+  if (result.inflow === null) {
+    const inflowPats = [
+      /Inflow[^<>\d-]*?([\d,]+)\s*cfs/i,
+      /Total\s+Inflow[^<>\d-]*?([\d,]+)/i,
+      /Net\s+Inflow[^<>\d-]*?(-?[\d,]+)/i
+    ];
+    for (const pat of inflowPats) {
+      const m = html.match(pat);
+      if (m) {
+        const v = parseInt(m[1].replace(/,/g, ""), 10);
+        if (isFinite(v)) { result.inflow = v; break; }
+      }
+    }
+  }
+
+  if (result.outflow === null) {
+    const outflowPats = [
+      /Outflow[^<>\d-]*?([\d,]+)\s*cfs/i,
+      /Total\s+Outflow[^<>\d-]*?([\d,]+)/i,
+      /Release[^<>\d-]*?([\d,]+)\s*cfs/i
+    ];
+    for (const pat of outflowPats) {
+      const m = html.match(pat);
+      if (m) {
+        const v = parseInt(m[1].replace(/,/g, ""), 10);
+        if (isFinite(v)) { result.outflow = v; break; }
+      }
+    }
+  }
+
+  if (result.change24h === null) {
+    const changePats = [
+      /24[\s-]?(?:hour|hr)\s+Change[^<>\d-]*?(-?\d+\.\d{1,2})/i,
+      /Daily\s+Change[^<>\d-]*?(-?\d+\.\d{1,2})/i,
+      /Change[^<>\d-]*?(-?\d+\.\d{1,2})\s*ft/i
+    ];
+    for (const pat of changePats) {
+      const m = html.match(pat);
+      if (m) {
+        const v = parseFloat(m[1]);
+        if (isFinite(v) && Math.abs(v) < 50) { result.change24h = v; break; }
+      }
+    }
+  }
+
+  return result;
+}
+
+// Recursively scan a parsed JSON blob for likely lake field names.
+// Useful when the SPA hydration data has elevation/inflow/outflow nested somewhere.
+function scanObjectForLakeValues(obj, baseline) {
+  const found = { ...baseline };
+  const seen = new WeakSet();
+  function walk(o) {
+    if (!o || typeof o !== "object" || seen.has(o)) return;
+    seen.add(o);
+    for (const [k, v] of Object.entries(o)) {
+      const key = k.toLowerCase();
+      if (typeof v === "number" || (typeof v === "string" && /^-?\d+\.?\d*$/.test(v.trim()))) {
+        const num = typeof v === "number" ? v : parseFloat(v);
+        if (!isFinite(num)) continue;
+        if (found.elevation === null && /pool.*elev|elev.*pool|lake.*level/i.test(key) && num >= 690 && num <= 745) {
+          found.elevation = num;
+        } else if (found.elevation === null && /^elev/i.test(key) && num >= 690 && num <= 745) {
+          found.elevation = num;
+        } else if (found.inflow === null && /inflow/i.test(key) && Math.abs(num) < 1000000) {
+          found.inflow = Math.round(num);
+        } else if (found.outflow === null && /(outflow|release)/i.test(key) && Math.abs(num) < 1000000) {
+          found.outflow = Math.round(num);
+        } else if (found.change24h === null && /(change|delta).*24|24.*change/i.test(key) && Math.abs(num) < 50) {
+          found.change24h = num;
+        }
+      } else if (Array.isArray(v) || (typeof v === "object" && v !== null)) {
+        walk(v);
+      }
+    }
+  }
+  walk(obj);
+  return found;
 }
 
 // ─────────────── HELPERS ───────────────

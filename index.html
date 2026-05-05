@@ -921,6 +921,52 @@ async function fetchTrumanLake() {
   // are reported above this datum and must be added to it to get true pool elevation.
   const TUMM7_DATUM_NGVD = 686.32;
 
+  // ── 0) USACE Corps NWK page (preferred — gives elevation, inflow, outflow, 24h change)
+  // Worker scrapes water.usace.army.mil/overview/nwk/locations/hast and returns JSON.
+  try {
+    const res = await fetchWithTimeout(CF_WORKER.replace(/\/$/, "") + "/lake", 9000);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && isValidPoolElevation(data.elevation)) {
+        // Build full lake record from Corps data
+        const stage = data.elevation;
+        let history = [];
+        try { history = JSON.parse(localStorage.getItem(TRUMAN_READINGS_KEY) || "[]"); } catch {}
+        history.push({ stage, ts: Date.now() });
+        history = history.filter(r => Date.now() - r.ts < 48 * 3600000).slice(-100);
+        try { localStorage.setItem(TRUMAN_READINGS_KEY, JSON.stringify(history)); } catch {}
+
+        // Short-term trend from rolling history
+        let trend = "stable", trendDiff = 0;
+        const threeHoursAgo = Date.now() - 3 * 3600000;
+        const old3hr = [...history].reverse().find(r => r.ts <= threeHoursAgo);
+        if (old3hr) {
+          trendDiff = stage - old3hr.stage;
+          if (trendDiff > 0.05) trend = "rising";
+          else if (trendDiff < -0.05) trend = "falling";
+        } else if (data.change24h !== null && isFinite(data.change24h)) {
+          // No 3hr history yet — derive trend from 24h change as a rough proxy
+          if (data.change24h > 0.1) trend = "rising";
+          else if (data.change24h < -0.1) trend = "falling";
+        }
+
+        const aboveBelow = (stage - TRUMAN_NORMAL_POOL).toFixed(1);
+        return {
+          stage,
+          time: data.fetched_at || null,
+          source: "USACE NWK",
+          trend,
+          trendDiff: Math.abs(trendDiff).toFixed(2),
+          dailyChange: (data.change24h !== null && isFinite(data.change24h)) ? parseFloat(data.change24h.toFixed(2)) : null,
+          inflow: (data.inflow !== null && isFinite(data.inflow)) ? data.inflow : null,
+          outflow: (data.outflow !== null && isFinite(data.outflow)) ? data.outflow : null,
+          isElevation: true,
+          aboveBelow
+        };
+      }
+    }
+  } catch(e) { console.warn("Worker /lake:", e); }
+
   // Pull a reading + 24h-ago reading from a series of {value, time} objects.
   // findHoursAgo returns the reading closest to N hours ago, or null if no
   // reading is within ±4 hours of the target time.
@@ -1042,6 +1088,8 @@ async function fetchTrumanLake() {
     stage, time, source, trend,
     trendDiff: Math.abs(trendDiff).toFixed(2),
     dailyChange: dailyChange !== null ? parseFloat(dailyChange.toFixed(2)) : null,
+    inflow: null,
+    outflow: null,
     isElevation,
     aboveBelow
   };
@@ -1372,6 +1420,18 @@ function generateFishingAdvice(lake, weather) {
     }
   }
 
+  // Inflow vs outflow context from USACE — tells you what the dam is actually doing
+  if (lake && isFinite(lake.inflow) && isFinite(lake.outflow)) {
+    const net = lake.inflow - lake.outflow;
+    if (lake.outflow > 5000 && net < -2000) {
+      tips.push("Dam is releasing hard ("+lake.outflow.toLocaleString()+" cfs out vs "+lake.inflow.toLocaleString()+" cfs in) — strong current below the dam. Trophy blue cats stack in tailwater current breaks; cut shad on a heavy weight is the move. On the lake itself, blues will be on the channel edges following pulled-out shad.");
+    } else if (net > 2000) {
+      tips.push("More water coming in than going out ("+lake.inflow.toLocaleString()+" cfs in vs "+lake.outflow.toLocaleString()+" cfs out) — pool is filling. Fish are moving into freshly flooded cover. The runoff bringing fresh water in is also bringing food — hit creek mouths and inflow points.");
+    } else if (lake.outflow > 0 && lake.inflow < 200) {
+      tips.push("Steady release with low natural inflow — pool will keep dropping until flows balance. Plan for the falling-water bite: blues on channel breaks, crappie sliding deeper.");
+    }
+  }
+
   if (lake?.isElevation && lake?.aboveBelow !== null) {
     const diff = parseFloat(lake.aboveBelow);
     if (diff > 2) {
@@ -1474,6 +1534,8 @@ function renderFishingAdvisor(lake, weather, advice) {
     </div>
     <div class="fish-conditions">
       ${lakeStatHtml}
+      ${(lake && isFinite(lake.inflow))  ? `<div class="fish-lake-stat"><div class="fish-stat-val">${lake.inflow.toLocaleString()}</div><div class="fish-stat-lbl">Inflow cfs</div></div>` : ""}
+      ${(lake && isFinite(lake.outflow)) ? `<div class="fish-lake-stat"><div class="fish-stat-val">${lake.outflow.toLocaleString()}</div><div class="fish-stat-lbl">Outflow cfs</div></div>` : ""}
       <div class="fish-lake-stat"><div class="fish-stat-val">${temp}</div><div class="fish-stat-lbl">Air Temp</div></div>
       <div class="fish-lake-stat"><div class="fish-stat-val">${wind}</div><div class="fish-stat-lbl">Wind</div></div>
     </div>

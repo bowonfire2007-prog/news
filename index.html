@@ -1382,7 +1382,7 @@ function generateFishingAdvice(lake, weather) {
   }
 
   // Inflow vs outflow context from USACE — tells you what the dam is actually doing
-  if (lake && isFinite(lake.inflow) && isFinite(lake.outflow)) {
+  if (lake && Number.isFinite(lake.inflow) && Number.isFinite(lake.outflow)) {
     const net = lake.inflow - lake.outflow;
     if (lake.outflow > 5000 && net < -2000) {
       tips.push("Dam is releasing hard ("+lake.outflow.toLocaleString()+" cfs out vs "+lake.inflow.toLocaleString()+" cfs in) — strong current below the dam. Trophy blue cats stack in tailwater current breaks; cut shad on a heavy weight is the move. On the lake itself, blues will be on the channel edges following pulled-out shad.");
@@ -1495,8 +1495,8 @@ function renderFishingAdvisor(lake, weather, advice) {
     </div>
     <div class="fish-conditions">
       ${lakeStatHtml}
-      ${(lake && isFinite(lake.inflow))  ? `<div class="fish-lake-stat"><div class="fish-stat-val">${lake.inflow.toLocaleString()}</div><div class="fish-stat-lbl">Inflow cfs</div></div>` : ""}
-      ${(lake && isFinite(lake.outflow)) ? `<div class="fish-lake-stat"><div class="fish-stat-val">${lake.outflow.toLocaleString()}</div><div class="fish-stat-lbl">Outflow cfs</div></div>` : ""}
+      ${(lake && Number.isFinite(lake.inflow))  ? `<div class="fish-lake-stat"><div class="fish-stat-val">${lake.inflow.toLocaleString()}</div><div class="fish-stat-lbl">Inflow cfs</div></div>` : ""}
+      ${(lake && Number.isFinite(lake.outflow)) ? `<div class="fish-lake-stat"><div class="fish-stat-val">${lake.outflow.toLocaleString()}</div><div class="fish-stat-lbl">Outflow cfs</div></div>` : ""}
       <div class="fish-lake-stat"><div class="fish-stat-val">${temp}</div><div class="fish-stat-lbl">Air Temp</div></div>
       <div class="fish-lake-stat"><div class="fish-stat-val">${wind}</div><div class="fish-stat-lbl">Wind</div></div>
     </div>

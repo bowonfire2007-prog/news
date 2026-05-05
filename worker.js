@@ -199,14 +199,16 @@ INSTRUCTIONS
 Format: a single, clean paragraph or two of plain prose. No bullet points, no headers, no meta-commentary about your research process — just the briefing itself, ready to read.`;
 }
 
-// ─────────────── TRUMAN LAKE — USACE NWK SCRAPE ───────────────
-// Fetches the official Corps page for Harry S Truman Dam & Reservoir and extracts
-// pool elevation, inflow, outflow, and 24-hour change. Falls through gracefully if
-// the page format changes — the client side has its own NOAA TUMM7 fallback.
+// ─────────────── TRUMAN LAKE — USACE NWK ───────────────
+// Strategy 1: hit the USACE CDA (Corps Water Management Data API) timeseries endpoint
+//             server-side — no CORS, returns clean JSON for elevation, inflow, outflow.
+// Strategy 2: fall back to scraping the NWK overview HTML page (the SPA, mostly empty,
+//             but kept around in case Strategy 1 fails or the API gets renamed).
+// The client has its own USGS gauge fallback for elevation alone.
 async function handleLake(url, ctx) {
   const debug = url.searchParams.get("debug") === "1";
   const cache = caches.default;
-  const cacheReq = new Request("https://lake-cache.local/hast", { method: "GET" });
+  const cacheReq = new Request("https://lake-cache.local/hast-v2", { method: "GET" });
 
   if (!debug) {
     const cached = await cache.match(cacheReq);
@@ -216,6 +218,25 @@ async function handleLake(url, ctx) {
     }
   }
 
+  // ── Strategy 1: USACE CDA timeseries API ──
+  const cda = await fetchUsaceCdaTimeseries();
+  if (cda && cda.elevation !== null) {
+    const result = {
+      ...cda,
+      source: "USACE CDA NWK",
+      fetched_at: new Date().toISOString()
+    };
+    if (!debug) {
+      const cacheRes = new Response(JSON.stringify(result), {
+        headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=600" }
+      });
+      ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+    }
+    if (debug) return jsonResponse({ strategy: "cda", result });
+    return jsonResponse({ ...result, cached: false });
+  }
+
+  // ── Strategy 2: scrape USACE NWK overview HTML ──
   let html;
   try {
     const res = await fetch("https://water.usace.army.mil/overview/nwk/locations/hast", {
@@ -227,21 +248,20 @@ async function handleLake(url, ctx) {
       cf: { cacheTtl: 600, cacheEverything: true }
     });
     if (!res.ok) {
-      return jsonResponse({ error: "USACE HTTP " + res.status }, 502);
+      return jsonResponse({ error: "USACE HTTP " + res.status, cdaTried: cda }, 502);
     }
     html = await res.text();
   } catch (err) {
-    return jsonResponse({ error: "USACE fetch failed: " + err.message }, 502);
+    return jsonResponse({ error: "USACE fetch failed: " + err.message, cdaTried: cda }, 502);
   }
 
-  // If the page is a JS-rendered SPA, the data may live inside an embedded JSON blob
-  // rather than rendered HTML. We try several extraction strategies and use whichever
-  // one yields valid values.
   const parsed = parseUsaceHast(html);
 
   if (debug) {
     return jsonResponse({
+      strategy: "scrape",
       parsed,
+      cdaTried: cda,
       htmlLength: html.length,
       htmlSample: html.slice(0, 4000),
       htmlMid: html.slice(Math.floor(html.length / 2), Math.floor(html.length / 2) + 4000)
@@ -249,24 +269,132 @@ async function handleLake(url, ctx) {
   }
 
   if (parsed.elevation === null) {
-    return jsonResponse({ error: "Could not parse pool elevation from USACE page", parsed }, 502);
+    return jsonResponse({ error: "Could not parse pool elevation — CDA empty + scrape empty", parsed, cdaTried: cda }, 502);
   }
 
   const result = {
     ...parsed,
-    source: "USACE NWK HAST",
+    source: "USACE NWK HAST scrape",
     fetched_at: new Date().toISOString()
   };
 
   const cacheRes = new Response(JSON.stringify(result), {
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "public, max-age=600"
-    }
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=600" }
   });
   ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
 
   return jsonResponse({ ...result, cached: false });
+}
+
+// ── USACE CDA Timeseries API ──
+// CDA exposes a timeseries endpoint that returns clean JSON. Naming convention for
+// HAST (Truman) varies slightly between district CWMS configs, so we try a list of
+// known patterns for each field and use the first one that returns data.
+async function fetchUsaceCdaTimeseries() {
+  const office = "NWK";
+  const end = new Date();
+  const begin = new Date(end.getTime() - 30 * 3600 * 1000); // 30h ago — captures 24h change
+  const beginIso = begin.toISOString();
+  const endIso = end.toISOString();
+
+  const result = { elevation: null, inflow: null, outflow: null, change24h: null, timestamp: null };
+
+  // Each entry is a list of likely CDA timeseries names to try in order.
+  const candidates = {
+    elevation: [
+      "HAST.Elev-Pool.Inst.~1Hour.0.NWK-Cmb-Rev",
+      "HAST.Elev-Pool.Inst.1Hour.0.NWK-Cmb-Rev",
+      "HAST.Elev.Inst.~1Hour.0.NWK-Cmb-Rev",
+      "HAST.Elev-Pool.Inst.6Hours.0.NWK-Cmb-Rev",
+      "HAST.Elev-Pool.Inst.~1Hour.0.Ccp-Rev"
+    ],
+    inflow: [
+      "HAST.Flow-In.Ave.~1Hour.1Hour.NWK-Cmb-Rev",
+      "HAST.Flow-In.Ave.1Hour.1Hour.NWK-Cmb-Rev",
+      "HAST.Flow-In.Inst.~1Hour.0.NWK-Cmb-Rev",
+      "HAST.Flow-In-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev"
+    ],
+    outflow: [
+      "HAST.Flow-Out-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev",
+      "HAST.Flow-Out.Ave.~1Hour.1Hour.NWK-Cmb-Rev",
+      "HAST.Flow-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev",
+      "HAST.Flow-Out-Total.Inst.~1Hour.0.NWK-Cmb-Rev"
+    ]
+  };
+
+  for (const [field, names] of Object.entries(candidates)) {
+    for (const tsName of names) {
+      const tsUrl = "https://cwms-data.usace.army.mil/cwms-data/timeseries?" +
+        "name=" + encodeURIComponent(tsName) +
+        "&office=" + office +
+        "&begin=" + encodeURIComponent(beginIso) +
+        "&end=" + encodeURIComponent(endIso) +
+        "&page-size=200";
+      let data;
+      try {
+        const res = await fetch(tsUrl, {
+          headers: { "Accept": "application/json;version=2" },
+          cf: { cacheTtl: 600, cacheEverything: true }
+        });
+        if (!res.ok) continue;
+        data = await res.json();
+      } catch { continue; }
+
+      // CDA returns either { values: [[ts, v, q], ...] } v2 format or
+      // { value: { time-series: { values: [...] } } } legacy. Be permissive.
+      const valuesArr =
+        data?.values ||
+        data?.["time-series"]?.values ||
+        data?.value?.["time-series"]?.values ||
+        [];
+      if (!valuesArr.length) continue;
+
+      const numeric = valuesArr
+        .map(row => {
+          if (Array.isArray(row)) return [row[0], row[1]];
+          return [row["date-time"] || row.dateTime || row.timestamp || row.date, row.value];
+        })
+        .filter(([, v]) => v !== null && v !== undefined && isFinite(parseFloat(v)))
+        .map(([t, v]) => [typeof t === "number" ? t : new Date(t).getTime(), parseFloat(v)]);
+
+      if (!numeric.length) continue;
+
+      const last = numeric[numeric.length - 1];
+      result[field] = field === "elevation"
+        ? parseFloat(last[1].toFixed(2))
+        : Math.round(last[1]);
+      if (!result.timestamp) result.timestamp = new Date(last[0]).toISOString();
+
+      // 24-hour change is only meaningful for elevation
+      if (field === "elevation" && numeric.length >= 2) {
+        const targetTs = Date.now() - 24 * 3600 * 1000;
+        let closest = numeric[0], minDiff = Infinity;
+        for (const row of numeric) {
+          const diff = Math.abs(row[0] - targetTs);
+          if (diff < minDiff) { minDiff = diff; closest = row; }
+        }
+        if (minDiff < 6 * 3600 * 1000) {
+          result.change24h = parseFloat((last[1] - closest[1]).toFixed(2));
+        }
+      }
+
+      break; // got valid data for this field, stop trying further names
+    }
+  }
+
+  // Validate elevation is in Truman's plausible range; reject if implausible
+  if (result.elevation !== null && (result.elevation < 690 || result.elevation > 745)) {
+    result.elevation = null;
+    result.change24h = null;
+  }
+  // Sanity-check flows: cfs values should be small ints, not millions
+  if (result.inflow !== null && Math.abs(result.inflow) > 1000000) result.inflow = null;
+  if (result.outflow !== null && Math.abs(result.outflow) > 1000000) result.outflow = null;
+
+  if (result.elevation === null && result.inflow === null && result.outflow === null) {
+    return null;
+  }
+  return result;
 }
 
 function parseUsaceHast(html) {

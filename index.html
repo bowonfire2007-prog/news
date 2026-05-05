@@ -46,11 +46,15 @@
   .drawer-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--card-hover); font-weight:700; }
   .drawer-item-icon { font-size:18px; width:24px; text-align:center; flex-shrink:0; }
 
-  /* ── HEADER ── */
-  header { position:sticky; top:0; z-index:10; background:color-mix(in srgb,var(--bg) 90%,transparent); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:1px solid var(--border); padding:max(env(safe-area-inset-top),12px) 20px 0; }
-  .header-row { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:12px; }
-  .brand { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:22px; font-weight:700; letter-spacing:-0.01em; }
+  /* ── HEADER (NYT-style masthead) ── */
+  header { position:sticky; top:0; z-index:10; background:color-mix(in srgb,var(--bg) 92%,transparent); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:1px solid var(--border); padding:max(env(safe-area-inset-top),10px) 20px 0; }
+  .header-row { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:8px; }
+  /* Masthead-style brand: serif italic with a real Cheltenham/Iowan vibe.
+     A thin scotch rule sits below the dateline strap, exactly like NYT's print look. */
+  .brand { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:24px; font-weight:700; letter-spacing:-0.015em; line-height:1; }
   .brand span { color:var(--accent); }
+  .dateline { max-width:760px; margin:0 auto; padding:0 0 8px; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--border); }
+  .dateline-volume { font-style:italic; letter-spacing:0.06em; text-transform:none; color:var(--text-soft); font-weight:500; }
   .header-actions { display:flex; align-items:center; gap:5px; }
   .icon-btn { width:36px; height:36px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--border); color:var(--text); cursor:pointer; flex-shrink:0; }
   .icon-btn:hover { background:var(--card-hover); }
@@ -92,10 +96,10 @@
   .quote-author { font-size:10px; color:var(--text-soft); margin-top:7px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; text-align:center; }
   @media (max-width:520px) { .quote-text { font-size:14px; } }
 
-  /* ── SECTION BAR ── */
-  .section-bar { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:8px 0 4px; }
+  /* ── SECTION BAR (newspaper-style centered head with rules) ── */
+  .section-bar { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:14px 0 6px; border-top:3px double var(--text); }
   .section-left { display:flex; align-items:center; gap:8px; }
-  .section-label { font-size:13px; font-weight:700; color:var(--text); letter-spacing:0.02em; text-transform:uppercase; }
+  .section-label { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:15px; font-weight:700; color:var(--text); letter-spacing:0.18em; text-transform:uppercase; font-style:normal; }
   .new-pill { font-size:10px; font-weight:700; color:var(--accent); background:color-mix(in srgb,var(--accent) 13%,transparent); padding:2px 7px; border-radius:999px; white-space:nowrap; }
   .section-menu-btn { font-size:13px; font-weight:600; color:var(--accent); background:transparent; border:none; cursor:pointer; padding:4px 0; display:flex; align-items:center; gap:5px; }
   .section-menu-btn svg { width:14px; height:14px; }
@@ -125,13 +129,17 @@
   .skel-line.s5 { height:13px; width:60%; }
   .skel-img { width:110px; height:110px; flex-shrink:0; border-radius:8px; background:var(--card-hover); animation:shimmer 1.5s ease-in-out infinite; }
 
-  /* ── NEWS ITEMS ── */
+  /* ── NEWS ITEMS (NYT-style with kicker, deck, fine rules) ── */
   .item-wrap { border-bottom:1px solid var(--border); }
-  article.item { display:flex; gap:16px; padding:20px 0 14px; cursor:pointer; position:relative; }
+  .item-wrap:last-child { border-bottom:none; }
+  article.item { display:flex; gap:18px; padding:22px 0 16px; cursor:pointer; position:relative; }
   article.item:hover .title { color:var(--accent); }
   article.item.read { opacity:0.52; }
   article.item.read:hover { opacity:0.82; }
   article.item.kb-focus { outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
+  /* Kicker — italic mini-caps section label above the headline, like NYT print. */
+  .kicker { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--accent); margin-bottom:5px; font-style:italic; }
+  .kicker::after { content:""; display:inline-block; width:18px; height:1px; background:var(--accent); margin-left:8px; vertical-align:middle; opacity:0.6; }
 
   /* ── AI BRIEF ── */
   .brief-btn { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); background:color-mix(in srgb,var(--accent) 7%,transparent); color:var(--accent); font-size:11px; font-weight:700; letter-spacing:0.04em; cursor:pointer; font-family:inherit; text-transform:uppercase; transition:background .12s,color .12s; }
@@ -152,27 +160,28 @@
   .brief-error { color:#b91c1c; font-size:13px; line-height:1.5; }
   [data-theme="dark"] .brief-error { color:#f87171; }
   .item-text { flex:1; min-width:0; }
-  .meta { display:flex; align-items:center; gap:6px; font-size:12px; margin-bottom:5px; flex-wrap:wrap; }
+  .meta { display:flex; align-items:center; gap:8px; font-size:12px; margin-top:9px; flex-wrap:wrap; color:var(--text-soft); }
   .source-chip { background:var(--card-hover); color:var(--text-muted); font-size:10px; font-weight:700; padding:2px 6px; border-radius:3px; letter-spacing:0.04em; text-transform:uppercase; }
   .meta-dot { color:var(--text-soft); opacity:0.4; }
-  .meta-age { font-size:11px; color:var(--text-soft); }
+  .meta-age { font-size:11px; color:var(--text-soft); font-style:italic; letter-spacing:0.02em; }
   .badge-row { display:flex; gap:5px; margin-bottom:5px; flex-wrap:wrap; align-items:center; }
   .badge { font-size:10px; font-weight:700; padding:2px 6px; border-radius:3px; letter-spacing:0.04em; text-transform:uppercase; }
   .badge-breaking { background:#7f1d1d; color:#fecaca; }
   .badge-trending { background:color-mix(in srgb,var(--accent) 14%,transparent); color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 28%,transparent); }
   .badge-new { background:#14532d; color:#bbf7d0; }
-  .title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:19px; font-weight:700; line-height:1.3; letter-spacing:-0.01em; color:var(--text); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
-  .desc { margin-top:6px; font-size:14px; color:var(--text-muted); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-  .thumb { width:110px; height:110px; flex-shrink:0; border-radius:8px; background:var(--card-hover); object-fit:cover; }
+  .title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:20px; font-weight:700; line-height:1.22; letter-spacing:-0.015em; color:var(--text); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .desc { margin-top:7px; font-size:14.5px; color:var(--text-muted); line-height:1.45; font-family:"Iowan Old Style","Palatino","Georgia",serif; font-style:italic; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .thumb { width:110px; height:110px; flex-shrink:0; border-radius:2px; background:var(--card-hover); object-fit:cover; }
   .bkmk-btn { position:absolute; bottom:18px; right:0; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:transparent; border:none; cursor:pointer; font-size:15px; opacity:0; transition:opacity .15s; color:var(--text-soft); padding:0; }
   article.item:hover .bkmk-btn { opacity:1; }
   article.item.bookmarked .bkmk-btn { opacity:1; color:var(--accent); }
 
-  /* ── HERO (first story) ── */
-  article.item.hero { flex-direction:column; gap:10px; padding-bottom:24px; }
-  article.item.hero .thumb { width:100%; height:220px; border-radius:10px; }
-  article.item.hero .title { font-size:26px; -webkit-line-clamp:4; }
-  article.item.hero .desc { -webkit-line-clamp:3; font-size:15px; }
+  /* ── HERO (lead story — newspaper above-the-fold treatment) ── */
+  article.item.hero { flex-direction:column; gap:12px; padding:8px 0 28px; border-bottom:3px double var(--border); }
+  article.item.hero .thumb { width:100%; height:240px; border-radius:2px; }
+  article.item.hero .kicker { font-size:12px; }
+  article.item.hero .title { font-size:30px; line-height:1.12; letter-spacing:-0.02em; -webkit-line-clamp:4; }
+  article.item.hero .desc { -webkit-line-clamp:3; font-size:16px; line-height:1.5; margin-top:8px; }
 
   /* ── STOCKS ── */
   .stock-input-row { display:flex; gap:8px; padding:20px 0 12px; border-bottom:1px solid var(--border); }
@@ -203,14 +212,15 @@
 
   /* ── RESPONSIVE ── */
   @media (max-width:520px) {
-    .brand { font-size:19px; }
-    .title { font-size:17px; }
+    .brand { font-size:21px; }
+    .dateline { font-size:9.5px; letter-spacing:0.14em; }
+    .title { font-size:18px; }
     .thumb { width:84px; height:84px; }
-    article.item { padding:16px 0; gap:12px; }
-    article.item.hero .thumb { height:170px; }
-    article.item.hero .title { font-size:21px; }
-    main, .header-row, header, .weather, .section-bar, .quick-tabs, .quote-bar, .search-wrap { padding-left:16px; padding-right:16px; }
-    .weather, .section-bar, .quick-tabs, .quote-bar { padding-left:0; padding-right:0; }
+    article.item { padding:18px 0; gap:14px; }
+    article.item.hero .thumb { height:180px; }
+    article.item.hero .title { font-size:23px; }
+    main, .header-row, header, .weather, .section-bar, .quick-tabs, .quote-bar, .search-wrap, .dateline { padding-left:16px; padding-right:16px; }
+    .weather, .section-bar, .quick-tabs, .quote-bar, .dateline { padding-left:0; padding-right:0; }
     .w-temp { font-size:20px; }
     .w-meta { font-size:11px; gap:6px; }
     .skel-img { width:84px; height:84px; }
@@ -286,6 +296,12 @@
       <input class="search-input" id="searchInput" placeholder="Search stories…" autocomplete="off" autocorrect="off" spellcheck="false">
       <button class="search-clear" id="searchClear">×</button>
     </div>
+  </div>
+
+  <div class="dateline" id="dateline">
+    <span id="datelineDate">—</span>
+    <span class="dateline-volume">"All the news that's fit to scroll."</span>
+    <span id="datelineEdition">Clinton, MO Edition</span>
   </div>
 
   <div class="weather loading" id="weather"><span class="spinner"></span><span>Loading weather…</span></div>
@@ -466,17 +482,39 @@ const CATEGORIES = [
   ]}
 ];
 
-const STOCK_NEWS_FEEDS = [
-  { source:"Market News", url:"https://news.google.com/rss/search?q=AAPL+OR+MSFT+OR+NVDA+OR+GOOGL+stock+earnings&hl=en-US&gl=US&ceid=US:en" },
-  { source:"Tesla / EV", url:"https://news.google.com/rss/search?q=TSLA+Tesla+stock&hl=en-US&gl=US&ceid=US:en" },
-  { source:"Chips / Semi", url:"https://news.google.com/rss/search?q=AMD+OR+INTC+OR+TSM+semiconductor+stock&hl=en-US&gl=US&ceid=US:en" },
-  { source:"Meme Stocks", url:"https://news.google.com/rss/search?q=GME+OR+AMC+stock+news&hl=en-US&gl=US&ceid=US:en" },
-  { source:"Crypto", url:"https://news.google.com/rss/search?q=Bitcoin+OR+XRP+crypto+price&hl=en-US&gl=US&ceid=US:en" },
-  { source:"Oil / Commodities", url:"https://news.google.com/rss/search?q=crude+oil+WTI+Brent+price&hl=en-US&gl=US&ceid=US:en" },
-  { source:"SPY / Market", url:"https://news.google.com/rss/search?q=S%26P+500+OR+SPY+stock+market&hl=en-US&gl=US&ceid=US:en" },
-  { source:"Yahoo Finance", url:"https://finance.yahoo.com/news/rssindex" },
-  { source:"MarketWatch", url:"https://feeds.content.dowjones.io/public/rss/mw_topstories" }
-];
+// Map tickers to Google News query terms (ticker + company name aliases for better hits).
+// The display label is what shows on the article chip; the query goes into the RSS URL.
+const TICKER_NEWS_TERMS = {
+  "AAPL":   { label:"AAPL",     q:"AAPL+OR+Apple+stock" },
+  "MSFT":   { label:"MSFT",     q:"MSFT+OR+Microsoft+stock" },
+  "NVDA":   { label:"NVDA",     q:"NVDA+OR+Nvidia+stock" },
+  "GOOGL":  { label:"GOOGL",    q:"GOOGL+OR+Alphabet+OR+Google+stock" },
+  "TSLA":   { label:"TSLA",     q:"TSLA+OR+Tesla+stock" },
+  "SPY":    { label:"SPY",      q:"%22S%26P+500%22+OR+SPY+ETF" },
+  "MMM":    { label:"MMM",      q:"%223M+stock%22+OR+%22MMM+stock%22" },
+  "AMD":    { label:"AMD",      q:"AMD+OR+%22Advanced+Micro+Devices%22+stock" },
+  "INTC":   { label:"INTC",     q:"INTC+OR+Intel+stock" },
+  "LRCX":   { label:"LRCX",     q:"LRCX+OR+%22Lam+Research%22" },
+  "GME":    { label:"GME",      q:"GME+OR+GameStop+stock" },
+  "TSM":    { label:"TSM",      q:"TSM+OR+TSMC+OR+%22Taiwan+Semiconductor%22" },
+  "WMT":    { label:"WMT",      q:"WMT+OR+Walmart+stock" },
+  "LLY":    { label:"LLY",      q:"LLY+OR+%22Eli+Lilly%22+stock" },
+  "AMC":    { label:"AMC",      q:"%22AMC+Entertainment%22+OR+%22AMC+stock%22" },
+  "BTC-USD":{ label:"BITCOIN",  q:"Bitcoin+OR+BTC+price" },
+  "XRP-USD":{ label:"XRP",      q:"XRP+OR+Ripple+crypto" },
+  "CL=F":   { label:"WTI",      q:"%22crude+oil%22+OR+%22WTI+price%22" },
+  "BZ=F":   { label:"BRENT",    q:"%22Brent+crude%22+OR+%22Brent+oil+price%22" }
+};
+function buildStockNewsFeeds(watchlist) {
+  return (watchlist || []).map(t => {
+    const meta = TICKER_NEWS_TERMS[t] || { label: t, q: encodeURIComponent(t) + "+stock" };
+    return {
+      ticker: t,
+      source: meta.label,
+      url: "https://news.google.com/rss/search?q=" + meta.q + "&hl=en-US&gl=US&ceid=US:en"
+    };
+  });
+}
 
 // Proxies tried in parallel — first response wins
 // cfworker is Matt's own Cloudflare Worker (fast, no rate limits)
@@ -499,8 +537,8 @@ const FEED_TIMEOUT_MS      = 6000;   // reduced from 8s
 const STOCKS_CACHE_TTL_MS  = 60*1000;
 const WEATHER_CACHE_TTL_MS = 15*60*1000;
 const ALERTS_CACHE_TTL_MS  = 5*60*1000;
-const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F"];
-const WATCHLIST_VERSION = 3;
+const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","LRCX","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F"];
+const WATCHLIST_VERSION = 4;
 const TICKER_DISPLAY = { "BZ=F":"BRENT","CL=F":"WTI","BTC-USD":"BITCOIN","XRP-USD":"XRP" };
 
 // ── SOURCE TRUST WEIGHTS ──
@@ -624,6 +662,19 @@ const overlayEl   = document.getElementById("drawerOverlay");
 const sectionLabelEl = document.getElementById("sectionLabel");
 const newPillEl   = document.getElementById("newPill");
 const quoteBarEl  = document.getElementById("quoteBar");
+
+// ========== DATELINE ==========
+// NYT-style date strap. Populated on load and updated every minute (in case the site
+// is left open across midnight).
+function renderDateline() {
+  const el = document.getElementById("datelineDate");
+  if (!el) return;
+  const now = new Date();
+  const opts = { weekday:"long", year:"numeric", month:"long", day:"numeric" };
+  el.textContent = now.toLocaleDateString("en-US", opts);
+}
+renderDateline();
+setInterval(renderDateline, 60000);
 
 // ========== THEME ==========
 const themeBtn  = document.getElementById("themeBtn");
@@ -799,6 +850,30 @@ function heatScore(item) {
 // Breaking news keyword detection
 const BREAKING_RE = /\b(breaking|urgent|alert|developing|just in|emergency|exclusive)\b/i;
 function isBreaking(title) { return BREAKING_RE.test(title); }
+
+// ── LOCAL-NEWS RELEVANCE ──
+// Used only on the "Local (MO)" category. Boost Clinton/Henry/Truman content, demote
+// pure big-city stories that have nothing to do with rural west-central Missouri.
+const HYPERLOCAL_RE = /\b(clinton(,?\s*mo|\s+missouri)?|henry\s+county|truman\s+(lake|reservoir|dam)|warsaw\s+missouri|warsaw,?\s*mo|tightwad|calhoun|windsor\s+missouri|deepwater|sparrowfoot|leesville|montrose|blairstown|urich|cole\s+camp|lincoln,?\s*mo|benton\s+county\s+missouri|hickory\s+county|st\.?\s*clair\s+county|kdkd|grand\s+river\s+arm|osage\s+arm)\b/i;
+const REGIONAL_RE  = /\b(sedalia|warrensburg|pettis\s+county|johnson\s+county\s+missouri|knob\s+noster|kingsville|holden,?\s*mo|lake\s+of\s+the\s+ozarks|camden\s+county|whiteman\s+(afb|air\s+force)|state\s+fair\s+community|west[\s-]?central\s+missouri|west\s+missouri|missouri\s+ozarks|harrisonville|raymore|peculiar)\b/i;
+const STATEWIDE_RE = /\b(missouri\s+(governor|legislature|legislator|senator|state\s+senator|house|representative|attorney\s+general|treasurer|supreme\s+court|department|highway\s+patrol|conservation|state\s+park)|kehoe|mike\s+parson|mdc|modot|state\s+of\s+missouri|missouri\s+farm|missouri\s+agriculture|farm\s+bureau)\b/i;
+const BIG_CITY_RE  = /\b(kansas\s+city|st\.?\s*louis|springfield,?\s*mo|cape\s+girardeau|columbia,?\s*mo|jefferson\s+city|chesterfield|o.fallon|wentzville|st\.?\s*charles|joplin|branson)\b/i;
+const HYPERLOCAL_SOURCES = new Set([
+  "Clinton Daily Democrat","Henry County MO","Clinton MO News","KDKD Clinton",
+  "Truman Lake","West Central MO"
+]);
+
+function localRelevance(item) {
+  if (HYPERLOCAL_SOURCES.has(item.source)) return 5;
+  const text = (item.title + " " + (item.description || "")).toLowerCase();
+  if (HYPERLOCAL_RE.test(text)) return 4;        // direct hit on Clinton/Henry/Truman/etc.
+  if (REGIONAL_RE.test(text))   return 2;        // adjacent counties / nearby towns
+  if (STATEWIDE_RE.test(text))  return 1;        // statewide policy that affects everyone
+  if (BIG_CITY_RE.test(text))   return -2;       // big-city only, no rural angle → hide
+  // No signal either way: keep neutral. Big-city-source stories with no city term in
+  // headline still come through but at heat × 1.0 (they'll naturally lose to local).
+  return 0;
+}
 
 // Cross-source trending: count how many distinct sources share overlapping title words
 function wordSet(title) {
@@ -991,25 +1066,26 @@ async function fetchTrumanLake() {
     }
   } catch(e) { console.warn("[lake] USGS error:", e); }
 
-  // 2) Fallback: Cloudflare Worker /lake (USACE scrape) — rarely useful since the page is
-  //    a JS SPA, but kept in case the worker is enhanced later to hit the CWMS API.
-  if (stage === null) {
-    console.log("[lake] USGS failed, trying worker /lake...");
-    try {
-      const res = await fetchWithTimeout(CF_WORKER.replace(/\/$/, "") + "/lake", 5000);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && isValidPoolElevation(data.elevation)) {
-          stage = data.elevation;
-          source = "USACE NWK";
-          isElevation = true;
-          time = data.fetched_at || null;
-          if (data.inflow !== null && isFinite(data.inflow))   inflow  = data.inflow;
-          if (data.outflow !== null && isFinite(data.outflow)) outflow = data.outflow;
-        }
+  // 2) ALWAYS try the worker /lake endpoint — it hits the USACE CDA API server-side
+  //    and supplies inflow/outflow that USGS doesn't publish. If USGS missed elevation
+  //    too, the worker can fill that in. Run in addition to (not instead of) USGS.
+  try {
+    const res = await fetchWithTimeout(CF_WORKER.replace(/\/$/, "") + "/lake", 5000);
+    if (res.ok) {
+      const data = await res.json();
+      console.log("[lake] worker /lake returned:", data);
+      if (stage === null && data && isValidPoolElevation(data.elevation)) {
+        stage = data.elevation;
+        source = (data.source || "USACE NWK");
+        isElevation = true;
+        time = data.fetched_at || data.timestamp || null;
       }
-    } catch(e) { console.warn("[lake] worker /lake error:", e); }
-  }
+      // Always pull inflow/outflow from the worker — USGS doesn't publish inflow at all,
+      // and even when it has discharge it's tailwater (post-dam), not reservoir outflow.
+      if (Number.isFinite(data?.inflow))  inflow  = data.inflow;
+      if (Number.isFinite(data?.outflow)) outflow = data.outflow;
+    }
+  } catch(e) { console.warn("[lake] worker /lake error:", e); }
 
   if (stage === null) return null;
 
@@ -1102,22 +1178,41 @@ async function loadWeather(force) {
     weatherEl.innerHTML='<div class="w-current"><span class="w-icon">⚠️</span><span>Weather unavailable · '+WEATHER_LOCATION.name+'</span></div>';
   }
 }
-function dayLabel(dateStr, idx) {
-  if (idx===0) return "Today"; if (idx===1) return "Tomorrow";
+function dayLabel(dateStr, displayIdx) {
+  // displayIdx is the position in the rendered forecast: 0 = today, 1 = tomorrow, 2 = day after.
+  // dateStr is the actual ISO date for that day from Open-Meteo (already shifted to today by the
+  // caller, which finds today's index in d.time before iterating). So we can label directly.
+  if (displayIdx===0) return "Today";
+  if (displayIdx===1) return "Tomorrow";
   try { return new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"short"}); } catch { return ""; }
 }
+
+// Find today's index inside the Open-Meteo daily.time array. Because we request past_days=1,
+// d.time[0] is yesterday — so we have to skip past it to land on the actual current day.
+function findTodayIndex(times, tz) {
+  if (!times || !times.length) return 0;
+  // en-CA gives YYYY-MM-DD, which matches Open-Meteo's date format.
+  const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: tz });
+  const idx = times.indexOf(todayStr);
+  return idx >= 0 ? idx : 0;
+}
+
 function renderWeather(data, lake) {
   const c=data.current||{}, d=data.daily||{};
   const entry=WEATHER_CODE_MAP[c.weather_code]||["—","🌡️"];
   const temp=Math.round(c.temperature_2m), feels=Math.round(c.apparent_temperature);
-  const hi=d.temperature_2m_max&&Math.round(d.temperature_2m_max[0]), lo=d.temperature_2m_min&&Math.round(d.temperature_2m_min[0]);
+  const todayIdx = findTodayIndex(d.time, WEATHER_LOCATION.tz);
+  const hi=d.temperature_2m_max&&Math.round(d.temperature_2m_max[todayIdx]);
+  const lo=d.temperature_2m_min&&Math.round(d.temperature_2m_min[todayIdx]);
   const wind=Math.round(c.wind_speed_10m), hum=c.relative_humidity_2m;
   const windDirText = isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m)+" " : "";
   let forecastHtml="";
-  for (let i=0; i<Math.min(3,(d.time||[]).length); i++) {
+  const totalDays = (d.time||[]).length;
+  for (let dispIdx=0; dispIdx<3 && (todayIdx+dispIdx)<totalDays; dispIdx++) {
+    const i = todayIdx + dispIdx;
     const e=WEATHER_CODE_MAP[(d.weather_code||[])[i]]||["","🌡️"];
     const pop=(d.precipitation_probability_max||[])[i];
-    forecastHtml+='<span class="w-day"><span class="w-day-name">'+dayLabel((d.time||[])[i],i)+'</span> '+e[1]+' '+
+    forecastHtml+='<span class="w-day"><span class="w-day-name">'+dayLabel((d.time||[])[i],dispIdx)+'</span> '+e[1]+' '+
       Math.round((d.temperature_2m_max||[])[i])+'° / '+Math.round((d.temperature_2m_min||[])[i])+'°'+
       (isFinite(pop)&&pop>0?' <span style="color:var(--text-soft)">💧'+pop+'%</span>':'')+' </span>';
   }
@@ -1618,9 +1713,27 @@ async function fetchQuoteYahoo(ticker) {
   const closesRaw=(result.indicators&&result.indicators.quote&&result.indicators.quote[0]&&result.indicators.quote[0].close)||[];
   const closes=closesRaw.filter(x=>x!==null&&x!==undefined);
   const price=(meta.regularMarketPrice!==undefined&&meta.regularMarketPrice!==null)?meta.regularMarketPrice:closes[closes.length-1];
-  const prevClose=(meta.chartPreviousClose!==undefined&&meta.chartPreviousClose!==null)?meta.chartPreviousClose:(meta.previousClose||closes[closes.length-2]);
+
+  // BUG FIX: use meta.previousClose (yesterday's close) — NOT meta.chartPreviousClose,
+  // which is the close 1 month ago because the chart range is "1mo". Using the wrong
+  // field made INTC, AMC, NVDA, etc. show monthly-change instead of daily-change.
+  // If meta.previousClose is missing, fall back to the second-to-last close in the
+  // chart array (which is yesterday's close when the latest is today's intraday price).
+  let prevClose;
+  if (meta.previousClose !== undefined && meta.previousClose !== null) {
+    prevClose = meta.previousClose;
+  } else if (closes.length >= 2) {
+    // If price === last close, the chart's last bar IS today and prev is closes[-2].
+    // If price !== last close, the chart's last bar is yesterday and IS the prev close.
+    prevClose = (Math.abs(price - closes[closes.length-1]) < 0.005)
+      ? closes[closes.length-2]
+      : closes[closes.length-1];
+  } else {
+    prevClose = price; // can't compute change — show flat rather than nonsense
+  }
+
   const change=price-prevClose;
-  return { ticker, name:meta.shortName||meta.longName||ticker, price, change, changePct:(change/prevClose)*100, currency:meta.currency||"USD", closes:closes.slice(-30), source:"Yahoo" };
+  return { ticker, name:meta.shortName||meta.longName||ticker, price, change, changePct:prevClose?(change/prevClose)*100:0, currency:meta.currency||"USD", closes:closes.slice(-30), source:"Yahoo" };
 }
 async function fetchQuoteStooq(ticker) {
   const sym=ticker.toLowerCase()+(ticker.indexOf(".")===-1?".us":"");
@@ -1674,18 +1787,39 @@ function fmtChange(abs,pct) {
 async function loadStockNews(force) {
   const newsSection=document.getElementById("stockNewsSection");
   if (!newsSection) return;
+  const watchlist = getWatchlist();
+  if (!watchlist.length) { newsSection.innerHTML = ""; return; }
+  const feeds = buildStockNewsFeeds(watchlist);
   newsSection.innerHTML=
-    '<div class="stock-news-header"><div class="stock-news-title">📰 Stock News</div><div class="stock-news-sub">Live market headlines</div></div>'+
+    '<div class="stock-news-header">'+
+      '<div class="stock-news-title">📰 News for your watchlist</div>'+
+      '<div class="stock-news-sub">'+watchlist.length+' tickers · headlines per stock</div>'+
+    '</div>'+
     '<div class="stock-news-loading"><span class="spinner"></span>Loading stock news…</div>';
-  if (force) STOCK_NEWS_FEEDS.forEach(f=>localStorage.removeItem("news.cache."+f.url));
-  const results=await Promise.all(STOCK_NEWS_FEEDS.map(f=>fetchFeed(f)));
-  const all=results.flatMap(r=>r).sort((a,b)=>heatScore(b)-heatScore(a));
-  const seen=new Set();
-  const deduped=all.filter(item=>{ const k=item.title.toLowerCase().slice(0,60); if(seen.has(k)) return false; seen.add(k); return true; });
+  if (force) feeds.forEach(f=>localStorage.removeItem("news.cache."+f.url));
+
+  // Per-ticker fetch — tag each item with which ticker it came from so we can show
+  // a "TICKER" chip on the headline. We keep PER_FEED_LIMIT small so big watchlists
+  // don't drown the user; sort + dedupe across all tickers afterwards.
+  const results = await Promise.all(feeds.map(async f => {
+    try {
+      const items = await fetchFeed(f);
+      return items.map(item => ({ ...item, _ticker: f.ticker, source: f.source + " · News" }));
+    } catch { return []; }
+  }));
+
+  const all = results.flat();
+  const seen = new Set();
+  const deduped = all.filter(item => {
+    const k = item.title.toLowerCase().slice(0, 60);
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  }).sort((a, b) => heatScore(b) - heatScore(a));
+
   if (!deduped.length) { newsSection.querySelector(".stock-news-loading").textContent="No stock news loaded."; return; }
   newsSection.querySelector(".stock-news-loading").remove();
   const frag=document.createDocumentFragment();
-  deduped.slice(0,40).forEach(item=>{ frag.appendChild(buildArticle(item, false)); });
+  deduped.slice(0, 50).forEach(item=>{ frag.appendChild(buildArticle(item, false)); });
   newsSection.appendChild(frag);
 }
 
@@ -1877,15 +2011,15 @@ function buildArticle(item, isHero) {
 
   a.innerHTML =
     '<div class="item-text">' +
-      '<div class="meta">' +
-        '<span class="source-chip">'+escapeHtml(item.source)+'</span>' +
-        '<span class="meta-dot">·</span>' +
-        '<span class="meta-age">'+relativeTime(item.pubDate)+'</span>' +
-        '<button class="brief-btn" type="button" title="Research this story with AI"><span class="spark">✦</span> AI Brief</button>' +
-      '</div>' +
+      '<div class="kicker">'+escapeHtml(item.source)+'</div>' +
       badgeHtml +
       '<div class="title">'+escapeHtml(item.title)+'</div>' +
       (item.description?'<div class="desc">'+escapeHtml(item.description)+'</div>':'') +
+      '<div class="meta">' +
+        '<span class="meta-age">'+relativeTime(item.pubDate)+'</span>' +
+        '<span class="meta-dot">·</span>' +
+        '<button class="brief-btn" type="button" title="Research this story with AI"><span class="spark">✦</span> AI Brief</button>' +
+      '</div>' +
     '</div>' +
     (hasImg?'<img class="thumb" src="'+escapeHtml(item.thumbnail)+'" alt="" loading="lazy" onerror="this.remove()">':'') +
     '<button class="bkmk-btn" title="'+(isSaved(item.link)?"Remove bookmark":"Bookmark")+'">'+(isSaved(item.link)?"🔖":"🏷️")+'</button>';
@@ -1989,13 +2123,23 @@ async function loadCategory(force) {
 
   // Deduplicate, apply recency window, sort by heat score
   const seen = new Set();
-  const deduped = all.filter(item => {
+  let deduped = all.filter(item => {
     if (cutoffMs && item.pubDate < cutoffMs) return false;
     const key = item.title.toLowerCase().slice(0, 60);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   }).sort((a, b) => heatScore(b) - heatScore(a));
+
+  // Local-news relevance pass: drop big-city-only stories with no rural/regional
+  // angle, and reorder so Clinton/Henry/Truman headlines float to the top.
+  if (cat.id === "local") {
+    deduped = deduped
+      .map(it => ({ it, rel: localRelevance(it) }))
+      .filter(x => x.rel >= 0)
+      .sort((a, b) => (heatScore(b.it) * (1 + 0.5 * b.rel)) - (heatScore(a.it) * (1 + 0.5 * a.rel)))
+      .map(x => x.it);
+  }
 
   if (deduped.length === 0) {
     listEl.innerHTML = "";

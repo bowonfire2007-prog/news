@@ -923,8 +923,12 @@ async function fetchTrumanLake() {
 
   // ── 0) USACE Corps NWK page (preferred — gives elevation, inflow, outflow, 24h change)
   // Worker scrapes water.usace.army.mil/overview/nwk/locations/hast and returns JSON.
+  // Short timeout (5s) — if the worker is slow or doesn't have the /lake endpoint yet,
+  // fall through fast to the NOAA TUMM7 path so the spinner doesn't hang.
+  console.log("[lake] trying worker /lake endpoint...");
   try {
-    const res = await fetchWithTimeout(CF_WORKER.replace(/\/$/, "") + "/lake", 9000);
+    const res = await fetchWithTimeout(CF_WORKER.replace(/\/$/, "") + "/lake", 5000);
+    console.log("[lake] /lake response status:", res.status);
     if (res.ok) {
       const data = await res.json();
       if (data && isValidPoolElevation(data.elevation)) {
@@ -990,17 +994,20 @@ async function fetchTrumanLake() {
   //    The gauge reports STAGE (ft above gauge zero), so we add the datum (686.32 ft
   //    NGVD) to convert to true pool elevation matching what the Corps publishes
   //    at water.usace.army.mil. e.g. stage 28.8 + 686.32 = 715.12 ft pool elevation.
+  console.log("[lake] trying NOAA TUMM7...");
   try {
     const res = await fetchWithTimeout(
-      "https://api.water.noaa.gov/nwps/v1/gauges/TUMM7/stageflow/observed?period=P2D", 7000
+      "https://api.water.noaa.gov/nwps/v1/gauges/TUMM7/stageflow/observed?period=P2D", 5000
     );
     if (res.ok) {
       const data = await res.json();
       const rows = (data?.data) || [];
+      console.log("[lake] TUMM7 returned", rows.length, "rows. Sample primary:", rows[rows.length-1]?.primary);
       const series = rows
         .filter(r => r.primary != null && isFinite(parseFloat(r.primary)))
         .map(r => ({ value: parseFloat(r.primary) + TUMM7_DATUM_NGVD, time: r.validTime }))
         .filter(r => isValidPoolElevation(r.value));
+      console.log("[lake] TUMM7 valid series after offset:", series.length, "last value:", series[series.length-1]?.value);
       if (series.length) {
         const last = series[series.length - 1];
         stage = last.value; time = last.time; source = "NOAA TUMM7"; isElevation = true;
@@ -1013,7 +1020,7 @@ async function fetchTrumanLake() {
   if (stage === null) {
     try {
       const res = await fetchWithTimeout(
-        "https://waterservices.usgs.gov/nwis/iv/?sites=06922540&parameterCd=00062&format=json&siteStatus=all&period=P2D", 7000
+        "https://waterservices.usgs.gov/nwis/iv/?sites=06922540&parameterCd=00062&format=json&siteStatus=all&period=P2D", 5000
       );
       if (res.ok) {
         const data = await res.json();

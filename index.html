@@ -937,15 +937,16 @@ async function fetchTrumanLake() {
   let inflow = null, outflow = null;
 
   // 1) PRIMARY: USGS gauge 06922440 = "Harry S. Truman Dam and Res. at Warsaw, MO".
-  //    Parameter 00062 returns reservoir water surface elevation in NGVD ft directly —
-  //    no offset math needed. This is the canonical USGS lake gauge for Truman.
-  //    We fetch ALL parameters in one call so we also pick up discharge (inflow/outflow)
-  //    if they're reported on this site.
-  console.log("[lake] fetching USGS 06922440 (Truman Dam) — all parameters, 2-day period");
+  //    Parameter 00062 = reservoir water surface elevation, NGVD ft (direct, no offset).
+  //    Parameter 00060 = discharge (cfs), typically tailwater outflow.
+  //    We route this through the Cloudflare worker proxy so it works regardless of origin
+  //    (file://, GitHub Pages, anywhere). USGS sometimes returns empty/no-CORS responses
+  //    when called directly from non-https origins, which broke direct fetches.
+  const usgsUrl = "https://waterservices.usgs.gov/nwis/iv/?sites=06922440&parameterCd=00062,00060&format=json&siteStatus=all&period=P2D";
+  const usgsViaProxy = CF_WORKER + "?url=" + encodeURIComponent(usgsUrl);
+  console.log("[lake] fetching USGS 06922440 via worker proxy");
   try {
-    const res = await fetchWithTimeout(
-      "https://waterservices.usgs.gov/nwis/iv/?sites=06922440&format=json&siteStatus=all&period=P2D", 7000
-    );
+    const res = await fetchWithTimeout(usgsViaProxy, 7000);
     if (res.ok) {
       const data = await res.json();
       const seriesList = data?.value?.timeSeries || [];
@@ -965,9 +966,15 @@ async function fetchTrumanLake() {
 
         console.log("[lake] param", paramCode, "(" + paramName.slice(0,60) + "): last value =", last.value);
 
-        if (paramCode === "00062" && isValidPoolElevation(last.value)) {
-          // Pool elevation, NGVD ft — exactly what we want
-          stage = last.value; time = last.time; source = "USGS 06922440"; isElevation = true;
+        // Accept either 00062 (NGVD elevation) or 00065 (gage height) — for the Truman
+        // Dam gauge, USGS reports pool elevation under the gage height parameter, but the
+        // VALUE is real NGVD pool elevation (verified against the USACE page). The validity
+        // range check (690-745 ft) ensures we don't accidentally accept a relative stage.
+        if ((paramCode === "00062" || paramCode === "00065") && isValidPoolElevation(last.value)) {
+          // Pool elevation in NGVD ft — what the bite meter and weather bar display.
+          stage = last.value; time = last.time;
+          source = "USGS 06922440 (" + paramCode + ")";
+          isElevation = true;
           dayAgo = findHoursAgo(numeric, 24);
         } else if (paramCode === "00060" && isFinite(last.value)) {
           // Discharge (cfs). On a dam gauge this is typically the outflow / release.

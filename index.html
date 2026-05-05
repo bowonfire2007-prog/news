@@ -1069,8 +1069,10 @@ async function fetchTrumanLake() {
   // 2) ALWAYS try the worker /lake endpoint — it hits the USACE CDA API server-side
   //    and supplies inflow/outflow that USGS doesn't publish. If USGS missed elevation
   //    too, the worker can fill that in. Run in addition to (not instead of) USGS.
+  //    The worker chains catalog discovery + 3 timeseries fetches → can take 6-10s on
+  //    a cold cache, so use a generous timeout here.
   try {
-    const res = await fetchWithTimeout(CF_WORKER.replace(/\/$/, "") + "/lake", 5000);
+    const res = await fetchWithTimeout(CF_WORKER.replace(/\/$/, "") + "/lake", 12000);
     if (res.ok) {
       const data = await res.json();
       console.log("[lake] worker /lake returned:", data);

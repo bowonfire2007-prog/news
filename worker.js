@@ -221,8 +221,10 @@ async function handleLake(url, ctx) {
   // ── Strategy 1: USACE CDA timeseries API ──
   const cda = await fetchUsaceCdaTimeseries();
   if (cda && cda.elevation !== null) {
+    // Strip the debug trail from the production response — only expose it when ?debug=1.
+    const { debug: cdaDebug, ...cdaPublic } = cda;
     const result = {
-      ...cda,
+      ...cdaPublic,
       source: "USACE CDA NWK",
       fetched_at: new Date().toISOString()
     };
@@ -232,7 +234,7 @@ async function handleLake(url, ctx) {
       });
       ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
     }
-    if (debug) return jsonResponse({ strategy: "cda", result });
+    if (debug) return jsonResponse({ strategy: "cda", result, cdaDebug });
     return jsonResponse({ ...result, cached: false });
   }
 
@@ -287,107 +289,158 @@ async function handleLake(url, ctx) {
 }
 
 // ── USACE CDA Timeseries API ──
-// CDA exposes a timeseries endpoint that returns clean JSON. Naming convention for
-// HAST (Truman) varies slightly between district CWMS configs, so we try a list of
-// known patterns for each field and use the first one that returns data.
+// Step 1: hit the catalog endpoint to discover the actual timeseries names available
+//         for HAST in the NWK office. Naming conventions vary (NWK-Cmb-Rev vs Ccp-Rev
+//         vs raw, ~1Hour vs 1Hour, etc.), so guessing static names is fragile.
+// Step 2: filter the catalog to the most relevant timeseries for elevation, inflow,
+//         and outflow. Pick the highest-frequency one we find for each.
+// Step 3: fetch all three in parallel and parse out the latest value + 24h-ago value.
 async function fetchUsaceCdaTimeseries() {
   const office = "NWK";
+  const debug = { steps: [] };
+
+  // ── Catalog discovery ──
+  // Cache the catalog for 24h since timeseries names don't change often.
+  let catalogEntries = [];
+  try {
+    const catUrl = "https://cwms-data.usace.army.mil/cwms-data/catalog/TIMESERIES?" +
+      "office=" + office + "&like=" + encodeURIComponent("HAST") + "&page-size=500";
+    const res = await fetch(catUrl, {
+      headers: { "Accept": "application/json;version=2" },
+      cf: { cacheTtl: 86400, cacheEverything: true }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      // CDA catalog v2 returns { entries: [{name, units, ...}, ...] }; older returns
+      // { "time-series-catalog": { entries: [...] } }. Handle either.
+      catalogEntries = data?.entries || data?.["time-series-catalog"]?.entries || [];
+      debug.steps.push({ step: "catalog", count: catalogEntries.length });
+    } else {
+      debug.steps.push({ step: "catalog", status: res.status });
+    }
+  } catch (err) {
+    debug.steps.push({ step: "catalog-error", message: err.message });
+  }
+
+  // Pull names out of the catalog response. Each entry might have name as a string
+  // or be a string itself. Be defensive.
+  const allNames = catalogEntries
+    .map(e => typeof e === "string" ? e : (e.name || e["timeseries-id"] || e.id || ""))
+    .filter(n => n && n.indexOf("HAST") === 0);
+
+  // Score each candidate name and pick the best one. Higher-score name wins.
+  // For each field we want: short interval, "Inst" or "Ave" type, recent revision suffix.
+  function pickBest(filterRe) {
+    const matches = allNames.filter(n => filterRe.test(n));
+    if (!matches.length) return null;
+    function score(name) {
+      let s = 0;
+      if (/~1Hour/.test(name)) s += 5;
+      else if (/1Hour/.test(name)) s += 3;
+      else if (/15Minutes/.test(name)) s += 4;
+      else if (/6Hours/.test(name)) s += 2;
+      if (/\.Inst\./.test(name)) s += 2;
+      else if (/\.Ave\./.test(name)) s += 1;
+      if (/NWK-Cmb-Rev$/i.test(name)) s += 3;
+      else if (/Ccp-Rev$/i.test(name)) s += 2;
+      else if (/Rev$/i.test(name)) s += 1;
+      else if (/Production$/i.test(name)) s += 1;
+      return s;
+    }
+    return matches.sort((a, b) => score(b) - score(a))[0];
+  }
+
+  const elevName = pickBest(/\.Elev[-\.]?Pool\./i) || pickBest(/\.Elev\./i);
+  const inflowName = pickBest(/\.Flow[-\.]?In(?:[-\.]?Total)?\./i);
+  const outflowName = pickBest(/\.Flow[-\.]?Out(?:[-\.]?Total)?\./i) || pickBest(/\.Flow[-\.]?Total\./i);
+
+  debug.steps.push({ step: "selected", elevName, inflowName, outflowName, sampleNames: allNames.slice(0, 8) });
+
+  // If catalog discovery failed, fall back to a small set of educated guesses.
+  const fallbackElev    = ["HAST.Elev-Pool.Inst.~1Hour.0.NWK-Cmb-Rev","HAST.Elev-Pool.Inst.1Hour.0.NWK-Cmb-Rev","HAST.Elev-Pool.Inst.~1Hour.0.Ccp-Rev"];
+  const fallbackInflow  = ["HAST.Flow-In.Ave.~1Hour.1Hour.NWK-Cmb-Rev","HAST.Flow-In.Inst.~1Hour.0.NWK-Cmb-Rev","HAST.Flow-In-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev"];
+  const fallbackOutflow = ["HAST.Flow-Out-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev","HAST.Flow-Out.Ave.~1Hour.1Hour.NWK-Cmb-Rev","HAST.Flow-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev"];
+
+  const elevTry    = elevName    ? [elevName,    ...fallbackElev]    : fallbackElev;
+  const inflowTry  = inflowName  ? [inflowName,  ...fallbackInflow]  : fallbackInflow;
+  const outflowTry = outflowName ? [outflowName, ...fallbackOutflow] : fallbackOutflow;
+
+  // ── Fetch all three in parallel ──
   const end = new Date();
-  const begin = new Date(end.getTime() - 30 * 3600 * 1000); // 30h ago — captures 24h change
+  const begin = new Date(end.getTime() - 30 * 3600 * 1000);
   const beginIso = begin.toISOString();
   const endIso = end.toISOString();
 
-  const result = { elevation: null, inflow: null, outflow: null, change24h: null, timestamp: null };
-
-  // Each entry is a list of likely CDA timeseries names to try in order.
-  const candidates = {
-    elevation: [
-      "HAST.Elev-Pool.Inst.~1Hour.0.NWK-Cmb-Rev",
-      "HAST.Elev-Pool.Inst.1Hour.0.NWK-Cmb-Rev",
-      "HAST.Elev.Inst.~1Hour.0.NWK-Cmb-Rev",
-      "HAST.Elev-Pool.Inst.6Hours.0.NWK-Cmb-Rev",
-      "HAST.Elev-Pool.Inst.~1Hour.0.Ccp-Rev"
-    ],
-    inflow: [
-      "HAST.Flow-In.Ave.~1Hour.1Hour.NWK-Cmb-Rev",
-      "HAST.Flow-In.Ave.1Hour.1Hour.NWK-Cmb-Rev",
-      "HAST.Flow-In.Inst.~1Hour.0.NWK-Cmb-Rev",
-      "HAST.Flow-In-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev"
-    ],
-    outflow: [
-      "HAST.Flow-Out-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev",
-      "HAST.Flow-Out.Ave.~1Hour.1Hour.NWK-Cmb-Rev",
-      "HAST.Flow-Total.Ave.~1Hour.1Hour.NWK-Cmb-Rev",
-      "HAST.Flow-Out-Total.Inst.~1Hour.0.NWK-Cmb-Rev"
-    ]
-  };
-
-  for (const [field, names] of Object.entries(candidates)) {
-    for (const tsName of names) {
+  async function fetchOne(nameList) {
+    for (const tsName of nameList) {
       const tsUrl = "https://cwms-data.usace.army.mil/cwms-data/timeseries?" +
         "name=" + encodeURIComponent(tsName) +
         "&office=" + office +
         "&begin=" + encodeURIComponent(beginIso) +
         "&end=" + encodeURIComponent(endIso) +
         "&page-size=200";
-      let data;
       try {
         const res = await fetch(tsUrl, {
           headers: { "Accept": "application/json;version=2" },
           cf: { cacheTtl: 600, cacheEverything: true }
         });
         if (!res.ok) continue;
-        data = await res.json();
-      } catch { continue; }
-
-      // CDA returns either { values: [[ts, v, q], ...] } v2 format or
-      // { value: { time-series: { values: [...] } } } legacy. Be permissive.
-      const valuesArr =
-        data?.values ||
-        data?.["time-series"]?.values ||
-        data?.value?.["time-series"]?.values ||
-        [];
-      if (!valuesArr.length) continue;
-
-      const numeric = valuesArr
-        .map(row => {
-          if (Array.isArray(row)) return [row[0], row[1]];
-          return [row["date-time"] || row.dateTime || row.timestamp || row.date, row.value];
-        })
-        .filter(([, v]) => v !== null && v !== undefined && isFinite(parseFloat(v)))
-        .map(([t, v]) => [typeof t === "number" ? t : new Date(t).getTime(), parseFloat(v)]);
-
-      if (!numeric.length) continue;
-
-      const last = numeric[numeric.length - 1];
-      result[field] = field === "elevation"
-        ? parseFloat(last[1].toFixed(2))
-        : Math.round(last[1]);
-      if (!result.timestamp) result.timestamp = new Date(last[0]).toISOString();
-
-      // 24-hour change is only meaningful for elevation
-      if (field === "elevation" && numeric.length >= 2) {
-        const targetTs = Date.now() - 24 * 3600 * 1000;
-        let closest = numeric[0], minDiff = Infinity;
-        for (const row of numeric) {
-          const diff = Math.abs(row[0] - targetTs);
-          if (diff < minDiff) { minDiff = diff; closest = row; }
-        }
-        if (minDiff < 6 * 3600 * 1000) {
-          result.change24h = parseFloat((last[1] - closest[1]).toFixed(2));
-        }
-      }
-
-      break; // got valid data for this field, stop trying further names
+        const data = await res.json();
+        const valuesArr =
+          data?.values ||
+          data?.["time-series"]?.values ||
+          data?.value?.["time-series"]?.values ||
+          [];
+        if (!valuesArr.length) continue;
+        const numeric = valuesArr
+          .map(row => Array.isArray(row)
+            ? [row[0], row[1]]
+            : [row["date-time"] || row.dateTime || row.timestamp || row.date, row.value])
+          .filter(([, v]) => v !== null && v !== undefined && isFinite(parseFloat(v)))
+          .map(([t, v]) => [typeof t === "number" ? t : new Date(t).getTime(), parseFloat(v)]);
+        if (numeric.length) return { tsName, numeric };
+      } catch {}
     }
+    return null;
   }
 
-  // Validate elevation is in Truman's plausible range; reject if implausible
+  const [elevRes, inflowRes, outflowRes] = await Promise.all([
+    fetchOne(elevTry), fetchOne(inflowTry), fetchOne(outflowTry)
+  ]);
+
+  const result = { elevation: null, inflow: null, outflow: null, change24h: null, timestamp: null, debug };
+
+  if (elevRes) {
+    const last = elevRes.numeric[elevRes.numeric.length - 1];
+    result.elevation = parseFloat(last[1].toFixed(2));
+    result.timestamp = new Date(last[0]).toISOString();
+    if (elevRes.numeric.length >= 2) {
+      const targetTs = Date.now() - 24 * 3600 * 1000;
+      let closest = elevRes.numeric[0], minDiff = Infinity;
+      for (const row of elevRes.numeric) {
+        const diff = Math.abs(row[0] - targetTs);
+        if (diff < minDiff) { minDiff = diff; closest = row; }
+      }
+      if (minDiff < 6 * 3600 * 1000) {
+        result.change24h = parseFloat((last[1] - closest[1]).toFixed(2));
+      }
+    }
+    debug.steps.push({ step: "elev-ok", tsName: elevRes.tsName });
+  }
+  if (inflowRes) {
+    result.inflow = Math.round(inflowRes.numeric[inflowRes.numeric.length - 1][1]);
+    debug.steps.push({ step: "inflow-ok", tsName: inflowRes.tsName });
+  }
+  if (outflowRes) {
+    result.outflow = Math.round(outflowRes.numeric[outflowRes.numeric.length - 1][1]);
+    debug.steps.push({ step: "outflow-ok", tsName: outflowRes.tsName });
+  }
+
+  // Sanity checks
   if (result.elevation !== null && (result.elevation < 690 || result.elevation > 745)) {
     result.elevation = null;
     result.change24h = null;
   }
-  // Sanity-check flows: cfs values should be small ints, not millions
   if (result.inflow !== null && Math.abs(result.inflow) > 1000000) result.inflow = null;
   if (result.outflow !== null && Math.abs(result.outflow) > 1000000) result.outflow = null;
 

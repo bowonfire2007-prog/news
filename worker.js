@@ -407,41 +407,67 @@ async function fetchUsaceCdaTimeseries() {
   const beginIso = begin.toISOString();
   const endIso = end.toISOString();
 
-  async function fetchOne(nameList) {
+  // Try a list of timeseries names. For each attempt, record the outcome (status, shape,
+  // count) into debug.steps so the user-visible debug=1 response can show why a fetch
+  // failed. Try both with and without the office filter — the catalog query above proved
+  // that NWK office isn't always a valid filter on this endpoint.
+  async function fetchOne(field, nameList) {
     for (const tsName of nameList) {
-      const tsUrl = "https://cwms-data.usace.army.mil/cwms-data/timeseries?" +
-        "name=" + encodeURIComponent(tsName) +
-        "&office=" + office +
-        "&begin=" + encodeURIComponent(beginIso) +
-        "&end=" + encodeURIComponent(endIso) +
-        "&page-size=200";
-      try {
-        const res = await fetch(tsUrl, {
-          headers: { "Accept": "application/json;version=2" },
-          cf: { cacheTtl: 600, cacheEverything: true }
-        });
-        if (!res.ok) continue;
-        const data = await res.json();
-        const valuesArr =
-          data?.values ||
-          data?.["time-series"]?.values ||
-          data?.value?.["time-series"]?.values ||
-          [];
-        if (!valuesArr.length) continue;
-        const numeric = valuesArr
-          .map(row => Array.isArray(row)
-            ? [row[0], row[1]]
-            : [row["date-time"] || row.dateTime || row.timestamp || row.date, row.value])
-          .filter(([, v]) => v !== null && v !== undefined && isFinite(parseFloat(v)))
-          .map(([t, v]) => [typeof t === "number" ? t : new Date(t).getTime(), parseFloat(v)]);
-        if (numeric.length) return { tsName, numeric };
-      } catch {}
+      for (const useOffice of [true, false]) {
+        let tsUrl = "https://cwms-data.usace.army.mil/cwms-data/timeseries?" +
+          "name=" + encodeURIComponent(tsName) +
+          "&begin=" + encodeURIComponent(beginIso) +
+          "&end=" + encodeURIComponent(endIso) +
+          "&page-size=200";
+        if (useOffice) tsUrl += "&office=" + office;
+        try {
+          const res = await fetch(tsUrl, {
+            headers: { "Accept": "application/json;version=2" },
+            cf: { cacheTtl: 600, cacheEverything: true }
+          });
+          if (!res.ok) {
+            debug.steps.push({ step: "ts-fetch", field, tsName, useOffice, status: res.status });
+            continue;
+          }
+          const text = await res.text();
+          let data;
+          try { data = JSON.parse(text); }
+          catch (e) {
+            debug.steps.push({ step: "ts-parse-fail", field, tsName, useOffice, sample: text.slice(0, 200) });
+            continue;
+          }
+          const valuesArr =
+            data?.values ||
+            data?.["time-series"]?.values ||
+            data?.value?.["time-series"]?.values ||
+            [];
+          if (!valuesArr.length) {
+            debug.steps.push({ step: "ts-empty", field, tsName, useOffice, keys: Object.keys(data || {}).slice(0, 8) });
+            continue;
+          }
+          const numeric = valuesArr
+            .map(row => Array.isArray(row)
+              ? [row[0], row[1]]
+              : [row["date-time"] || row.dateTime || row.timestamp || row.date, row.value])
+            .filter(([, v]) => v !== null && v !== undefined && isFinite(parseFloat(v)))
+            .map(([t, v]) => [typeof t === "number" ? t : new Date(t).getTime(), parseFloat(v)]);
+          if (numeric.length) {
+            debug.steps.push({ step: "ts-ok", field, tsName, useOffice, count: numeric.length });
+            return { tsName, numeric };
+          }
+          debug.steps.push({ step: "ts-no-numeric", field, tsName, useOffice, raw: valuesArr.slice(0, 2) });
+        } catch (err) {
+          debug.steps.push({ step: "ts-error", field, tsName, useOffice, message: err.message });
+        }
+      }
     }
     return null;
   }
 
   const [elevRes, inflowRes, outflowRes] = await Promise.all([
-    fetchOne(elevTry), fetchOne(inflowTry), fetchOne(outflowTry)
+    fetchOne("elevation", elevTry),
+    fetchOne("inflow", inflowTry),
+    fetchOne("outflow", outflowTry)
   ]);
 
   const result = { elevation: null, inflow: null, outflow: null, change24h: null, timestamp: null, debug };

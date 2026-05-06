@@ -34,9 +34,124 @@ export default {
     if (url.pathname === "/lake") {
       return handleLake(url, ctx);
     }
+    if (url.pathname === "/fishplan") {
+      return handleFishPlan(request, env, ctx);
+    }
     return handleRssProxy(url);
   }
 };
+
+// ─────────────── AI FISHING SMART PLAN ───────────────
+// Takes today's actual lake/weather conditions and asks Claude Sonnet to write a
+// custom fishing plan tuned to Truman Lake / Sparrowfoot Park / Grand River arm.
+// Cached 6h by a hash of the conditions so a stable forecast period doesn't re-bill.
+async function handleFishPlan(request, env, ctx) {
+  if (request.method !== "POST") return jsonResponse({ error: "POST only" }, 405);
+  if (!env.ANTHROPIC_API_KEY) return jsonResponse({ error: "ANTHROPIC_API_KEY secret is not set" }, 500);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonResponse({ error: "Invalid JSON body" }, 400); }
+
+  // Build a stable cache key from the rounded condition snapshot — small wobble in
+  // wind speed shouldn't bust the cache. Round elevation/temp/wind to coarse bins.
+  const snap = {
+    elev:    body.lake?.stage    !== undefined ? Math.round(body.lake.stage * 2) / 2 : null,
+    chg:     body.lake?.dailyChange !== undefined ? Math.round(body.lake.dailyChange * 4) / 4 : null,
+    inflow:  body.lake?.inflow   !== undefined ? Math.round((body.lake.inflow  || 0) / 1000) : null,
+    outflow: body.lake?.outflow  !== undefined ? Math.round((body.lake.outflow || 0) / 1000) : null,
+    wDir:    body.wind?.dir || null,
+    wSpd:    body.wind?.speed !== undefined ? Math.round(body.wind.speed / 5) * 5 : null,
+    temp:    body.weather?.temp !== undefined ? Math.round(body.weather.temp / 5) * 5 : null,
+    cond:    body.weather?.condition || null,
+    month:   new Date().getUTCMonth() + 1
+  };
+  const cacheKey = await hashKey("fishplan:" + JSON.stringify(snap));
+  const cache = caches.default;
+  const cacheReq = new Request("https://fishplan-cache.local/" + cacheKey, { method: "GET" });
+  const cached = await cache.match(cacheReq);
+  if (cached) {
+    const cachedJson = await cached.json();
+    return jsonResponse({ ...cachedJson, cached: true });
+  }
+
+  const prompt = buildFishPlanPrompt(body);
+  const model = env.AI_MODEL || "claude-sonnet-4-5";
+
+  let claudeRes;
+  try {
+    claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 800,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+  } catch (err) {
+    return jsonResponse({ error: "Claude fetch failed: " + err.message }, 502);
+  }
+
+  if (!claudeRes.ok) {
+    const errText = await claudeRes.text();
+    return jsonResponse({ error: "Claude API " + claudeRes.status, details: errText.slice(0, 600) }, 502);
+  }
+
+  const data = await claudeRes.json();
+  const planText = (data.content || [])
+    .filter(b => b.type === "text")
+    .map(b => b.text).join("\n\n").trim();
+
+  if (!planText) {
+    return jsonResponse({ error: "Empty response", stop_reason: data.stop_reason || null }, 502);
+  }
+
+  const result = { plan: planText, model, generated_at: new Date().toISOString(), conditions: snap };
+  const cacheRes = new Response(JSON.stringify(result), {
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=21600" } // 6h
+  });
+  ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+
+  return jsonResponse({ ...result, cached: false });
+}
+
+function buildFishPlanPrompt(b) {
+  const lake = b.lake || {};
+  const wx = b.weather || {};
+  const wind = b.wind || {};
+  const lines = [];
+  if (Number.isFinite(lake.stage))       lines.push(`Pool elevation: ${lake.stage.toFixed(1)} ft (normal pool 706.0 ft, flood pool 739.6 ft)`);
+  if (Number.isFinite(lake.dailyChange)) lines.push(`24h change: ${lake.dailyChange >= 0 ? "+" : ""}${lake.dailyChange.toFixed(2)} ft (${lake.dailyChange < -0.1 ? "falling" : lake.dailyChange > 0.1 ? "rising" : "stable"})`);
+  if (Number.isFinite(lake.inflow) && Number.isFinite(lake.outflow)) {
+    const net = lake.inflow - lake.outflow;
+    lines.push(`Inflow: ${lake.inflow.toLocaleString()} cfs / Outflow: ${lake.outflow.toLocaleString()} cfs (net ${net >= 0 ? "+" : ""}${net.toLocaleString()} cfs — dam ${net < -2000 ? "releasing hard" : net > 2000 ? "holding back" : "near balance"})`);
+  }
+  if (wind.dir) lines.push(`Wind: ${wind.dir}${Number.isFinite(wind.speed) ? " " + Math.round(wind.speed) + " mph" : ""}${Number.isFinite(wind.sustainedHours) ? ", sustained " + wind.sustainedHours + "h" : ""}`);
+  if (Number.isFinite(wx.temp))   lines.push(`Air temp: ${Math.round(wx.temp)}°F${Number.isFinite(wx.feels) ? " (feels " + Math.round(wx.feels) + "°)" : ""}`);
+  if (wx.condition)               lines.push(`Sky: ${wx.condition}`);
+  if (Number.isFinite(wx.humidity)) lines.push(`Humidity: ${wx.humidity}%`);
+
+  const monthName = new Date().toLocaleDateString("en-US", { month: "long" });
+
+  return `You are an expert fishing guide for Truman Lake in west-central Missouri. The angler fishes from Sparrowfoot Park on the Grand River arm and has access to BOTH boat and bank.
+
+TARGET SPECIES (these only — do NOT recommend largemouth bass, walleye, or white bass):
+- Blue catfish (the headliner — this lake is famous for them)
+- Flathead catfish
+- Crappie (black and white)
+- Gizzard shad — for cast-netting bait
+- Bluegill — only in nearby farm ponds, not the lake
+
+TODAY'S CONDITIONS (${monthName}):
+${lines.join("\n")}
+
+Write a tight, specific fishing plan in 2-3 short paragraphs of plain prose. NO bullet points, NO headers, NO markdown. Lead with the best species for today's conditions and explain WHY given the lake state. Then specify exact technique — bait, rig, depth, retrieve speed. Finally, name where to focus on the Grand River arm near Sparrowfoot — channel bends, flooded timber, mud lines, riprap, creek mouths, points, etc. — and whether tonight or tomorrow morning is a better window. If conditions strongly favor a particular bite (e.g. dam releasing hard = blues stacked in current breaks), say so directly and confidently. Keep it to ~150-200 words total.`;
+}
 
 // ─────────────── RSS PROXY ───────────────
 async function handleRssProxy(url) {

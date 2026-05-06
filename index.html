@@ -46,16 +46,21 @@
   .drawer-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--card-hover); font-weight:700; }
   .drawer-item-icon { font-size:18px; width:24px; text-align:center; flex-shrink:0; }
 
-  /* ── HEADER (NYT-style masthead) ── */
-  header { position:sticky; top:0; z-index:10; background:color-mix(in srgb,var(--bg) 92%,transparent); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:1px solid var(--border); padding:max(env(safe-area-inset-top),10px) 20px 0; }
-  .header-row { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:8px; }
-  /* Masthead-style brand: serif italic with a real Cheltenham/Iowan vibe.
-     A thin scotch rule sits below the dateline strap, exactly like NYT's print look. */
-  .brand { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:24px; font-weight:700; letter-spacing:-0.015em; line-height:1; }
+  /* ── HEADER (NYT-style masthead — bigger, bolder, more print-newspaper) ── */
+  header { position:sticky; top:0; z-index:10; background:color-mix(in srgb,var(--bg) 95%,transparent); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:3px double var(--text); padding:max(env(safe-area-inset-top),8px) 20px 0; }
+  .header-row { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:4px; }
+  /* Masthead-style brand: large serif with real newspaper presence. */
+  .brand { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:34px; font-weight:900; letter-spacing:-0.025em; line-height:0.95; color:var(--text); }
   .brand span { color:var(--accent); }
-  .dateline { max-width:760px; margin:0 auto; padding:0 0 8px; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--border); }
-  .dateline-volume { font-style:italic; letter-spacing:0.06em; text-transform:none; color:var(--text-soft); font-weight:500; }
+  /* Dateline strap under the masthead — NYT's most recognizable line. */
+  .dateline { max-width:760px; margin:0 auto; padding:6px 0 8px; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); font-weight:700; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+  .dateline-volume { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-style:italic; letter-spacing:0.02em; text-transform:none; color:var(--text); font-weight:500; font-size:13px; flex:1; text-align:center; padding:0 8px; }
   .header-actions { display:flex; align-items:center; gap:5px; }
+  @media (max-width:520px) {
+    .brand { font-size:26px; }
+    .dateline { font-size:9px; letter-spacing:0.12em; }
+    .dateline-volume { font-size:11px; padding:0 4px; }
+  }
   .icon-btn { width:36px; height:36px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--border); color:var(--text); cursor:pointer; flex-shrink:0; }
   .icon-btn:hover { background:var(--card-hover); }
   .icon-btn svg { width:17px; height:17px; }
@@ -96,10 +101,10 @@
   .quote-author { font-size:10px; color:var(--text-soft); margin-top:7px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700; text-align:center; }
   @media (max-width:520px) { .quote-text { font-size:14px; } }
 
-  /* ── SECTION BAR (newspaper-style centered head with rules) ── */
-  .section-bar { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:14px 0 6px; border-top:3px double var(--text); }
+  /* ── SECTION BAR (full newspaper section break with double rules top + bottom) ── */
+  .section-bar { max-width:760px; margin:14px auto 0; display:flex; align-items:center; justify-content:space-between; padding:10px 0 8px; border-top:3px double var(--text); border-bottom:1px solid var(--text); }
   .section-left { display:flex; align-items:center; gap:8px; }
-  .section-label { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:15px; font-weight:700; color:var(--text); letter-spacing:0.18em; text-transform:uppercase; font-style:normal; }
+  .section-label { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:17px; font-weight:900; color:var(--text); letter-spacing:0.20em; text-transform:uppercase; font-style:normal; }
   .new-pill { font-size:10px; font-weight:700; color:var(--accent); background:color-mix(in srgb,var(--accent) 13%,transparent); padding:2px 7px; border-radius:999px; white-space:nowrap; }
   .section-menu-btn { font-size:13px; font-weight:600; color:var(--accent); background:transparent; border:none; cursor:pointer; padding:4px 0; display:flex; align-items:center; gap:5px; }
   .section-menu-btn svg { width:14px; height:14px; }
@@ -137,9 +142,9 @@
   article.item.read { opacity:0.52; }
   article.item.read:hover { opacity:0.82; }
   article.item.kb-focus { outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
-  /* Kicker — italic mini-caps section label above the headline, like NYT print. */
-  .kicker { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--accent); margin-bottom:5px; font-style:italic; }
-  .kicker::after { content:""; display:inline-block; width:18px; height:1px; background:var(--accent); margin-left:8px; vertical-align:middle; opacity:0.6; }
+  /* Kicker — bold italic mini-caps section label above the headline, like NYT print. */
+  .kicker { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:11px; font-weight:900; letter-spacing:0.18em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; font-style:italic; }
+  .kicker::after { content:""; display:inline-block; width:24px; height:1px; background:var(--accent); margin-left:10px; vertical-align:middle; opacity:0.7; }
 
   /* ── AI BRIEF ── */
   .brief-btn { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); background:color-mix(in srgb,var(--accent) 7%,transparent); color:var(--accent); font-size:11px; font-weight:700; letter-spacing:0.04em; cursor:pointer; font-family:inherit; text-transform:uppercase; transition:background .12s,color .12s; }
@@ -172,16 +177,26 @@
   .title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:20px; font-weight:700; line-height:1.22; letter-spacing:-0.015em; color:var(--text); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
   .desc { margin-top:7px; font-size:14.5px; color:var(--text-muted); line-height:1.45; font-family:"Iowan Old Style","Palatino","Georgia",serif; font-style:italic; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .thumb { width:110px; height:110px; flex-shrink:0; border-radius:2px; background:var(--card-hover); object-fit:cover; }
-  .bkmk-btn { position:absolute; bottom:18px; right:0; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:transparent; border:none; cursor:pointer; font-size:15px; opacity:0; transition:opacity .15s; color:var(--text-soft); padding:0; }
-  article.item:hover .bkmk-btn { opacity:1; }
-  article.item.bookmarked .bkmk-btn { opacity:1; color:var(--accent); }
+  /* Bookmark — always visible. Sits in the meta row alongside AI Brief. */
+  .bkmk-btn { display:inline-flex; align-items:center; gap:5px; padding:3px 9px 3px 7px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; font-family:inherit; transition:background .12s,color .12s,border-color .12s; }
+  .bkmk-btn:hover { background:var(--card-hover); color:var(--accent); border-color:color-mix(in srgb,var(--accent) 35%,var(--border)); }
+  .bkmk-btn .bk-icon { font-size:12px; line-height:1; }
+  article.item.bookmarked .bkmk-btn { color:var(--accent); border-color:color-mix(in srgb,var(--accent) 35%,var(--border)); background:color-mix(in srgb,var(--accent) 7%,transparent); }
 
   /* ── HERO (lead story — newspaper above-the-fold treatment) ── */
-  article.item.hero { flex-direction:column; gap:12px; padding:8px 0 28px; border-bottom:3px double var(--border); }
-  article.item.hero .thumb { width:100%; height:240px; border-radius:2px; }
-  article.item.hero .kicker { font-size:12px; }
-  article.item.hero .title { font-size:30px; line-height:1.12; letter-spacing:-0.02em; -webkit-line-clamp:4; }
-  article.item.hero .desc { -webkit-line-clamp:3; font-size:16px; line-height:1.5; margin-top:8px; }
+  article.item.hero { flex-direction:column; gap:14px; padding:18px 0 30px; border-bottom:3px double var(--text); position:relative; }
+  article.item.hero::before { content:"LEAD STORY"; display:block; font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:10px; font-weight:900; letter-spacing:0.32em; color:var(--accent); text-align:center; padding:6px 0; border-bottom:1px solid var(--border); margin-bottom:6px; }
+  article.item.hero .thumb { width:100%; height:280px; border-radius:0; }
+  article.item.hero .kicker { font-size:13px; text-align:center; letter-spacing:0.22em; }
+  article.item.hero .kicker::after { display:none; }
+  article.item.hero .title { font-size:38px; line-height:1.05; letter-spacing:-0.025em; -webkit-line-clamp:5; text-align:center; font-weight:900; padding:0 4px; }
+  article.item.hero .desc { -webkit-line-clamp:3; font-size:17px; line-height:1.55; margin-top:10px; text-align:center; padding:0 12px; }
+  article.item.hero .meta { justify-content:center; }
+  @media (max-width:520px) {
+    article.item.hero .title { font-size:26px; }
+    article.item.hero .thumb { height:200px; }
+    article.item.hero .desc { font-size:15px; padding:0 4px; }
+  }
 
   /* ── STOCKS ── */
   .stock-input-row { display:flex; gap:8px; padding:20px 0 12px; border-bottom:1px solid var(--border); }
@@ -255,6 +270,26 @@
   .fish-tip { font-size:14px; color:var(--text); line-height:1.5; padding:9px 12px; background:var(--card-hover); border-radius:6px; margin:5px 0; }
   .outdoor-news-header { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:18px; font-weight:700; padding:16px 0 8px; border-bottom:2px solid var(--border); margin-bottom:4px; }
   .fish-loading { padding:24px 0; text-align:center; color:var(--text-muted); font-size:14px; }
+  /* AI Smart Plan button + response panel */
+  .fish-smart-row { padding:12px 0 4px; text-align:center; }
+  .fish-smart-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; border-radius:999px; border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border)); background:color-mix(in srgb,var(--accent) 8%,transparent); color:var(--accent); font-size:13px; font-weight:700; letter-spacing:0.05em; cursor:pointer; font-family:inherit; text-transform:uppercase; transition:background .15s,color .15s,border-color .15s; }
+  .fish-smart-btn:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .fish-smart-btn.is-loading { pointer-events:none; opacity:0.7; }
+  .fish-smart-btn.is-open { background:var(--accent); color:#fff; }
+  .fish-smart-btn .spark { font-size:11px; }
+  .fish-smart-sub { font-size:11px; color:var(--text-soft); margin-top:6px; font-style:italic; }
+  .fish-smart-panel { max-height:0; overflow:hidden; transition:max-height .25s ease, padding .2s ease; padding:0 16px; background:color-mix(in srgb,var(--accent) 5%,var(--card-hover)); border-left:3px solid var(--accent); border-radius:0 6px 6px 0; margin:0; }
+  .fish-smart-panel.open { max-height:1500px; padding:16px 18px; margin:10px 0 8px; }
+  .fish-smart-header { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); margin-bottom:10px; }
+  .fish-smart-loading { display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:13px; padding:4px 0; }
+  .fish-smart-text { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:15px; line-height:1.65; color:var(--text); }
+  .fish-smart-text p { margin-bottom:10px; }
+  .fish-smart-text p:last-child { margin-bottom:0; }
+  .fish-smart-meta { margin-top:12px; padding-top:8px; border-top:1px solid color-mix(in srgb,var(--accent) 18%,var(--border)); display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--text-soft); letter-spacing:0.04em; text-transform:uppercase; }
+  .fish-smart-refresh { background:none; border:none; color:var(--accent); font-weight:700; cursor:pointer; font-size:10px; font-family:inherit; letter-spacing:0.04em; text-transform:uppercase; padding:0; }
+  .fish-smart-refresh:hover { text-decoration:underline; }
+  .fish-smart-error { color:#b91c1c; font-size:13px; line-height:1.5; }
+  [data-theme="dark"] .fish-smart-error { color:#f87171; }
 </style>
 </head>
 <body>
@@ -1620,6 +1655,11 @@ function renderFishingAdvisor(lake, weather, advice) {
       <div class="fish-lake-stat"><div class="fish-stat-val">${wind}</div><div class="fish-stat-lbl">Wind</div></div>
     </div>
   </div>
+  <div class="fish-smart-row">
+    <button class="fish-smart-btn" type="button" id="fishSmartBtn"><span class="spark">✦</span> AI Smart Plan — Custom for Today</button>
+    <div class="fish-smart-sub">Asks Claude to write a tailored plan from today's actual conditions.</div>
+  </div>
+  <div class="fish-smart-panel" id="fishSmartPanel"></div>
   <div class="fish-section"><div class="fish-section-label">🎯 Target Species</div>${speciesHtml}</div>
   ${tipsHtml}
   ${shadHtml}
@@ -1628,6 +1668,133 @@ function renderFishingAdvisor(lake, weather, advice) {
   <div class="fish-section"><div class="fish-section-label">📍 Hot Spots Right Now</div>${hotspotsHtml}</div>
 </div>
 <div class="outdoor-news-header">🗞️ MO Outdoor News</div>`;
+}
+
+// ── AI Smart Plan: POST today's conditions to the worker, show Claude's response ──
+const FISHPLAN_ENDPOINT     = CF_WORKER.replace(/\/$/, "") + "/fishplan";
+const FISHPLAN_CACHE_TTL_MS = 6 * 3600 * 1000; // 6h client-side cache too
+
+function fishPlanCacheKey(lake, weather) {
+  // Stable key from coarse-rounded conditions — small wobble shouldn't bust cache.
+  const c = weather?.current || {};
+  const snap = {
+    e: lake?.stage    !== undefined && lake?.stage    !== null ? Math.round(lake.stage * 2) / 2 : null,
+    d: lake?.dailyChange !== undefined && lake?.dailyChange !== null ? Math.round(lake.dailyChange * 4) / 4 : null,
+    i: lake?.inflow   !== undefined && lake?.inflow   !== null ? Math.round((lake.inflow  || 0) / 1000) : null,
+    o: lake?.outflow  !== undefined && lake?.outflow  !== null ? Math.round((lake.outflow || 0) / 1000) : null,
+    t: isFinite(c.temperature_2m) ? Math.round(c.temperature_2m / 5) * 5 : null,
+    w: isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m) : null,
+    m: new Date().getMonth() + 1
+  };
+  return "news.fishplan." + briefHash(JSON.stringify(snap));
+}
+function getFishPlanCache(key) {
+  try {
+    const raw = localStorage.getItem(key); if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (Date.now() - p.ts < FISHPLAN_CACHE_TTL_MS) return p.data;
+  } catch {}
+  return null;
+}
+function setFishPlanCache(key, data) {
+  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
+}
+
+function paragraphifyPlan(text) {
+  return text.split(/\n\s*\n/)
+    .map(p => p.trim()).filter(Boolean)
+    .map(p => '<p>' + escapeHtml(p) + '</p>').join("");
+}
+
+function renderFishSmartPanel(panel, plan, fromCache, onRefresh) {
+  panel.classList.add("open");
+  const meta = '<div class="fish-smart-meta">' +
+    '<span>' + (fromCache ? "Cached · " : "") + (plan.model || "Claude") + '</span>' +
+    '<button class="fish-smart-refresh" type="button">↻ Re-research</button>' +
+  '</div>';
+  panel.innerHTML =
+    '<div class="fish-smart-header"><span class="spark">✦</span> AI SMART PLAN — TUNED FOR TODAY</div>' +
+    '<div class="fish-smart-text">' + paragraphifyPlan(plan.plan || "") + '</div>' +
+    meta;
+  panel.querySelector(".fish-smart-refresh").addEventListener("click", () => onRefresh());
+}
+
+async function fetchAndShowSmartPlan(lake, weather, panel, btn, force) {
+  const cacheKey = fishPlanCacheKey(lake, weather);
+  if (!force) {
+    const cached = getFishPlanCache(cacheKey);
+    if (cached) {
+      renderFishSmartPanel(panel, cached, true, () => fetchAndShowSmartPlan(lake, weather, panel, btn, true));
+      return;
+    }
+  }
+  panel.classList.add("open");
+  panel.innerHTML =
+    '<div class="fish-smart-header"><span class="spark">✦</span> AI SMART PLAN — TUNED FOR TODAY</div>' +
+    '<div class="fish-smart-loading"><span class="spinner"></span>Claude is reading the conditions and writing a plan…</div>';
+  btn.classList.add("is-loading");
+  try {
+    const c = weather?.current || {};
+    const sustained = (weather?.hourly && isFinite(c.wind_direction_10m))
+      ? computeSustainedWindHours(weather.hourly, c.wind_direction_10m) : null;
+    const payload = {
+      lake: {
+        stage: lake?.stage ?? null,
+        dailyChange: lake?.dailyChange ?? null,
+        inflow: lake?.inflow ?? null,
+        outflow: lake?.outflow ?? null,
+        trend: lake?.trend || null
+      },
+      weather: {
+        temp: isFinite(c.temperature_2m) ? c.temperature_2m : null,
+        feels: isFinite(c.apparent_temperature) ? c.apparent_temperature : null,
+        humidity: isFinite(c.relative_humidity_2m) ? c.relative_humidity_2m : null,
+        condition: (WEATHER_CODE_MAP[c.weather_code] || ["",""])[0]
+      },
+      wind: {
+        dir: isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m) : null,
+        speed: isFinite(c.wind_speed_10m) ? c.wind_speed_10m : null,
+        sustainedHours: sustained
+      }
+    };
+    const res = await fetch(FISHPLAN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      panel.innerHTML =
+        '<div class="fish-smart-header"><span class="spark">✦</span> AI SMART PLAN</div>' +
+        '<div class="fish-smart-error">Couldn\'t generate plan: HTTP ' + res.status + '<br><span style="opacity:.7">' + escapeHtml(errText.slice(0, 240)) + '</span></div>';
+      return;
+    }
+    const data = await res.json();
+    setFishPlanCache(cacheKey, data);
+    renderFishSmartPanel(panel, data, false, () => fetchAndShowSmartPlan(lake, weather, panel, btn, true));
+  } catch (err) {
+    panel.innerHTML =
+      '<div class="fish-smart-header"><span class="spark">✦</span> AI SMART PLAN</div>' +
+      '<div class="fish-smart-error">' + escapeHtml(err.message || "Network error") + '</div>';
+  } finally {
+    btn.classList.remove("is-loading");
+  }
+}
+
+function wireFishSmartPlan(lake, weather, advice) {
+  const btn = document.getElementById("fishSmartBtn");
+  const panel = document.getElementById("fishSmartPanel");
+  if (!btn || !panel) return;
+  btn.addEventListener("click", () => {
+    if (panel.classList.contains("open")) {
+      panel.classList.remove("open");
+      btn.classList.remove("is-open");
+      setTimeout(() => { panel.innerHTML = ""; }, 250);
+      return;
+    }
+    btn.classList.add("is-open");
+    fetchAndShowSmartPlan(lake, weather, panel, btn, false);
+  });
 }
 
 async function loadOutdoor(force) {
@@ -1656,6 +1823,8 @@ async function loadOutdoor(force) {
   const weatherData = getCachedWeather();
   const advice = generateFishingAdvice(lakeData, weatherData);
   advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice);
+  // Wire up the AI Smart Plan button now that the advisor markup is in the DOM
+  wireFishSmartPlan(lakeData, weatherData, advice);
 
   const all = newsResults.flat();
   const seen = new Set();
@@ -2011,6 +2180,7 @@ function buildArticle(item, isHero) {
       '</div>'
     : '';
 
+  const savedNow = isSaved(item.link);
   a.innerHTML =
     '<div class="item-text">' +
       '<div class="kicker">'+escapeHtml(item.source)+'</div>' +
@@ -2021,10 +2191,12 @@ function buildArticle(item, isHero) {
         '<span class="meta-age">'+relativeTime(item.pubDate)+'</span>' +
         '<span class="meta-dot">·</span>' +
         '<button class="brief-btn" type="button" title="Research this story with AI"><span class="spark">✦</span> AI Brief</button>' +
+        '<button class="bkmk-btn" type="button" title="'+(savedNow?"Remove bookmark":"Save this article")+'">' +
+          '<span class="bk-icon">'+(savedNow?"🔖":"☆")+'</span>'+(savedNow?"Saved":"Save")+
+        '</button>' +
       '</div>' +
     '</div>' +
-    (hasImg?'<img class="thumb" src="'+escapeHtml(item.thumbnail)+'" alt="" loading="lazy" onerror="this.remove()">':'') +
-    '<button class="bkmk-btn" title="'+(isSaved(item.link)?"Remove bookmark":"Bookmark")+'">'+(isSaved(item.link)?"🔖":"🏷️")+'</button>';
+    (hasImg?'<img class="thumb" src="'+escapeHtml(item.thumbnail)+'" alt="" loading="lazy" onerror="this.remove()">':'');
 
   // Brief panel is a sibling of the article inside the wrapper
   const panel = document.createElement("div");
@@ -2043,14 +2215,15 @@ function buildArticle(item, isHero) {
     a.classList.add("read");
   });
 
-  // Bookmark button
+  // Bookmark button (lives in the meta row now)
   const bkmkBtn = a.querySelector(".bkmk-btn");
+  if (savedNow) a.classList.add("bookmarked");
   bkmkBtn.addEventListener("click", e => {
     e.preventDefault(); e.stopPropagation();
     const nowSaved = toggleSave(item);
     a.classList.toggle("bookmarked", nowSaved);
-    bkmkBtn.textContent = nowSaved ? "🔖" : "🏷️";
-    bkmkBtn.title = nowSaved ? "Remove bookmark" : "Bookmark";
+    bkmkBtn.innerHTML = '<span class="bk-icon">'+(nowSaved?"🔖":"☆")+'</span>'+(nowSaved?"Saved":"Save");
+    bkmkBtn.title = nowSaved ? "Remove bookmark" : "Save this article";
   });
 
   // AI Brief button

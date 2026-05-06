@@ -336,11 +336,23 @@ async function fetchUsaceCdaTimeseries() {
     }
   }
 
-  // Pull names out of the catalog response. Each entry might have name as a string
-  // or be a string itself. Be defensive.
-  const allNames = catalogEntries
-    .map(e => typeof e === "string" ? e : (e.name || e["timeseries-id"] || e.id || ""))
-    .filter(n => n && n.indexOf("HAST") === 0);
+  // Pull (name, office) pairs out of the catalog response. The office attribute on each
+  // entry is what we need to pass to /timeseries — turns out it's NOT always "NWK" even
+  // for NWK-suffixed names. CDA's office system has confusing parent/child distinctions.
+  const allEntries = catalogEntries
+    .map(e => {
+      if (typeof e === "string") return { name: e, office: null };
+      const name = e.name || e["timeseries-id"] || e.id || "";
+      const office = e.office || e["office-id"] || e.officeId || null;
+      return { name, office };
+    })
+    .filter(x => x.name && x.name.indexOf("HAST") === 0);
+  const allNames = allEntries.map(x => x.name);
+  // Build a name → office map so we can pick the right office for each timeseries fetch.
+  const nameToOffice = {};
+  for (const x of allEntries) if (x.office) nameToOffice[x.name] = x.office;
+  // Sample what we found so debug shows the office attribute too.
+  debug.steps.push({ step: "catalog-offices", sample: allEntries.slice(0, 5) });
 
   // Score each candidate name and pick the best one. Higher-score name wins.
   // Empirical scoring tuned for what NWK actually publishes for HAST:
@@ -409,17 +421,28 @@ async function fetchUsaceCdaTimeseries() {
 
   // Try a list of timeseries names. For each attempt, record the outcome (status, shape,
   // count) into debug.steps so the user-visible debug=1 response can show why a fetch
-  // failed. Try both with and without the office filter — the catalog query above proved
-  // that NWK office isn't always a valid filter on this endpoint.
+  // failed. The /timeseries endpoint REQUIRES office (400 without it) but the right
+  // office is NOT always "NWK" — it's the office attribute attached to the catalog entry
+  // (could be "MBRFC", "ABRFC", "SWT", etc. depending on data provenance). Try the
+  // catalog-supplied office first, then fall through to NWK / common alternatives.
   async function fetchOne(field, nameList) {
+    const officesToTry = (tsName) => {
+      const offices = [];
+      if (nameToOffice[tsName]) offices.push(nameToOffice[tsName]);
+      for (const o of [office, "MBRFC", "SWT", "NWO", "NWD"]) {
+        if (!offices.includes(o)) offices.push(o);
+      }
+      return offices;
+    };
     for (const tsName of nameList) {
-      for (const useOffice of [true, false]) {
-        let tsUrl = "https://cwms-data.usace.army.mil/cwms-data/timeseries?" +
+      for (const tryOffice of officesToTry(tsName)) {
+        const tsUrl = "https://cwms-data.usace.army.mil/cwms-data/timeseries?" +
           "name=" + encodeURIComponent(tsName) +
+          "&office=" + encodeURIComponent(tryOffice) +
           "&begin=" + encodeURIComponent(beginIso) +
           "&end=" + encodeURIComponent(endIso) +
           "&page-size=200";
-        if (useOffice) tsUrl += "&office=" + office;
+        const useOffice = tryOffice;
         try {
           const res = await fetch(tsUrl, {
             headers: { "Accept": "application/json;version=2" },

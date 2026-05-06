@@ -13,7 +13,10 @@
   :root { --bg:#f8f4ec; --text:#1a1410; --text-muted:#6b6258; --text-soft:#9a9286; --border:#e3ddcf; --accent:#b8331a; --sage:#7a8b6f; --mustard:#c49b3f; --card-hover:#ede8dc; }
   [data-theme="dark"] { --bg:#0f0e0d; --text:#f5f1e8; --text-muted:#a39c8f; --text-soft:#6b6258; --border:#2a2825; --accent:#ff6b4a; --sage:#9ab18d; --mustard:#e0b552; --card-hover:#1c1b19; }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
-  html,body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.5; -webkit-font-smoothing:antialiased; transition:background-color .25s ease,color .25s ease; }
+  html { background-color:var(--bg); background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 500' preserveAspectRatio='xMidYMax slice'><path fill='%23a8b89a' fill-opacity='.4' d='M0 250c200-30 380-10 580 10s420-15 620-5 280 20 400 5v240H0z'/><path fill='%237a8b6f' fill-opacity='.55' d='M0 340c220-30 420-10 640 5s440 0 640-10 220 5 320 5v160H0z'/><g fill='%235e6e54' fill-opacity='.55'><ellipse cx='180' cy='335' rx='8' ry='14'/><ellipse cx='200' cy='328' rx='10' ry='18'/><ellipse cx='220' cy='335' rx='8' ry='13'/><ellipse cx='560' cy='328' rx='9' ry='15'/><ellipse cx='580' cy='322' rx='11' ry='19'/><ellipse cx='600' cy='328' rx='9' ry='14'/><ellipse cx='980' cy='328' rx='9' ry='15'/><ellipse cx='1000' cy='322' rx='11' ry='19'/><ellipse cx='1020' cy='328' rx='9' ry='14'/><ellipse cx='1320' cy='332' rx='9' ry='15'/><ellipse cx='1340' cy='326' rx='11' ry='19'/></g><path fill='%235e6e54' fill-opacity='.72' d='M0 430c240-25 460 5 680 0s420 15 660 5 200 5 260 5v60H0z'/><g transform='translate(1100 408)' fill='%23472e1e' fill-opacity='.72'><polygon points='0,8 17,-2 34,8'/><rect y='8' width='34' height='16'/><rect x='13' y='14' width='6' height='10' fill='%23000' fill-opacity='.6'/></g><g stroke='%234a3924' stroke-width='1.2' stroke-opacity='.55' fill='none'><path d='M1138 426h140M1138 432h140'/></g></svg>"); background-attachment:fixed; background-position:center bottom; background-repeat:no-repeat; background-size:100% auto; transition:background-color .25s ease; }
+  html,body { color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.5; -webkit-font-smoothing:antialiased; transition:background-color .25s ease,color .25s ease; }
+  body { background:transparent; min-height:100vh; }
+  [data-theme="dark"] html { background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 500' preserveAspectRatio='xMidYMax slice'><path fill='%231f2a1c' fill-opacity='.55' d='M0 250c200-30 380-10 580 10s420-15 620-5 280 20 400 5v240H0z'/><path fill='%23121810' fill-opacity='.7' d='M0 340c220-30 420-10 640 5s440 0 640-10 220 5 320 5v160H0z'/><g fill='%2308100a' fill-opacity='.7'><ellipse cx='180' cy='335' rx='8' ry='14'/><ellipse cx='200' cy='328' rx='10' ry='18'/><ellipse cx='220' cy='335' rx='8' ry='13'/><ellipse cx='560' cy='328' rx='9' ry='15'/><ellipse cx='580' cy='322' rx='11' ry='19'/><ellipse cx='600' cy='328' rx='9' ry='14'/><ellipse cx='980' cy='328' rx='9' ry='15'/><ellipse cx='1000' cy='322' rx='11' ry='19'/><ellipse cx='1020' cy='328' rx='9' ry='14'/><ellipse cx='1320' cy='332' rx='9' ry='15'/><ellipse cx='1340' cy='326' rx='11' ry='19'/></g><path fill='%23070a06' fill-opacity='.85' d='M0 430c240-25 460 5 680 0s420 15 660 5 200 5 260 5v60H0z'/><g transform='translate(1100 408)' fill='%23000' fill-opacity='.7'><polygon points='0,8 17,-2 34,8'/><rect y='8' width='34' height='16'/><rect x='13' y='14' width='6' height='10' fill='%23ffd97a' fill-opacity='.5'/></g></svg>"); }
   a { color:inherit; text-decoration:none; }
 
   /* ── ALERT BANNER ── */
@@ -117,7 +120,8 @@
   .qtab.active { background:var(--text); color:var(--bg); border-color:var(--text); font-weight:600; }
 
   /* ── MAIN ── */
-  main { max-width:760px; margin:0 auto; padding:8px 20px max(env(safe-area-inset-bottom),40px); }
+  main { max-width:760px; margin:0 auto; padding:8px 20px max(env(safe-area-inset-bottom),40px); background:color-mix(in srgb,var(--bg) 92%,transparent); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); position:relative; }
+  footer { background:color-mix(in srgb,var(--bg) 88%,transparent); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
   .status { padding:40px 20px; text-align:center; color:var(--text-muted); font-size:14px; line-height:1.6; }
   .spinner { display:inline-block; width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; vertical-align:middle; margin-right:8px; }
   @keyframes spin { to { transform:rotate(360deg); } }
@@ -225,16 +229,40 @@
   footer { max-width:760px; margin:40px auto 0; padding:20px; text-align:center; color:var(--text-soft); font-size:12px; border-top:1px solid var(--border); }
   .retry-btn { margin-top:14px; padding:8px 18px; border-radius:999px; background:var(--accent); color:white; border:none; font-size:14px; font-weight:500; cursor:pointer; }
 
-  /* ── RESPONSIVE ── */
+  /* ── RESPONSIVE (compact mobile — see more articles per screen) ── */
   @media (max-width:520px) {
     .brand { font-size:21px; }
-    .dateline { font-size:9.5px; letter-spacing:0.14em; }
-    .title { font-size:18px; }
-    .thumb { width:84px; height:84px; }
-    article.item { padding:18px 0; gap:14px; }
-    article.item.hero .thumb { height:180px; }
-    article.item.hero .title { font-size:23px; }
-    main, .header-row, header, .weather, .section-bar, .quick-tabs, .quote-bar, .search-wrap, .dateline { padding-left:16px; padding-right:16px; }
+    .dateline { font-size:9.5px; letter-spacing:0.14em; padding:4px 0 5px; }
+    .title { font-size:15.5px; line-height:1.2; -webkit-line-clamp:3; }
+    .desc { font-size:12.5px; line-height:1.35; -webkit-line-clamp:2; margin-top:4px; }
+    .thumb { width:72px; height:72px; }
+    article.item { padding:9px 0 9px; gap:11px; }
+    .meta { margin-top:5px; font-size:11px; gap:6px; }
+    .source-chip { font-size:9px; padding:1.5px 5px; }
+    .meta-age { font-size:10px; }
+    .badge { font-size:9px; padding:1.5px 5px; }
+    .badge-row { margin-bottom:3px; gap:4px; }
+    .kicker { font-size:9.5px; margin-bottom:3px; letter-spacing:0.14em; }
+    .brief-btn, .bkmk-btn { font-size:10px; padding:2px 7px; }
+    article.item.hero { padding:12px 0 16px; gap:10px; }
+    article.item.hero .thumb { height:170px; }
+    article.item.hero .title { font-size:22px; -webkit-line-clamp:4; }
+    article.item.hero .desc { font-size:14px; margin-top:6px; -webkit-line-clamp:2; }
+    article.item.hero::before { padding:4px 0; margin-bottom:4px; font-size:9px; letter-spacing:0.28em; }
+    main { padding:4px 16px max(env(safe-area-inset-bottom),24px); }
+    header { padding-top:max(env(safe-area-inset-top),4px); }
+    header .header-row { padding-bottom:2px; }
+    .weather { padding:6px 0; }
+    .quote-bar { padding:7px 0; margin-bottom:3px; }
+    .quote-text { font-size:13px; line-height:1.45; }
+    .quote-author { margin-top:4px; }
+    .section-bar { margin-top:8px; padding:6px 0 5px; }
+    .section-label { font-size:14px; letter-spacing:0.16em; }
+    .quick-tabs { padding:3px 0 6px; gap:5px; }
+    .qtab { padding:4px 11px; font-size:12px; }
+    .icon-btn { width:32px; height:32px; }
+    .icon-btn svg { width:15px; height:15px; }
+    main, .header-row, header, .weather, .section-bar, .quick-tabs, .quote-bar, .search-wrap, .dateline { padding-left:14px; padding-right:14px; }
     .weather, .section-bar, .quick-tabs, .quote-bar, .dateline { padding-left:0; padding-right:0; }
     .w-temp { font-size:20px; }
     .w-meta { font-size:11px; gap:6px; }
@@ -290,6 +318,38 @@
   .fish-smart-refresh:hover { text-decoration:underline; }
   .fish-smart-error { color:#b91c1c; font-size:13px; line-height:1.5; }
   [data-theme="dark"] .fish-smart-error { color:#f87171; }
+
+  /* ── MUSHROOM + GARDEN CARDS ── */
+  .outdoor-card { border:1px solid var(--border); border-radius:12px; padding:18px; margin:0 0 18px; }
+  .outdoor-card.mushroom { background:color-mix(in srgb,var(--mustard) 6%,var(--bg)); }
+  .outdoor-card.garden   { background:color-mix(in srgb,var(--sage) 8%,var(--bg)); }
+  .outdoor-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:6px; }
+  .outdoor-card-title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:18px; font-weight:700; }
+  .outdoor-card-date { font-size:12px; color:var(--text-muted); }
+  .outdoor-banner { display:flex; align-items:center; gap:14px; padding:12px 14px; border-radius:8px; background:var(--card-hover); margin-bottom:12px; flex-wrap:wrap; }
+  .outdoor-banner-emoji { font-size:32px; line-height:1; flex-shrink:0; }
+  .outdoor-banner-info { flex:1; min-width:120px; }
+  .outdoor-banner-label { font-weight:700; font-size:15px; }
+  .outdoor-banner-sub { font-size:12.5px; color:var(--text-muted); margin-top:2px; }
+  .outdoor-section { margin:10px 0; }
+  .outdoor-section-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:6px; }
+  .outdoor-tip { font-size:14px; color:var(--text); line-height:1.5; padding:9px 12px; background:var(--card-hover); border-radius:6px; margin:5px 0; }
+  .outdoor-tip.warn { border-left:3px solid var(--accent); }
+  .outdoor-tip.go   { border-left:3px solid var(--sage); }
+  .outdoor-tip.hold { border-left:3px solid var(--mustard); }
+  .outdoor-chip { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; margin:2px 3px 2px 0; }
+  .outdoor-chip.mush { background:color-mix(in srgb,var(--mustard) 16%,transparent); color:#8a6010; }
+  [data-theme="dark"] .outdoor-chip.mush { color:var(--mustard); background:color-mix(in srgb,var(--mustard) 18%,transparent); }
+  .outdoor-chip.plant { background:color-mix(in srgb,var(--sage) 16%,transparent); color:#3e5236; }
+  [data-theme="dark"] .outdoor-chip.plant { color:var(--sage); background:color-mix(in srgb,var(--sage) 18%,transparent); }
+  .outdoor-chip.warn { background:color-mix(in srgb,var(--accent) 12%,transparent); color:var(--accent); }
+  @media (max-width:520px) {
+    .outdoor-card { padding:14px; }
+    .outdoor-card-title { font-size:16px; }
+    .outdoor-banner-emoji { font-size:26px; }
+    .outdoor-banner-label { font-size:14px; }
+    .outdoor-tip { font-size:13px; padding:8px 10px; }
+  }
 </style>
 </head>
 <body>
@@ -1593,8 +1653,224 @@ function generateFishingAdvice(lake, weather) {
   return { bite, tips, topSpecies, baits, hotspots, season, shadTip, pondTip, windBankAdvice };
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Smart MUSHROOM HUNTING tips — Missouri season-aware. Tuned for Henry/Benton Co.
+// Uses month + recent weather to nudge advice (cool spring slows morels, warm
+// rain triggers chanterelles, etc).
+// ──────────────────────────────────────────────────────────────────────────────
+function getMushroomTips(weather) {
+  const now      = new Date();
+  const month    = now.getMonth() + 1; // 1-12
+  const day      = now.getDate();
+  const c        = weather?.current || {};
+  const temp     = isFinite(c.temperature_2m) ? c.temperature_2m : null;
+  const rain     = isFinite(c.precipitation) ? c.precipitation : 0;
+  const recentMm = isFinite(c.rain) ? c.rain : 0;
+
+  let phase = "off-season", banner = "🍄", headline = "Off-Season", sub = "";
+  let species = [], spots = [], tips = [], idTip = "", warnTip = "";
+
+  if (month === 3 && day < 25) {
+    phase = "pre-morel"; banner = "⏳"; headline = "Just Before Morels";
+    sub = "Soil temps still climbing — watch the next two weeks.";
+    species = ["Morels (any day now)","Pheasant Back (early)"];
+    spots = ["South-facing river bottom slopes warm first","Dying elms along the Grand & Tebo"];
+    tips.push("Soil temp is the trigger — when 4-inch soil hits 50°F and stays there, the first greys pop within days. Until then, scout terrain and mark dying elms so you're ready.");
+    tips.push("First flush is almost always grey morels on south-facing slopes near water. Big yellows follow 1–2 weeks later on flatter ground.");
+  } else if (month === 4 || (month === 3 && day >= 25) || (month === 5 && day <= 15)) {
+    phase = "morel"; banner = "🍄"; headline = "Morel Season — Prime Window";
+    sub = "Hunt mornings after a warm rain. Move slow.";
+    species = ["Grey Morels","Yellow Morels","Pheasant Back","Half-Frees"];
+    spots = ["River-bottom timber along the Osage, Grand, Tebo, Sac","Dying or recently-dead American elms (the #1 producer)","Old apple orchards & fence rows","South-facing slopes early; flat bottoms peak"];
+    tips.push("Look for dying elms with the bark just starting to slip — that's the magic tree in Missouri. Yellow morels set up around them on flat ground in the days after a 60°F+ rain.");
+    tips.push("Mornings are best — dew makes the honeycomb cap glisten and your eye picks them out. Once you find one, kneel down and look in slow circles — they almost always come in patches of 3–20.");
+    tips.push("Carry a mesh onion bag, not plastic. Spores fall through as you walk and reseed your honey holes for next year.");
+    if (temp !== null && temp < 45) tips.push("Cold snap right now ("+Math.round(temp)+"°F) — morels pause. They'll resume within a few days of nights staying above 45°F.");
+    if (recentMm > 0.1 || rain > 0.1) tips.push("Rain just hit — wait 24–48 hours. Morels swell visibly after a warm rain, and that's when they're easiest to spot.");
+    idTip = "TRUE morels have a hollow stem and the cap is fully attached and pitted like a honeycomb. FALSE morels (Gyromitra / 'big reds') have a chambered, brain-like cap and are toxic. When in doubt, slice top-to-bottom: true morels are completely hollow.";
+    warnTip = "Never eat any wild mushroom you haven't 100% positively ID'd — get a second opinion the first few times. Cook all morels thoroughly; raw morels can make you sick even when correctly ID'd.";
+  } else if ((month === 5 && day > 15) || month === 6) {
+    phase = "early-summer"; banner = "🌾"; headline = "Morels Done — Summer Crew Coming";
+    sub = "Switch focus to oak/hickory ridges after warm rains.";
+    species = ["Chanterelles (golden)","Chicken-of-the-Woods","Black Trumpets","Oyster (on dead hardwoods)","Indigo Milky","Wood Ear (on elder)"];
+    spots = ["Oak-hickory ridges (chanterelles, indigo milky)","Old standing oaks — dead branches with sulfur shelves (CoW)","Beech/oak slopes (trumpets)","Standing dead box elder, cottonwood, sweet gum (oysters)","Dead elderberry stems (wood ear)"];
+    tips.push("Chanterelles want 3+ days after a 1\"+ rain when overnight lows stay in the 60s. Look on oak-hickory ridges with mossy ground — they grow from soil, not on wood.");
+    tips.push("Chicken-of-the-Woods (sulfur shelf) is the easiest summer ID — bright orange, no gills, soft & spongy. Always on oak in our area. Pick the young, tender outer edge.");
+    tips.push("Indigo Milky (Lactarius indigo) is unmistakable — bright blue all over, bleeds blue 'milk' when cut. Common in mixed oak-hickory woods around Henry County after warm June rains. Mild flavor, beautiful in eggs.");
+    if (temp !== null && temp >= 75 && (rain > 0.1 || recentMm > 0.1)) tips.push("Warm + just rained = chanterelle window opening. Walk oak-hickory ridges in the next 3–5 days.");
+    idTip = "Chanterelles have FALSE gills (forked ridges, not real blade gills) and smell faintly of apricot. Lookalike: Jack-O'-Lantern (Omphalotus) — toxic, has true gills and grows in clusters from buried wood. Always check the gills.";
+  } else if (month === 7 || month === 8) {
+    phase = "summer"; banner = "🌳"; headline = "Summer Forest Shrooms";
+    sub = "Hot & humid = chanterelle and chicken weather.";
+    species = ["Chanterelles","Black Trumpets","Chicken-of-the-Woods","Lobster Mushroom","Hedgehog (late summer)","Indigo Milky","Bolete (porcini cousins)","Giant Puffball (late Aug)","Meadow Mushroom"];
+    spots = ["Oak-hickory ridges","Mossy stream banks (trumpets)","Dead/dying oak boles (chicken)","Open pastures & fence lines (puffballs, meadow mushrooms)","Mixed hardwoods (boletes, milkies)"];
+    tips.push("Walk slow on shaded ridges 2–4 days after any 1\"+ summer storm. The flush comes fast and disappears in a week. Bring water — Missouri summer woods are no joke.");
+    tips.push("Giant Puffball (Calvatia gigantea) starts showing in late August in old pastures and along fence lines around Clinton — looks like a soccer ball in the grass. Edible only when pure white inside (slice top to bottom). Once it yellows or browns, it's done.");
+    tips.push("Meadow Mushroom (Agaricus campestris) shows in cow pastures after warm rains. Pink gills turning chocolate brown = good. ⚠️ NEVER eat any white-gilled or button-stage Agaricus from grassland without 100% ID — deadly Amanitas grow in the same pastures and can fool beginners.");
+    tips.push("Tick & chigger season — permethrin-treat your boots & pants the night before. Tuck pants into socks. A few minutes of prep saves you a miserable week.");
+  } else if (month === 9 || month === 10) {
+    phase = "fall"; banner = "🍁"; headline = "Fall Flush";
+    sub = "Hens, chickens, oysters — and the last chanterelles.";
+    species = ["Hen-of-the-Woods (Maitake)","Chicken-of-the-Woods","Oyster","Honey Mushrooms","Late chanterelles","Lion's Mane","Bear's Head Tooth","Giant Puffball","Shaggy Mane","Meadow Mushroom","Wood Blewit (late Oct)"];
+    spots = ["Base of large mature oaks (hens)","Standing dead hardwoods (oysters)","Old stumps & buried roots (honeys)","Wounds in standing beech, oak, walnut (Lion's Mane)","Disturbed lawns/ditches/gravel-edge (shaggy manes)","Old leaf litter under hardwoods (blewits)"];
+    tips.push("Hen-of-the-Woods grows at the base of big old oaks (often the same tree year after year — mark them). Big greyish-brown rosette, can weigh 5–20 lbs. One of Missouri's best fall finds.");
+    tips.push("Lion's Mane (Hericium erinaceus) — white pom-pom shape on wounds in standing or freshly down beech, oak, walnut, and maple. Around Clinton it's most often found on storm-damaged oaks. No toxic lookalike — one of the safest wild mushrooms to ID. Tastes like crab.");
+    tips.push("Shaggy Manes pop in disturbed ground — driveways, ditches, mowed shoulders — after the first cool wet stretch. Pick young (still white), cook same day. Once they start to ink-cap (turn black at the bottom), they self-digest within hours.");
+    tips.push("Oysters explode after the first cool, wet stretch. Look up — they often grow 6–15 ft up dead box elder, cottonwood, or sweet gum.");
+    idTip = "Honey mushrooms (Armillaria) are edible but MUST be cooked thoroughly — raw ones cause upset. Lookalike: Galerina (deadly) — much smaller, brown spore print. If the spore print is white, you're good.";
+  } else {
+    phase = "winter"; banner = "❄️"; headline = "Mostly Winter Quiet";
+    sub = "Wood ear, oysters, and turkey tail can show on warm spells.";
+    species = ["Wood Ear (on elder)","Oyster (on warm spells)","Turkey Tail (medicinal)","Enoki (wild — on cold-snap hardwoods)"];
+    spots = ["Dead elderberry stems (wood ear)","Standing dead hardwoods after a warm thaw","Cold-tolerant oysters on dead hackberry, elm, cottonwood"];
+    tips.push("Slow season — but oysters can fruit any time temps climb above 50°F for several days. Worth a look on warm February afternoons.");
+    tips.push("Turkey Tail is everywhere on dead hardwoods — not a meal but excellent for tea. Make sure of true tail (concentric color bands AND visible pores underneath, not smooth).");
+    tips.push("Wild Enoki (Flammulina velutipes) — orange-brown caps on tight white stems, fruits in cold weather on dead elm, hackberry, persimmon. Looks nothing like the white grocery-store version. Cook well.");
+  }
+  return { phase, banner, headline, sub, species, spots, tips, idTip, warnTip };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Smart GARDEN TIPS — Henry County, MO (USDA Zone 6b/7a transition).
+// Uses date + weather to gate advice. Avoids planting tender stuff on a cold week.
+// ──────────────────────────────────────────────────────────────────────────────
+function getGardenTips(weather) {
+  const now    = new Date();
+  const month  = now.getMonth() + 1;
+  const day    = now.getDate();
+  const c      = weather?.current || {};
+  const temp   = isFinite(c.temperature_2m) ? c.temperature_2m : null;
+  const lowF   = isFinite(c.apparent_temperature) ? c.apparent_temperature : (temp !== null ? temp - 8 : null);
+  const dewF   = isFinite(c.dew_point_2m) ? c.dew_point_2m : null;
+
+  let banner = "🌱", headline = "Garden", sub = "";
+  let plantNow = [], chores = [], warnings = [];
+
+  if (month === 1 || (month === 2 && day < 15)) {
+    banner = "📋"; headline = "Plan & Prep"; sub = "Order seeds, sharpen tools, dream big.";
+    chores.push("Sketch this year's garden — rotate tomatoes & peppers off last year's beds. Order seed (good varieties sell out by March).");
+    chores.push("Start onion seeds indoors 8–10 weeks before transplant. Leeks too if you're patient.");
+  } else if ((month === 2 && day >= 15) || (month === 3 && day < 20)) {
+    banner = "🌱"; headline = "Late-Winter Starts"; sub = "Indoor seeds & cool-weather plant prep.";
+    plantNow = ["Onion sets (outdoor)","Peas (when soil workable)","Spinach","Radish","Lettuce (indoors first)"];
+    chores.push("Start tomatoes & peppers indoors NOW under lights — 6–8 weeks before May 5 transplant date. Bottom-water; warm to 75°F until germination.");
+    chores.push("Direct-sow peas as soon as the soil is workable — they laugh at frost. Pre-soak overnight for faster germination.");
+    chores.push("Top-dress garlic beds with compost. They're waking up.");
+  } else if ((month === 3 && day >= 20) || month === 4) {
+    banner = "🌷"; headline = "Spring Push"; sub = "Cool crops in, but watch the late-frost calendar.";
+    plantNow = ["Potatoes","Onion sets","Leeks","Shallots","Peas (snap, snow, shelling)","Spinach","Lettuce","Arugula","Mustard greens","Swiss chard","Kale","Collards","Bok choy","Kohlrabi","Radish","Beets","Carrots","Parsnips","Turnips","Cabbage/Broccoli/Cauliflower starts","Brussels sprouts starts","Strawberry crowns","Asparagus crowns","Rhubarb crowns","Horseradish root","Raspberry/Blackberry canes","Blueberry bushes","Parsley","Cilantro","Dill","Chives"];
+    chores.push("Last frost in Henry County averages around April 15–25. Don't put tomatoes/peppers out yet unless you can cover.");
+    chores.push("Asparagus is up — cut spears at soil level for the first 4–6 weeks, then let them fern out to feed the crowns. Year-3+ beds only; let new beds grow untouched the first two seasons.");
+    chores.push("Prune fruit trees before bud break if you haven't already.");
+    chores.push("Plant new bramble canes (raspberry/blackberry) and blueberry bushes now while dormant — soak roots an hour before planting.");
+    if (temp !== null && temp < 38) warnings.push("Cold night ahead — cover any tender starts you've already planted.");
+  } else if (month === 5) {
+    banner = "🍅"; headline = "Frost Window Closing — Plant the Warm-Season Crew"; sub = "Soil temps are right; nights are friendly.";
+    plantNow = ["Tomatoes (slicing, paste, cherry, heirloom)","Tomatillos","Ground cherries","Peppers (sweet & hot)","Eggplant","Cucumbers (slicing & pickling)","Zucchini","Yellow summer squash","Pattypan squash","Winter squash (butternut, acorn, hubbard)","Pumpkins","Gourds","Watermelon","Cantaloupe / muskmelon","Sweet corn","Popcorn","Bush beans","Pole beans","Lima beans","Yard-long beans","Southern peas (cowpeas/black-eyed)","Okra","Sweet potatoes (slips)","Peanuts","Malabar spinach (heat-tolerant)","New Zealand spinach","Swiss chard (succession)","Kale (succession)","Basil","Dill","Cilantro (heat-bolts fast — sow weekly)","Parsley","Oregano","Thyme","Sage","Rosemary","Lemon balm","Mint (in pots — invasive)","Summer savory","Fennel","Chamomile","Marigolds","Nasturtiums","Zinnias","Cosmos","Sunflowers","Calendula","Borage (great pollinator)"];
+    chores.push("Transplant tomatoes deep — bury 2/3 of the stem so roots form along it. Cage or stake the same day.");
+    chores.push("Direct-seed sweet corn in blocks (not single rows) for pollination — minimum 4×4. Plant beans & squash with it for a 'three sisters' patch.");
+    chores.push("Mulch tomato beds with straw once soil hits 65°F — locks in moisture and prevents soil-splash blight.");
+    chores.push("Strawberries are flowering/fruiting — net for birds, water deeply 1–2× weekly. Pinch first runners back to fatten this year's berries.");
+    chores.push("Watch for flea beetles on eggplant — row cover until plants are 12\" or apply diatomaceous earth.");
+    chores.push("Sow herb seeds direct: dill, cilantro (every 2–3 weeks for steady supply), and basil after the soil hits 65°F.");
+    chores.push("Plant marigolds and nasturtiums around tomatoes & cucumbers — they pull aphids off your veggies and look great doing it.");
+    if (lowF !== null && lowF < 50) warnings.push("Nights still dipping cool ("+Math.round(lowF)+"°F apparent low). Peppers & sweet potatoes sulk below 55°F — wait a few days if you have flexibility.");
+    if (temp !== null && temp >= 85 && month === 5 && day < 10) warnings.push("Hot week — water transplants in deeply at planting and shade for the first 3 days if leaves wilt.");
+  } else if (month === 6) {
+    banner = "☀️"; headline = "Early Summer — Maintain & Succession Plant"; sub = "First harvests starting; keep the second wave coming.";
+    plantNow = ["Bush beans (succession every 2 weeks)","Pole beans","Dry beans","Lima beans","Southern peas (cowpeas)","Cucumbers (2nd planting)","Summer squash (2nd planting)","Winter squash & pumpkins (for fall harvest)","Okra","Sweet potatoes (last call for slips)","Heat-tolerant lettuce (Jericho, Nevada)","Malabar spinach","Swiss chard","Basil (more!)","Dill","Sunflowers","Zinnias","Cosmos","Marigolds"];
+    chores.push("Mulch deeply — Missouri June can flip from wet to drought fast. Straw or grass clippings 3\" deep around tomatoes & peppers.");
+    chores.push("Side-dress corn and tomatoes with compost or balanced fertilizer when they hit knee-high.");
+    chores.push("Pinch tomato suckers if you stake; leave them if you cage. Either way: prune the bottom 12\" of leaves to prevent splash blight.");
+    chores.push("Pull bolting spring lettuce and spinach — they're done. Compost or feed to chickens.");
+    if (temp !== null && temp >= 90) warnings.push("Heat ≥90°F — tomato pollen sterilizes; expect a fruit-set pause until temps drop. Water 1\" per week minimum.");
+  } else if (month === 7 || month === 8) {
+    banner = "🌶️"; headline = "Mid-Summer — Water, Harvest, Watch for Pests"; sub = "Survive heat, plan for fall.";
+    plantNow = ["Fall brassicas indoors (broccoli, cabbage, cauliflower, brussels sprouts, kohlrabi)","Bush beans (last round — 60 days to first frost)","Cucumbers (last round)","Summer squash (last round)","Carrots (Aug)","Beets (Aug)","Daikon radish","Turnips","Rutabaga","Bok choy","Chinese cabbage","Kale (overwinters!)","Collards","Swiss chard (overwinters with cover)","Spinach (late Aug, for fall harvest)","Cilantro (re-sows now that heat is breaking)","Dill (re-sow)"];
+    chores.push("Squash bugs & vine borers are hunting — inspect stem bases, crush egg clusters on leaf undersides. A foil collar at the base helps with borers.");
+    chores.push("Tomato hornworms — handpick at dawn or look for white parasitic-wasp cocoons (leave those — they kill the next round of hornworms for you).");
+    chores.push("Harvest tomatoes, peppers, beans every 2–3 days — leaving overripe fruit on the plant tells it to stop producing.");
+    chores.push("Start fall brassica seeds indoors mid-July; transplant out late August.");
+    if (temp !== null && temp >= 95) warnings.push("Extreme heat — water deeply early morning. Shade cloth on peppers helps fruit set during the worst weeks.");
+  } else if (month === 9) {
+    banner = "🥕"; headline = "Fall Garden Window"; sub = "Cool-crop replant; harvest the summer winners.";
+    plantNow = ["Spinach","Lettuce","Kale","Collards","Swiss chard","Radish","Daikon","Turnip","Rutabaga","Mustard greens","Arugula","Bok choy","Mâche / corn salad","Endive","Garlic (late Sept – mid Oct)","Shallots","Multiplier onions","Cover crop: cereal rye, crimson clover, hairy vetch","Strawberry crowns (for next year)"];
+    chores.push("Pull spent summer plants; turn in compost. Sow fall greens in the freed-up space.");
+    chores.push("Plant garlic cloves point-up, 2\" deep, 6\" apart. Mulch heavily — they'll root in fall and burst out next April.");
+    chores.push("Save tomato seeds from your best heirlooms — ferment in water 3 days, rinse, dry on a paper plate.");
+  } else if (month === 10) {
+    banner = "🍂"; headline = "Fall Wind-Down"; sub = "Last harvests, garlic in, beds put to bed.";
+    plantNow = ["Garlic (until ground freezes)","Cover crops (cereal rye, crimson clover)"];
+    chores.push("Pull tomato/pepper plants before first hard frost. Green tomatoes ripen on the counter or fry up nicely.");
+    chores.push("Sow cover crop on any empty bed — cereal rye is bulletproof, fixes nothing but builds tons of biomass to till in spring.");
+    chores.push("Mulch strawberries with 4\" of straw after the first hard freeze (not before — they need to harden off).");
+    if (temp !== null && temp < 36) warnings.push("Frost likely tonight — bring in the last peppers and tomatoes if you haven't.");
+  } else {
+    banner = "🛌"; headline = "Garden Rest"; sub = "Plan, prune, dream.";
+    chores.push("Prune dormant fruit trees on a dry day above 20°F. Remove crossing limbs and any 'water sprouts' shooting straight up.");
+    chores.push("Browse seed catalogs. Henry County is Zone 6b/7a — anything rated to zone 7 will work.");
+    chores.push("Clean & oil tools, sharpen pruners. Empty terra cotta pots so they don't crack.");
+  }
+  return { banner, headline, sub, plantNow, chores, warnings };
+}
+
+function renderMushroomCard(m) {
+  if (!m) return "";
+  const speciesHtml = m.species.map(s => `<span class="outdoor-chip mush">${escapeHtml(s)}</span>`).join("");
+  const spotsHtml   = m.spots.map(s => `<div class="outdoor-tip">📍 ${escapeHtml(s)}</div>`).join("");
+  const tipsHtml    = m.tips.map(t => `<div class="outdoor-tip">💡 ${escapeHtml(t)}</div>`).join("");
+  const idHtml      = m.idTip   ? `<div class="outdoor-tip hold"><strong>🔍 ID Check:</strong> ${escapeHtml(m.idTip)}</div>` : "";
+  const warnHtml    = m.warnTip ? `<div class="outdoor-tip warn"><strong>⚠️ Safety:</strong> ${escapeHtml(m.warnTip)}</div>` : "";
+  const dateStr = new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
+  return `<div class="outdoor-card mushroom">
+    <div class="outdoor-card-header">
+      <div class="outdoor-card-title">🍄 Smart Mushroom Hunt</div>
+      <div class="outdoor-card-date">${dateStr}</div>
+    </div>
+    <div class="outdoor-banner">
+      <div class="outdoor-banner-emoji">${m.banner}</div>
+      <div class="outdoor-banner-info">
+        <div class="outdoor-banner-label">${escapeHtml(m.headline)}</div>
+        <div class="outdoor-banner-sub">${escapeHtml(m.sub || "")}</div>
+      </div>
+    </div>
+    ${m.species.length ? `<div class="outdoor-section"><div class="outdoor-section-label">🎯 Target Species</div>${speciesHtml}</div>` : ""}
+    ${tipsHtml}
+    ${m.spots.length ? `<div class="outdoor-section"><div class="outdoor-section-label">📍 Where to Look</div>${spotsHtml}</div>` : ""}
+    ${idHtml}
+    ${warnHtml}
+  </div>`;
+}
+
+function renderGardenCard(g) {
+  if (!g) return "";
+  const plantHtml  = g.plantNow.map(p => `<span class="outdoor-chip plant">${escapeHtml(p)}</span>`).join("");
+  const choresHtml = g.chores.map(c => `<div class="outdoor-tip go">🌱 ${escapeHtml(c)}</div>`).join("");
+  const warnHtml   = g.warnings.map(w => `<div class="outdoor-tip warn">⚠️ ${escapeHtml(w)}</div>`).join("");
+  const dateStr = new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
+  return `<div class="outdoor-card garden">
+    <div class="outdoor-card-header">
+      <div class="outdoor-card-title">🌿 Smart Garden Tips</div>
+      <div class="outdoor-card-date">${dateStr}</div>
+    </div>
+    <div class="outdoor-banner">
+      <div class="outdoor-banner-emoji">${g.banner}</div>
+      <div class="outdoor-banner-info">
+        <div class="outdoor-banner-label">${escapeHtml(g.headline)}</div>
+        <div class="outdoor-banner-sub">${escapeHtml(g.sub || "")}</div>
+      </div>
+    </div>
+    ${g.plantNow.length ? `<div class="outdoor-section"><div class="outdoor-section-label">🪴 Plant or Sow Now</div>${plantHtml}</div>` : ""}
+    ${warnHtml}
+    ${g.chores.length ? `<div class="outdoor-section"><div class="outdoor-section-label">📋 This Week's Chores</div>${choresHtml}</div>` : ""}
+  </div>`;
+}
+
 function renderFishingAdvisor(lake, weather, advice) {
-  if (!advice) return '<div class="fish-advisor"><div class="fish-loading">Could not generate fishing report.</div></div><div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
+  const mush = renderMushroomCard(getMushroomTips(weather));
+  const garden = renderGardenCard(getGardenTips(weather));
+  const extras = mush + garden;
+  if (!advice) return '<div class="fish-advisor"><div class="fish-loading">Could not generate fishing report.</div></div>' + extras + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
   const BITE_EMOJI  = ["😴","🐢","🎣","🔥","💥"];
   const BITE_LABEL  = ["Dead Slow","Slow — Be Patient","Moderate — Worth Going","Good — Get Out There","On Fire!"];
   const c = weather?.current || {};
@@ -1667,6 +1943,7 @@ function renderFishingAdvisor(lake, weather, advice) {
   <div class="fish-section"><div class="fish-section-label">🪝 Recommended Baits &amp; Rigs</div>${baitsHtml}</div>
   <div class="fish-section"><div class="fish-section-label">📍 Hot Spots Right Now</div>${hotspotsHtml}</div>
 </div>
+${extras}
 <div class="outdoor-news-header">🗞️ MO Outdoor News</div>`;
 }
 
@@ -1803,7 +2080,9 @@ async function loadOutdoor(force) {
   newPillEl.style.display = "none";
 
   const advisorDiv = document.createElement("div");
-  advisorDiv.innerHTML = '<div class="fish-advisor"><div class="fish-header"><div class="fish-title">🎣 Truman Lake Fishing Report</div></div><div class="fish-loading"><span class="spinner"></span> Loading live conditions…</div></div><div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
+  const initialMush   = renderMushroomCard(getMushroomTips(getCachedWeather()));
+  const initialGarden = renderGardenCard(getGardenTips(getCachedWeather()));
+  advisorDiv.innerHTML = '<div class="fish-advisor"><div class="fish-header"><div class="fish-title">🎣 Truman Lake Fishing Report</div></div><div class="fish-loading"><span class="spinner"></span> Loading live conditions…</div></div>' + initialMush + initialGarden + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
   listEl.appendChild(advisorDiv);
 
   const newsDiv = document.createElement("div");

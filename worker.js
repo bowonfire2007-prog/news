@@ -833,25 +833,49 @@ async function handleCattlePrice(url, env, ctx) {
     return jsonResponse({ error: "Wheeler fetch failed: " + err.message }, 502);
   }
 
-  // Extract latest market-report image URL. Wheeler posts scanned reports as
-  // JPEG on Wix CDN, but the filename varies — sometimes "market", sometimes a
-  // Wix UUID. Collect ALL Wix images on the page and rank them.
+  // Extract candidate image URLs. Wheeler posts scanned reports as JPEG on Wix
+  // CDN. Filename varies (sometimes "market", sometimes a Wix UUID). Collect
+  // ALL Wix images, plus og:image / twitter:image meta tags as extra candidates.
   const allWix = Array.from(new Set(html.match(/https:\/\/static\.wixstatic\.com\/media\/[^"'\s)]+\.(?:jpe?g|png|webp)/ig) || []));
-  if (allWix.length === 0) return jsonResponse({ error: "No Wix-hosted images found on Wheeler page" }, 404);
+  // og:image and twitter:image often point to a different CDN path with looser hotlink rules
+  const ogImageMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)
+                    || html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:image["']/i);
+  const twitterImageMatch = html.match(/<meta\s+name=["']twitter:image["']\s+content=["']([^"']+)["']/i)
+                         || html.match(/<meta\s+content=["']([^"']+)["']\s+name=["']twitter:image["']/i);
+  const metaImages = [ogImageMatch, twitterImageMatch].filter(m => m).map(m => m[1]);
+  // Combine: meta images first (often have looser protection), then page Wix images
+  const allCandidates = Array.from(new Set([...metaImages, ...allWix]));
+  if (allCandidates.length === 0) {
+    return jsonResponse({ error: "No images found on Wheeler page" }, 404);
+  }
 
   function imgScore(u) {
     let s = 0;
-    if (/market/i.test(u)) s += 100;            // explicit market-report filename
-    if (/report/i.test(u)) s += 60;             // "report" in URL
-    if (/\.jpe?g(\?|$|\/)/i.test(u)) s += 20;    // JPEG (scans are usually JPEG)
-    if (/blur_2/.test(u)) s -= 50;              // Wix's tiny blurred preview
-    const wMatch = u.match(/w_(\d{2,5})/);      // Wix size param: w_980 etc.
+    if (/market/i.test(u)) s += 100;
+    if (/report/i.test(u)) s += 60;
+    if (/\.jpe?g(\?|$|\/)/i.test(u)) s += 20;
+    if (/blur_2/.test(u)) s -= 50;
+    const wMatch = u.match(/w_(\d{2,5})/);
     if (wMatch) s += Math.min(40, parseInt(wMatch[1], 10) / 30);
     if (/logo|icon|favicon|avatar/i.test(u)) s -= 80;
     return s;
   }
-  const ranked = allWix.map(u => ({ u, s: imgScore(u) })).sort((a, b) => b.s - a.s);
+  const ranked = allCandidates.map(u => ({ u, s: imgScore(u) })).sort((a, b) => b.s - a.s);
   const imgUrl = ranked[0].u;
+
+  // Debug mode: dump everything we found on the page so we can iterate
+  if (url.searchParams.get("debug") === "1") {
+    return jsonResponse({
+      debug: true,
+      page_url: wheelerUrl,
+      page_html_bytes: html.length,
+      og_image: ogImageMatch ? ogImageMatch[1] : null,
+      twitter_image: twitterImageMatch ? twitterImageMatch[1] : null,
+      all_wix_images: allWix,
+      all_candidates_ranked: ranked,
+      chosen: imgUrl
+    });
+  }
 
   // Fetch image bytes. Wix has aggressive hotlink protection on its /v1/fit/...
   // transform endpoint, and also blocks the common image proxies. We try a long
@@ -928,6 +952,42 @@ async function handleCattlePrice(url, env, ctx) {
     }
   }
   if (!imgRes) {
+    // Plan B: every direct image strategy failed (Wix hotlink protection).
+    // Fall back to WordPress mShots — render the entire Wheeler PAGE as a
+    // screenshot from WordPress's servers, then OCR that. mShots is free and
+    // unauthenticated, and bypasses Wix entirely because WordPress fetches
+    // the page like a normal browser.
+    try {
+      const mshotsUrl = "https://s.wordpress.com/mshots/v1/" + encodeURIComponent(wheelerUrl) + "?w=1600&h=2400";
+      // First call may return a placeholder (1x1 png) while the screenshot is queued.
+      // Second call (after a 4s wait) should return the real image.
+      let mshotsRes = await fetch(mshotsUrl);
+      if (mshotsRes.ok) {
+        const len = parseInt(mshotsRes.headers.get("Content-Length") || "0", 10);
+        // Placeholder is ~165 bytes. Real screenshot is hundreds of KB.
+        if (len > 0 && len < 10000) {
+          // Wait and retry once
+          await new Promise(r => setTimeout(r, 5000));
+          mshotsRes = await fetch(mshotsUrl);
+        }
+      }
+      if (mshotsRes.ok) {
+        const ct = (mshotsRes.headers.get("Content-Type") || "").toLowerCase();
+        if (ct.startsWith("image/")) {
+          imgRes = mshotsRes;
+          fetchedVia = "mshots";
+          attempts.push("mshots:OK");
+        } else {
+          attempts.push("mshots:not-image-ct=" + ct);
+        }
+      } else {
+        attempts.push("mshots:HTTP " + mshotsRes.status);
+      }
+    } catch (e) {
+      attempts.push("mshots:" + e.message);
+    }
+  }
+  if (!imgRes) {
     return jsonResponse({ error: "Wheeler image fetch failed — " + attempts.join(" | "), image_url: imgUrl }, 502);
   }
   try {
@@ -940,7 +1000,14 @@ async function handleCattlePrice(url, env, ctx) {
 
   const base64 = arrayBufferToBase64(imgBytes);
   const model = env.AI_MODEL_VISION || "claude-haiku-4-5-20251001";
-  const prompt = "This is a livestock auction market report from Wheeler Livestock Auction in Osceola, MO. " +
+  // If the image was fetched via mShots, it's a full-page screenshot of Wheeler's
+  // website (with the embedded market report image inside). Otherwise it's the
+  // market report image directly. The prompt works for both — Claude just needs
+  // to find the report content within whatever it's looking at.
+  const promptPrefix = fetchedVia === "mshots"
+    ? "This is a screenshot of Wheeler Livestock Auction's website. The page shows their latest scanned market report from their auction in Osceola, MO. Look at the market report image embedded on the page and read it carefully. "
+    : "This is a livestock auction market report from Wheeler Livestock Auction in Osceola, MO. ";
+  const prompt = promptPrefix +
     "Find the FEEDER STEER line whose weight is CLOSEST TO 500 LBS. Wheeler reports vary week-to-week — " +
     "sometimes a single average weight (like \"538 lb\", \"583 lb\", \"612 lb\"), sometimes a weight range " +
     "(like \"450-549\", \"500-600\"). Pick whichever feeder steer entry is closest to 500 lb. " +

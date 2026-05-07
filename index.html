@@ -356,6 +356,24 @@
   .wheeler-embed { margin-top:10px; padding:10px; border:1px dashed var(--border); border-radius:8px; background:var(--card-hover); }
   .wheeler-embed img { max-width:100%; height:auto; display:block; border-radius:4px; }
   .wheeler-embed-loading { padding:18px; text-align:center; color:var(--text-muted); font-size:13px; }
+  /* Auto-fetch result panel */
+  .cattle-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .cattle-btn.primary:hover { filter:brightness(1.08); background:var(--accent); color:#fff; }
+  .cattle-fetch-result { margin-top:10px; padding:10px 12px; border-radius:8px; font-size:12.5px; line-height:1.45; }
+  .cattle-fetch-loading { color:var(--text-muted); display:flex; align-items:center; gap:8px; }
+  .cattle-fetch-success { background:color-mix(in srgb,#15803d 10%,var(--card-hover)); border:1px solid color-mix(in srgb,#15803d 30%,var(--border)); color:var(--text); }
+  [data-theme="dark"] .cattle-fetch-success { background:color-mix(in srgb,#4ade80 12%,var(--card-hover)); border-color:color-mix(in srgb,#4ade80 35%,var(--border)); }
+  .cattle-fetch-error { background:color-mix(in srgb,#b91c1c 8%,var(--card-hover)); border:1px solid color-mix(in srgb,#b91c1c 28%,var(--border)); color:var(--text); }
+  [data-theme="dark"] .cattle-fetch-error { background:color-mix(in srgb,#f87171 10%,var(--card-hover)); border-color:color-mix(in srgb,#f87171 30%,var(--border)); }
+  /* 1-year price chart */
+  .cattle-year-chart-wrap { margin-top:14px; padding:14px 10px 8px; border:1px solid var(--border); border-radius:8px; background:var(--card-hover); }
+  .cattle-year-chart-header { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:6px; padding:0 4px; }
+  .cattle-year-chart-title { font-size:12px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--text-muted); }
+  .cattle-year-chart-stats { font-size:11.5px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+  .cattle-year-chart-stats strong { color:var(--text); font-weight:700; }
+  .cattle-year-chart { width:100%; height:auto; display:block; }
+  .cattle-chart-empty { text-align:center; padding:22px 12px; color:var(--text-muted); font-size:13px; line-height:1.5; }
+  .cattle-chart-empty em { color:var(--accent); font-style:normal; font-weight:700; }
   @media (max-width:520px) {
     .barn-grid { grid-template-columns:1fr; }
     .barn-price { font-size:16px; }
@@ -1931,20 +1949,17 @@ function renderGardenCard(g) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// CATTLE MARKET — local 500lb feeder steer prices for west-central Missouri
-// Wheeler Auction (Osceola — Matt's buddy's barn) + nearby USDA AMS reporting
-// barns. Manual price logging + localStorage history + sparkline.
+// CATTLE MARKET — Wheeler Livestock (Osceola, MO — Matt's buddy's barn)
+// Auto-fetches latest sale via Cloudflare Worker /cattleprice (Claude vision OCR
+// of Wheeler's scanned market report). Builds a 1-year price chart in
+// localStorage as fetches accumulate. Other MO barns dropped 2026-05 per user.
 // ──────────────────────────────────────────────────────────────────────────────
 const CATTLE_BARNS = [
-  { id:"wheeler",     name:"Wheeler Livestock",            location:"Osceola, MO · St. Clair Co.",   isBuddy:true, reportUrl:"https://www.wheelerlivestock.com/market-report-1",                  saleDay:"Tuesdays" },
-  { id:"sedalia",     name:"Sedalia Regional Stockyards",  location:"Sedalia, MO · Pettis Co.",                    reportUrl:"https://www.sedaliaregionalstockyards.com/",                          saleDay:"Mondays" },
-  { id:"joplin",      name:"Joplin Regional Stockyards",   location:"Carthage, MO · Jasper Co.",                   reportUrl:"https://www.joplinstockyards.com/market-report/",                     saleDay:"Mon/Wed" },
-  { id:"buffalo",     name:"Buffalo Livestock Market",     location:"Buffalo, MO · Dallas Co.",                    reportUrl:"https://www.buffalolivestock.com/",                                   saleDay:"Saturdays" },
-  { id:"springfield", name:"Springfield Livestock Marketing", location:"Springfield, MO · Greene Co.",             reportUrl:"https://www.springfieldlivestockmarketing.com/",                      saleDay:"Wednesdays" }
+  { id:"wheeler", name:"Wheeler Livestock", location:"Osceola, MO · St. Clair Co.", isBuddy:true, reportUrl:"https://www.wheelerlivestock.com/market-report-1", saleDay:"Tuesdays" }
 ];
 
 const CATTLE_HISTORY_KEY = "news.cattle.history.v1";
-const CATTLE_HISTORY_DAYS = 180;
+const CATTLE_HISTORY_DAYS = 365;
 
 function loadCattleHistory() {
   try { const raw = localStorage.getItem(CATTLE_HISTORY_KEY); if (!raw) return {}; return JSON.parse(raw) || {}; } catch { return {}; }
@@ -1977,6 +1992,81 @@ function renderCattleSparkline(series) {
   const color = last >= first ? "#15803d" : "#b91c1c";
   return '<svg class="cattle-spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
+
+// 1-year price chart — full SVG with month axis and $/cwt grid
+function renderCattleYearChart(series) {
+  const w = 380, h = 170, padL = 38, padR = 12, padT = 12, padB = 26;
+  const innerW = w - padL - padR;
+  const innerH = h - padT - padB;
+  const now = Date.now();
+  const startMs = now - 365 * 86400000;
+
+  const filtered = (series || []).filter(e => new Date(e.d).getTime() >= startMs);
+  if (filtered.length === 0) {
+    return '<div class="cattle-year-chart-wrap"><div class="cattle-chart-empty">No price history yet — tap <em>✦ Auto-Fetch Wheeler</em> to record this week\'s sale. The 1-year chart fills in as new sales post.</div></div>';
+  }
+
+  const sorted = filtered.slice().sort((a,b) => a.d.localeCompare(b.d));
+  const ps = sorted.map(e => e.p);
+  let minP = Math.min.apply(null, ps);
+  let maxP = Math.max.apply(null, ps);
+  const range = (maxP - minP) || 1;
+  // Round axis bounds to nearest $5 with padding so the line never hugs the edges
+  const padVal = Math.max(5, range * 0.18);
+  minP = Math.floor((minP - padVal) / 5) * 5;
+  maxP = Math.ceil((maxP + padVal) / 5) * 5;
+  if (maxP - minP < 10) maxP = minP + 10;
+
+  const xOf = (dStr) => padL + ((new Date(dStr).getTime() - startMs) / (now - startMs)) * innerW;
+  const yOf = (p) => padT + (1 - (p - minP) / (maxP - minP)) * innerH;
+
+  // Y-axis grid + labels (5 lines)
+  let yGrid = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = minP + (maxP - minP) * i / 4;
+    const yy = yOf(v).toFixed(1);
+    yGrid += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (w - padR) + '" y2="' + yy + '" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2,3" opacity="0.55"/>';
+    yGrid += '<text x="' + (padL - 5) + '" y="' + (parseFloat(yy) + 3.2).toFixed(1) + '" text-anchor="end" fill="var(--text-muted)" font-size="9.5" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">$' + Math.round(v) + '</text>';
+  }
+
+  // X-axis month labels — every 2 months
+  let xLabels = '';
+  const monthFmt = new Intl.DateTimeFormat('en-US', { month: 'short' });
+  for (let i = 0; i <= 12; i += 2) {
+    const t = startMs + (now - startMs) * i / 12;
+    const xx = (padL + (i / 12) * innerW).toFixed(1);
+    xLabels += '<text x="' + xx + '" y="' + (h - padB + 14) + '" text-anchor="middle" fill="var(--text-muted)" font-size="9.5" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">' + monthFmt.format(new Date(t)) + '</text>';
+  }
+
+  const last = sorted[sorted.length - 1];
+  const first = sorted[0];
+  const trend = last.p >= first.p ? "#15803d" : "#b91c1c";
+
+  // Path + dots
+  const pathD = sorted.map((e, i) => (i === 0 ? 'M' : 'L') + xOf(e.d).toFixed(1) + ' ' + yOf(e.p).toFixed(1)).join(' ');
+  const dots = sorted.map(e => '<circle cx="' + xOf(e.d).toFixed(1) + '" cy="' + yOf(e.p).toFixed(1) + '" r="2.2" fill="' + trend + '"><title>' + e.d + ': $' + e.p.toFixed(2) + '/cwt</title></circle>').join('');
+
+  // Highlight latest with bigger dot
+  const latestX = xOf(last.d).toFixed(1);
+  const latestY = yOf(last.p).toFixed(1);
+  const latestDot = '<circle cx="' + latestX + '" cy="' + latestY + '" r="4" fill="' + trend + '" stroke="var(--bg)" stroke-width="1.6"/>';
+
+  const high = Math.max.apply(null, ps);
+  const low  = Math.min.apply(null, ps);
+  const headerStats = '<div class="cattle-year-chart-stats">' +
+    sorted.length + ' sale' + (sorted.length === 1 ? '' : 's') + ' · ' +
+    'high <strong>$' + high.toFixed(2) + '</strong> · low <strong>$' + low.toFixed(2) + '</strong> · latest <strong>$' + last.p.toFixed(2) + '</strong>' +
+  '</div>';
+
+  return '<div class="cattle-year-chart-wrap">' +
+    '<div class="cattle-year-chart-header"><div class="cattle-year-chart-title">📈 1-Year Price History · $/cwt</div>' + headerStats + '</div>' +
+    '<svg class="cattle-year-chart" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Wheeler Livestock 1-year price chart">' +
+      yGrid + xLabels +
+      '<path d="' + pathD + '" fill="none" stroke="' + trend + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>' +
+      dots + latestDot +
+    '</svg>' +
+  '</div>';
+}
 function fmtCwt(v) { return isFinite(v) ? "$" + v.toFixed(2) : ""; }
 function pctDelta(latest, prev) { if (!isFinite(latest) || !isFinite(prev) || prev <= 0) return null; return ((latest - prev) / prev) * 100; }
 function fmtDelta(d) { if (d === null) return "—"; return (d >= 0 ? "+" : "") + d.toFixed(1) + "%"; }
@@ -1995,13 +2085,12 @@ function renderBarnTile(barn, history) {
   const delta = (latest && prevWeek && prevWeek !== latest) ? pctDelta(latest.p, prevWeek.p) : null;
   const priceHtml = latest ? '<div class="barn-price">' + fmtCwt(latest.p) + '<span class="unit">/cwt</span></div>' : '<div class="barn-price placeholder">No price logged yet</div>';
   const deltaHtml = (latest && delta !== null) ? '<span class="barn-delta ' + deltaCls(delta) + '">' + fmtDelta(delta) + ' wk</span>' : '';
-  const sparkHtml = series.length >= 2 ? renderCattleSparkline(series) : "";
-  const dateHtml = latest ? '<span>' + new Date(latest.d).toLocaleDateString("en-US",{month:"short",day:"numeric"}) + '</span>' : '<span style="opacity:.6">tap log to start tracking</span>';
+  const dateHtml = latest ? '<span>' + new Date(latest.d).toLocaleDateString("en-US",{month:"short",day:"numeric"}) + '</span>' : '<span style="opacity:.6">tap auto-fetch to start tracking</span>';
   const buddyTag = barn.isBuddy ? '<span class="barn-buddy-tag">🤝 buddy\'s barn</span>' : '';
   return '<div class="barn-tile' + (barn.isBuddy ? ' buddy' : '') + '" data-barn="' + barn.id + '">' +
     '<div class="barn-name">' + escapeHtml(barn.name) + buddyTag + '</div>' +
     '<div class="barn-loc">' + escapeHtml(barn.location) + ' · ' + escapeHtml(barn.saleDay) + '</div>' +
-    priceHtml + sparkHtml +
+    priceHtml +
     '<div class="barn-meta">' + dateHtml + ' ' + deltaHtml + '</div>' +
     '<div class="barn-meta">' +
       '<a class="barn-link" href="' + escapeHtml(barn.reportUrl) + '" target="_blank" rel="noopener">View Report ↗</a>' +
@@ -2011,18 +2100,23 @@ function renderBarnTile(barn, history) {
 
 function renderCattleMarketCard() {
   const hist = loadCattleHistory();
+  const wheelerSeries = hist.wheeler || [];
   const tiles = CATTLE_BARNS.map(b => renderBarnTile(b, hist[b.id] || [])).join("");
+  const chartHtml = renderCattleYearChart(wheelerSeries);
   const dateStr = new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
   return '<div class="outdoor-card cattle">' +
-    '<div class="outdoor-card-header"><div class="outdoor-card-title">🐄 Cattle Market — 500lb Feeder Steers</div><div class="outdoor-card-date">' + dateStr + '</div></div>' +
-    '<div class="outdoor-banner"><div class="outdoor-banner-emoji">📊</div><div class="outdoor-banner-info"><div class="outdoor-banner-label">Local barn $/cwt for medium &amp; large 1, 500–550 lb steers</div><div class="outdoor-banner-sub">Tap a barn for the latest report. Use <em>+ Log $/cwt</em> to record today\'s average — history builds over time.</div></div></div>' +
+    '<div class="outdoor-card-header"><div class="outdoor-card-title">🐄 Cattle Market — Wheeler Livestock</div><div class="outdoor-card-date">' + dateStr + '</div></div>' +
+    '<div class="outdoor-banner"><div class="outdoor-banner-emoji">📊</div><div class="outdoor-banner-info"><div class="outdoor-banner-label">Wheeler Auction $/cwt for 500–550 lb feeder steers (Med &amp; Lg #1)</div><div class="outdoor-banner-sub">Auto-fetch reads Wheeler\'s scanned report via Claude vision and logs the price. The 1-year chart below grows each Tuesday sale.</div></div></div>' +
     '<div class="barn-grid">' + tiles + '</div>' +
     '<div class="cattle-actions">' +
-      '<button class="cattle-btn" id="cattleViewWheeler" type="button"><span class="spark">🤝</span> Wheeler Latest Report</button>' +
+      '<button class="cattle-btn primary" id="cattleAutoFetch" type="button">✦ Auto-Fetch Wheeler Price</button>' +
+      '<button class="cattle-btn" id="cattleViewWheeler" type="button"><span class="spark">🤝</span> View Latest Report</button>' +
       '<button class="cattle-btn" id="cattleResetHistory" type="button" style="border-color:var(--border);background:transparent;color:var(--text-muted)">Reset History</button>' +
     '</div>' +
+    '<div class="cattle-fetch-result" id="cattleAutoResult" style="display:none"></div>' +
+    chartHtml +
     '<div class="wheeler-embed" id="wheelerEmbed" style="display:none"></div>' +
-    '<div class="cattle-history-note">CME Feeder Cattle (GF=F) and Live Cattle (LE=F) futures are now in your Stocks tab — they give the same-day forward signal alongside these auction snapshots.</div>' +
+    '<div class="cattle-history-note">CME Feeder Cattle (GF=F) and Live Cattle (LE=F) futures live in your Stocks tab — they give the same-day forward signal alongside these auction snapshots.</div>' +
   '</div>';
 }
 
@@ -2060,16 +2154,60 @@ function wireCattleMarket() {
       const val = parseFloat(String(input).replace(/[^0-9.\-]/g, ""));
       if (!isFinite(val) || val <= 0 || val > 1000) { alert("Please enter a valid $/cwt number between 1 and 1000."); return; }
       recordCattlePrice(barnId, val);
-      const hist = loadCattleHistory();
-      const newHtml = renderBarnTile(barn, hist[barnId] || []);
-      const oldTile = card.querySelector('.barn-tile[data-barn="' + barnId + '"]');
-      if (oldTile) {
-        const tmp = document.createElement("div"); tmp.innerHTML = newHtml;
-        oldTile.replaceWith(tmp.firstElementChild);
-        wireCattleMarket();
-      }
+      const newHtml = renderCattleMarketCard();
+      const tmp = document.createElement("div"); tmp.innerHTML = newHtml;
+      card.replaceWith(tmp.firstElementChild);
+      wireCattleMarket();
     });
   });
+  // ── Auto-fetch via worker /cattleprice (Claude vision OCR of Wheeler's scanned report)
+  const autoBtn = card.querySelector("#cattleAutoFetch");
+  const autoResult = card.querySelector("#cattleAutoResult");
+  if (autoBtn && autoResult) {
+    autoBtn.addEventListener("click", async () => {
+      if (autoBtn.classList.contains("is-loading")) return;
+      autoBtn.classList.add("is-loading");
+      const origHtml = autoBtn.innerHTML;
+      autoBtn.innerHTML = '<span class="spinner"></span> Reading Wheeler\'s report…';
+      autoResult.style.display = "block";
+      autoResult.className = "cattle-fetch-result";
+      autoResult.innerHTML = '<div class="cattle-fetch-loading"><span class="spinner"></span> Fetching latest Wheeler report &amp; running Claude vision OCR…</div>';
+      try {
+        const res = await fetch(CF_WORKER + "/cattleprice?barn=wheeler", { method:"GET" });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
+        if (!isFinite(data.avg_cwt) || data.avg_cwt <= 0) throw new Error("Couldn't read a 500-lb steer price from this report");
+        recordCattlePrice("wheeler", data.avg_cwt, data.sale_date);
+        // Build success message before re-render so we can stash it
+        const detail = '✓ Logged <strong>$' + (+data.avg_cwt).toFixed(2) + '/cwt</strong>' +
+          ' for sale on <strong>' + escapeHtml(data.sale_date || 'today') + '</strong>' +
+          (data.weight_class ? ' · ' + escapeHtml(data.weight_class) + ' lb' : '') +
+          (data.head_count ? ' · ' + data.head_count + ' head' : '') +
+          (isFinite(data.low_cwt) && isFinite(data.high_cwt) ? ' · range $' + (+data.low_cwt).toFixed(2) + '–$' + (+data.high_cwt).toFixed(2) : '') +
+          (data.notes ? '<div style="margin-top:4px;font-size:11.5px;color:var(--text-muted)">' + escapeHtml(data.notes) + '</div>' : '') +
+          (data.cached ? '<div style="margin-top:4px;font-size:10.5px;opacity:.65">cached · won\'t re-bill until tomorrow</div>' : '');
+        // Re-render the whole card (refreshes price, delta, chart)
+        const newHtml = renderCattleMarketCard();
+        const tmp = document.createElement("div"); tmp.innerHTML = newHtml;
+        card.replaceWith(tmp.firstElementChild);
+        wireCattleMarket();
+        const newCard = document.querySelector(".outdoor-card.cattle");
+        const newResult = newCard && newCard.querySelector("#cattleAutoResult");
+        if (newResult) {
+          newResult.style.display = "block";
+          newResult.className = "cattle-fetch-result cattle-fetch-success";
+          newResult.innerHTML = detail;
+        }
+      } catch (err) {
+        autoResult.className = "cattle-fetch-result cattle-fetch-error";
+        autoResult.innerHTML = '⚠ Auto-fetch failed: ' + escapeHtml(String(err.message || err)) +
+          '. <a class="barn-link" href="https://www.wheelerlivestock.com/market-report-1" target="_blank" rel="noopener">Open report ↗</a>' +
+          ' or use <em>+ Log $/cwt</em> on the tile to enter manually.';
+        autoBtn.classList.remove("is-loading");
+        autoBtn.innerHTML = origHtml;
+      }
+    });
+  }
   const wheelerBtn = card.querySelector("#cattleViewWheeler");
   const embed      = card.querySelector("#wheelerEmbed");
   if (wheelerBtn && embed) {

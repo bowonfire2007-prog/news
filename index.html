@@ -2106,10 +2106,10 @@ function renderCattleMarketCard() {
   const dateStr = new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
   return '<div class="outdoor-card cattle">' +
     '<div class="outdoor-card-header"><div class="outdoor-card-title">🐄 Cattle Market — Wheeler Livestock</div><div class="outdoor-card-date">' + dateStr + '</div></div>' +
-    '<div class="outdoor-banner"><div class="outdoor-banner-emoji">📊</div><div class="outdoor-banner-info"><div class="outdoor-banner-label">Wheeler Auction $/cwt for 500–550 lb feeder steers (Med &amp; Lg #1)</div><div class="outdoor-banner-sub">Auto-fetch reads Wheeler\'s scanned report via Claude vision and logs the price. The 1-year chart below grows each Tuesday sale.</div></div></div>' +
+    '<div class="outdoor-banner"><div class="outdoor-banner-emoji">📊</div><div class="outdoor-banner-info"><div class="outdoor-banner-label">Wheeler Auction — top dollar $/cwt on feeder steers closest to 500 lb</div><div class="outdoor-banner-sub">Auto-fetch reads Wheeler\'s scanned report via Claude vision and logs the top-dollar price. Wheeler\'s actual sale weights vary weekly (538, 583, 612 lb …) so we always grab whichever line is closest to 500 lb.</div></div></div>' +
     '<div class="barn-grid">' + tiles + '</div>' +
     '<div class="cattle-actions">' +
-      '<button class="cattle-btn primary" id="cattleAutoFetch" type="button">✦ Auto-Fetch Wheeler Price</button>' +
+      '<button class="cattle-btn primary" id="cattleAutoFetch" type="button">✦ Auto-Fetch Wheeler Top $</button>' +
       '<button class="cattle-btn" id="cattleViewWheeler" type="button"><span class="spark">🤝</span> View Latest Report</button>' +
       '<button class="cattle-btn" id="cattleResetHistory" type="button" style="border-color:var(--border);background:transparent;color:var(--text-muted)">Reset History</button>' +
     '</div>' +
@@ -2168,7 +2168,7 @@ function wireCattleMarket() {
       if (autoBtn.classList.contains("is-loading")) return;
       autoBtn.classList.add("is-loading");
       const origHtml = autoBtn.innerHTML;
-      autoBtn.innerHTML = '<span class="spinner"></span> Reading Wheeler\'s report…';
+      autoBtn.innerHTML = '<span class="spinner"></span> Reading top dollar from Wheeler\'s report…';
       autoResult.style.display = "block";
       autoResult.className = "cattle-fetch-result";
       autoResult.innerHTML = '<div class="cattle-fetch-loading"><span class="spinner"></span> Fetching latest Wheeler report &amp; running Claude vision OCR…</div>';
@@ -2183,15 +2183,20 @@ function wireCattleMarket() {
           throw new Error("Worker isn't returning JSON — got: \"" + txt.slice(0,80).trim() + "\". The /cattleprice endpoint may not be deployed yet — push worker.js to Cloudflare and try again.");
         }
         if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
-        if (!isFinite(data.avg_cwt) || data.avg_cwt <= 0) throw new Error("Couldn't read a 500-lb steer price from this report");
-        recordCattlePrice("wheeler", data.avg_cwt, data.sale_date);
+        // We track TOP DOLLAR (high_cwt). Some weeks Claude returns only avg_cwt
+        // if a single price is shown — fall back to that.
+        const topPrice = isFinite(data.high_cwt) && data.high_cwt > 0 ? +data.high_cwt
+                       : (isFinite(data.avg_cwt) && data.avg_cwt > 0 ? +data.avg_cwt : NaN);
+        if (!isFinite(topPrice) || topPrice <= 0) throw new Error("Couldn't read a feeder steer price from this report");
+        recordCattlePrice("wheeler", topPrice, data.sale_date);
         // Build success message before re-render so we can stash it
-        const detail = '✓ Logged <strong>$' + (+data.avg_cwt).toFixed(2) + '/cwt</strong>' +
+        const detail = '✓ Logged top dollar <strong>$' + topPrice.toFixed(2) + '/cwt</strong>' +
           ' for sale on <strong>' + escapeHtml(data.sale_date || 'today') + '</strong>' +
-          (data.weight_class ? ' · ' + escapeHtml(data.weight_class) + ' lb' : '') +
+          (data.weight_class ? ' · ' + escapeHtml(data.weight_class) : '') +
           (data.head_count ? ' · ' + data.head_count + ' head' : '') +
-          (isFinite(data.low_cwt) && isFinite(data.high_cwt) ? ' · range $' + (+data.low_cwt).toFixed(2) + '–$' + (+data.high_cwt).toFixed(2) : '') +
+          (isFinite(data.low_cwt) && isFinite(data.high_cwt) && data.low_cwt !== data.high_cwt ? ' · range $' + (+data.low_cwt).toFixed(2) + '–$' + (+data.high_cwt).toFixed(2) : '') +
           (data.notes ? '<div style="margin-top:4px;font-size:11.5px;color:var(--text-muted)">' + escapeHtml(data.notes) + '</div>' : '') +
+          (data.fetched_via ? '<div style="margin-top:2px;font-size:10.5px;opacity:.55">image fetched via ' + escapeHtml(data.fetched_via) + '</div>' : '') +
           (data.cached ? '<div style="margin-top:4px;font-size:10.5px;opacity:.65">cached · won\'t re-bill until tomorrow</div>' : '');
         // Re-render the whole card (refreshes price, delta, chart)
         const newHtml = renderCattleMarketCard();

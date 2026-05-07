@@ -853,44 +853,72 @@ async function handleCattlePrice(url, env, ctx) {
   const ranked = allWix.map(u => ({ u, s: imgScore(u) })).sort((a, b) => b.s - a.s);
   const imgUrl = ranked[0].u;
 
-  // Fetch image bytes. Wix has hotlink protection that 403s requests with a
-  // Cloudflare or empty Referer. Try direct first with browser headers; if that
-  // fails, fall back to the wsrv.nl image proxy (same trick the frontend uses).
+  // Fetch image bytes. Wix has aggressive hotlink protection on its /v1/fit/...
+  // transform endpoint, and also blocks the common image proxies. We try a long
+  // chain of strategies — bare-URL (strip /v1/fit/...), Googlebot UA, multiple
+  // proxies — before giving up.
   async function fetchImage(u, kind) {
-    // u may have %7E for tilde — decode once so we don't double-encode it.
     let decoded = u;
     try { decoded = decodeURIComponent(u); } catch (_) {}
+    // Bare original URL: strip Wix's /v1/{fit,fill,crop,scale}/... transform
+    // suffix. The bare asset endpoint tends to have looser hotlink rules.
+    const bare = decoded.replace(/\/v1\/(?:fit|fill|crop|scale)\/[^/]+\/[^?#]+\.(?:jpe?g|png|webp)/i, "");
     const stripped = decoded.replace(/^https?:\/\//, "");
+    const strippedBare = bare.replace(/^https?:\/\//, "");
+
+    const browserHeaders = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Referer": "https://www.wheelerlivestock.com/",
+      "Origin": "https://www.wheelerlivestock.com",
+      "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Sec-Fetch-Dest": "image",
+      "Sec-Fetch-Mode": "no-cors",
+      "Sec-Fetch-Site": "cross-site"
+    };
+    const googlebotHeaders = Object.assign({}, browserHeaders, { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" });
 
     let target, headers = {};
-    if (kind === "wsrv") {
-      target = "https://wsrv.nl/?url=" + encodeURIComponent(stripped) + "&output=jpg&q=92";
-    } else if (kind === "weserv") {
-      target = "https://images.weserv.nl/?url=" + encodeURIComponent(stripped) + "&output=jpg&q=92";
-    } else {
-      // direct, with browser-like headers to defeat Wix hotlink protection
-      target = decoded;
-      headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Referer": "https://www.wheelerlivestock.com/",
-        "Origin": "https://www.wheelerlivestock.com",
-        "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Sec-Fetch-Dest": "image",
-        "Sec-Fetch-Mode": "no-cors",
-        "Sec-Fetch-Site": "cross-site"
-      };
-    }
+    if (kind === "direct-bare")          { target = bare;    headers = browserHeaders; }
+    else if (kind === "direct")          { target = decoded; headers = browserHeaders; }
+    else if (kind === "googlebot-bare")  { target = bare;    headers = googlebotHeaders; }
+    else if (kind === "googlebot")       { target = decoded; headers = googlebotHeaders; }
+    else if (kind === "wsrv-bare")       { target = "https://wsrv.nl/?url="          + encodeURIComponent(strippedBare) + "&output=jpg&q=92"; }
+    else if (kind === "wsrv")            { target = "https://wsrv.nl/?url="          + encodeURIComponent(stripped)     + "&output=jpg&q=92"; }
+    else if (kind === "weserv-bare")     { target = "https://images.weserv.nl/?url=" + encodeURIComponent(strippedBare) + "&output=jpg&q=92"; }
+    else if (kind === "weserv")          { target = "https://images.weserv.nl/?url=" + encodeURIComponent(stripped)     + "&output=jpg&q=92"; }
+    else if (kind === "corsproxy-bare")  { target = "https://corsproxy.io/?"         + encodeURIComponent(bare);    headers = browserHeaders; }
+    else if (kind === "corsproxy")       { target = "https://corsproxy.io/?"         + encodeURIComponent(decoded); headers = browserHeaders; }
+    else if (kind === "allorigins-bare") { target = "https://api.allorigins.win/raw?url=" + encodeURIComponent(bare); }
+    else if (kind === "allorigins")      { target = "https://api.allorigins.win/raw?url=" + encodeURIComponent(decoded); }
+    else throw new Error("unknown kind: " + kind);
+
     const r = await fetch(target, { headers });
-    if (!r.ok) throw new Error(kind + " HTTP " + r.status);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    // Sanity-check: did we actually get image bytes? Some proxies return HTML
+    // error pages with 200 status when the upstream fetch fails.
+    const ct = (r.headers.get("Content-Type") || "").toLowerCase();
+    if (ct && !ct.startsWith("image/") && !ct.startsWith("application/octet-stream")) {
+      throw new Error("not an image (ct=" + ct.slice(0, 40) + ")");
+    }
     return r;
   }
 
   let imgBytes, mediaType = "image/jpeg", fetchedVia = "direct";
-  // Try direct → wsrv.nl → weserv.nl in sequence
   const attempts = [];
   let imgRes = null;
-  for (const kind of ["direct", "wsrv", "weserv"]) {
+  // Order from most-likely-to-work to least. Bare URLs first because Wix's
+  // transform endpoint is the strictly-protected one. Googlebot UA next
+  // (Wix typically allows search bots). Image proxies last.
+  const strategies = [
+    "direct-bare", "direct",
+    "googlebot-bare", "googlebot",
+    "wsrv-bare", "wsrv",
+    "weserv-bare", "weserv",
+    "corsproxy-bare", "corsproxy",
+    "allorigins-bare", "allorigins"
+  ];
+  for (const kind of strategies) {
     try {
       imgRes = await fetchImage(imgUrl, kind);
       fetchedVia = kind;
@@ -913,12 +941,17 @@ async function handleCattlePrice(url, env, ctx) {
   const base64 = arrayBufferToBase64(imgBytes);
   const model = env.AI_MODEL_VISION || "claude-haiku-4-5-20251001";
   const prompt = "This is a livestock auction market report from Wheeler Livestock Auction in Osceola, MO. " +
-    "Extract pricing data for FEEDER STEERS in the 500-550 lb weight class (Medium and Large frame, #1 muscle if listed). " +
+    "Find the FEEDER STEER line whose weight is CLOSEST TO 500 LBS. Wheeler reports vary week-to-week — " +
+    "sometimes a single average weight (like \"538 lb\", \"583 lb\", \"612 lb\"), sometimes a weight range " +
+    "(like \"450-549\", \"500-600\"). Pick whichever feeder steer entry is closest to 500 lb. " +
+    "Prefer Medium & Large frame, #1 muscle if multiple grades are listed. " +
+    "Read prices very carefully — they are dollars per hundredweight (cwt), typically $200-$400 these days. " +
     "Return ONLY valid JSON, no other text, no markdown fences. Schema: " +
-    '{"barn":"wheeler","sale_date":"YYYY-MM-DD","weight_class":"500-550","head_count":<number_or_null>,' +
-    '"avg_cwt":<number_dollars>,"low_cwt":<number>,"high_cwt":<number>,"frame_grade":"<eg Med & Lg 1>",' +
-    '"notes":"<caveats — eg \"closest match was 500-549 lbs\" if exact range missing>"}. ' +
-    "If the report doesn't contain a 500-550 lb feeder steer line, find the closest weight class and note it in 'notes'. " +
+    '{"barn":"wheeler","sale_date":"YYYY-MM-DD","weight_class":"<as written, eg \"583 lbs\" or \"500-549\">",' +
+    '"head_count":<number_or_null>,"avg_cwt":<avg_price_dollars>,"low_cwt":<low_price>,"high_cwt":<TOP_DOLLAR_high_price>,' +
+    '"frame_grade":"<eg Med & Lg 1>","notes":"<which weight class you chose and why, plus any caveats>"}. ' +
+    "high_cwt is THE TOP DOLLAR (highest) price for that weight class — read it precisely, the user tracks this number. " +
+    "If a single price is shown (no range), set avg_cwt = low_cwt = high_cwt to that price. " +
     "If no feeder steer data is visible, return {\"error\":\"no feeder steer data found\"}.";
 
   let claudeRes;

@@ -928,86 +928,10 @@ async function handleCattlePrice(url, env, ctx) {
     return r;
   }
 
-  let imgBytes, mediaType = "image/jpeg", fetchedVia = "direct";
-  const attempts = [];
-  let imgRes = null;
-  // Order from most-likely-to-work to least. Bare URLs first because Wix's
-  // transform endpoint is the strictly-protected one. Googlebot UA next
-  // (Wix typically allows search bots). Image proxies last.
-  const strategies = [
-    "direct-bare", "direct",
-    "googlebot-bare", "googlebot",
-    "wsrv-bare", "wsrv",
-    "weserv-bare", "weserv",
-    "corsproxy-bare", "corsproxy",
-    "allorigins-bare", "allorigins"
-  ];
-  for (const kind of strategies) {
-    try {
-      imgRes = await fetchImage(imgUrl, kind);
-      fetchedVia = kind;
-      break;
-    } catch (e) {
-      attempts.push(kind + ":" + e.message);
-    }
-  }
-  if (!imgRes) {
-    // Plan B: every direct image strategy failed (Wix hotlink protection).
-    // Fall back to WordPress mShots — render the entire Wheeler PAGE as a
-    // screenshot from WordPress's servers, then OCR that. mShots is free and
-    // unauthenticated, and bypasses Wix entirely because WordPress fetches
-    // the page like a normal browser.
-    try {
-      const mshotsUrl = "https://s.wordpress.com/mshots/v1/" + encodeURIComponent(wheelerUrl) + "?w=1600&h=2400";
-      // First call may return a placeholder (1x1 png) while the screenshot is queued.
-      // Second call (after a 4s wait) should return the real image.
-      let mshotsRes = await fetch(mshotsUrl);
-      if (mshotsRes.ok) {
-        const len = parseInt(mshotsRes.headers.get("Content-Length") || "0", 10);
-        // Placeholder is ~165 bytes. Real screenshot is hundreds of KB.
-        if (len > 0 && len < 10000) {
-          // Wait and retry once
-          await new Promise(r => setTimeout(r, 5000));
-          mshotsRes = await fetch(mshotsUrl);
-        }
-      }
-      if (mshotsRes.ok) {
-        const ct = (mshotsRes.headers.get("Content-Type") || "").toLowerCase();
-        if (ct.startsWith("image/")) {
-          imgRes = mshotsRes;
-          fetchedVia = "mshots";
-          attempts.push("mshots:OK");
-        } else {
-          attempts.push("mshots:not-image-ct=" + ct);
-        }
-      } else {
-        attempts.push("mshots:HTTP " + mshotsRes.status);
-      }
-    } catch (e) {
-      attempts.push("mshots:" + e.message);
-    }
-  }
-  if (!imgRes) {
-    return jsonResponse({ error: "Wheeler image fetch failed — " + attempts.join(" | "), image_url: imgUrl }, 502);
-  }
-  try {
-    const ct = imgRes.headers.get("Content-Type") || "";
-    if (ct.includes("png")) mediaType = "image/png";
-    imgBytes = await imgRes.arrayBuffer();
-  } catch (err) {
-    return jsonResponse({ error: "Wheeler image read failed: " + err.message, image_url: imgUrl, fetched_via: fetchedVia }, 502);
-  }
-
-  const base64 = arrayBufferToBase64(imgBytes);
   const model = env.AI_MODEL_VISION || "claude-haiku-4-5-20251001";
-  // If the image was fetched via mShots, it's a full-page screenshot of Wheeler's
-  // website (with the embedded market report image inside). Otherwise it's the
-  // market report image directly. The prompt works for both — Claude just needs
-  // to find the report content within whatever it's looking at.
-  const promptPrefix = fetchedVia === "mshots"
-    ? "This is a screenshot of Wheeler Livestock Auction's website. The page shows their latest scanned market report from their auction in Osceola, MO. Look at the market report image embedded on the page and read it carefully. "
-    : "This is a livestock auction market report from Wheeler Livestock Auction in Osceola, MO. ";
-  const prompt = promptPrefix +
+
+  // Common prompt body — the per-prefix is added per attempt below.
+  const commonPromptBody =
     "Find the FEEDER STEER line whose weight is CLOSEST TO 500 LBS. Wheeler reports vary week-to-week — " +
     "sometimes a single average weight (like \"538 lb\", \"583 lb\", \"612 lb\"), sometimes a weight range " +
     "(like \"450-549\", \"500-600\"). Pick whichever feeder steer entry is closest to 500 lb. " +
@@ -1020,10 +944,12 @@ async function handleCattlePrice(url, env, ctx) {
     "high_cwt is THE TOP DOLLAR (highest) price for that weight class — read it precisely, the user tracks this number. " +
     "If a single price is shown (no range), set avg_cwt = low_cwt = high_cwt to that price. " +
     "If no feeder steer data is visible, return {\"error\":\"no feeder steer data found\"}.";
+  const promptDirect     = "This is a livestock auction market report from Wheeler Livestock Auction in Osceola, MO. " + commonPromptBody;
+  const promptScreenshot = "This is a screenshot of Wheeler Livestock Auction's website. The page shows their latest scanned market report from their auction in Osceola, MO. Look at the market report image embedded on the page and read it carefully. " + commonPromptBody;
 
-  let claudeRes;
-  try {
-    claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+  // Helper: call Claude with a given image content block. Returns parsed JSON or throws.
+  async function callClaude(imageContent, useText) {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "x-api-key": env.ANTHROPIC_API_KEY,
@@ -1033,38 +959,125 @@ async function handleCattlePrice(url, env, ctx) {
       body: JSON.stringify({
         model,
         max_tokens: 600,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-            { type: "text", text: prompt }
-          ]
-        }]
+        messages: [{ role: "user", content: [imageContent, { type: "text", text: useText }] }]
       })
     });
-  } catch (err) {
-    return jsonResponse({ error: "Claude fetch failed: " + err.message }, 502);
+    if (!r.ok) {
+      const errText = await r.text();
+      throw new Error("HTTP " + r.status + ": " + errText.slice(0, 300));
+    }
+    return await r.json();
   }
 
-  if (!claudeRes.ok) {
-    const errText = await claudeRes.text();
-    return jsonResponse({ error: "Claude API " + claudeRes.status, details: errText.slice(0, 600) }, 502);
+  // ── PLAN A: Anthropic URL-source ──
+  // Pass the image URL to Claude and let Anthropic's servers fetch it. Anthropic's
+  // IPs and User-Agent aren't on Wix's hotlink blocklist (they're enormous and
+  // look like normal browser traffic). This bypasses our Worker as a middleman
+  // entirely — Wix never sees a Cloudflare Workers IP.
+  let claudeData = null;
+  let fetchedVia = null;
+  const attempts = [];
+  try {
+    claudeData = await callClaude(
+      { type: "image", source: { type: "url", url: imgUrl } },
+      promptDirect
+    );
+    fetchedVia = "anthropic-url";
+  } catch (e) {
+    attempts.push("anthropic-url:" + e.message);
   }
 
-  const data = await claudeRes.json();
-  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+  // ── PLAN B: byte-fetch chain (12 strategies) ──
+  // If Anthropic couldn't fetch the URL either, try fetching the bytes ourselves
+  // and sending them as base64. (Unlikely to work given Wix has been blocking us,
+  // but kept as a defense-in-depth fallback.)
+  if (!claudeData) {
+    let imgRes = null;
+    let mediaType = "image/jpeg";
+    const strategies = [
+      "direct-bare", "direct",
+      "googlebot-bare", "googlebot",
+      "wsrv-bare", "wsrv",
+      "weserv-bare", "weserv",
+      "corsproxy-bare", "corsproxy",
+      "allorigins-bare", "allorigins"
+    ];
+    for (const kind of strategies) {
+      try {
+        imgRes = await fetchImage(imgUrl, kind);
+        fetchedVia = kind;
+        break;
+      } catch (e) {
+        attempts.push(kind + ":" + e.message);
+      }
+    }
 
+    // ── PLAN C: WordPress mShots — full-page screenshot ──
+    if (!imgRes) {
+      try {
+        const mshotsUrl = "https://s.wordpress.com/mshots/v1/" + encodeURIComponent(wheelerUrl) + "?w=1600&h=2400";
+        let mshotsRes = await fetch(mshotsUrl);
+        if (mshotsRes.ok) {
+          const len = parseInt(mshotsRes.headers.get("Content-Length") || "0", 10);
+          if (len > 0 && len < 10000) {
+            await new Promise(r => setTimeout(r, 5000));
+            mshotsRes = await fetch(mshotsUrl);
+          }
+        }
+        if (mshotsRes.ok) {
+          const ct = (mshotsRes.headers.get("Content-Type") || "").toLowerCase();
+          if (ct.startsWith("image/")) {
+            imgRes = mshotsRes;
+            fetchedVia = "mshots";
+            attempts.push("mshots:OK");
+          } else {
+            attempts.push("mshots:not-image-ct=" + ct);
+          }
+        } else {
+          attempts.push("mshots:HTTP " + mshotsRes.status);
+        }
+      } catch (e) {
+        attempts.push("mshots:" + e.message);
+      }
+    }
+
+    if (!imgRes) {
+      return jsonResponse({ error: "Wheeler image fetch failed — " + attempts.join(" | "), image_url: imgUrl }, 502);
+    }
+
+    let imgBytes;
+    try {
+      const ct = imgRes.headers.get("Content-Type") || "";
+      if (ct.includes("png")) mediaType = "image/png";
+      imgBytes = await imgRes.arrayBuffer();
+    } catch (err) {
+      return jsonResponse({ error: "Wheeler image read failed: " + err.message, image_url: imgUrl, fetched_via: fetchedVia }, 502);
+    }
+
+    const base64 = arrayBufferToBase64(imgBytes);
+    const usePrompt = fetchedVia === "mshots" ? promptScreenshot : promptDirect;
+    try {
+      claudeData = await callClaude(
+        { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+        usePrompt
+      );
+    } catch (e) {
+      return jsonResponse({ error: "Claude vision call failed: " + e.message, image_url: imgUrl, fetched_via: fetchedVia, attempts }, 502);
+    }
+  }
+
+  // ── Parse Claude response ──
+  const text = (claudeData.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
   let parsed;
   try {
     const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
     parsed = JSON.parse(cleaned);
   } catch (err) {
-    return jsonResponse({ error: "Could not parse Claude response as JSON", raw: text.slice(0, 600) }, 502);
+    return jsonResponse({ error: "Could not parse Claude response as JSON", raw: text.slice(0, 600), fetched_via: fetchedVia }, 502);
   }
+  if (parsed.error) return jsonResponse({ ...parsed, image_url: imgUrl, model, fetched_via: fetchedVia }, 200);
 
-  if (parsed.error) return jsonResponse({ ...parsed, image_url: imgUrl, model }, 200);
-
-  const result = { ...parsed, model, image_url: imgUrl, fetched_via: fetchedVia, generated_at: new Date().toISOString() };
+  const result = { ...parsed, model, image_url: imgUrl, fetched_via: fetchedVia, attempts: attempts.length ? attempts : undefined, generated_at: new Date().toISOString() };
   const cacheRes = new Response(JSON.stringify(result), {
     headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=43200" } // 12h
   });

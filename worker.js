@@ -833,11 +833,25 @@ async function handleCattlePrice(url, env, ctx) {
     return jsonResponse({ error: "Wheeler fetch failed: " + err.message }, 502);
   }
 
-  // Extract latest market-report image URL — Wix posts as JPEG
-  const re = /https:\/\/static\.wixstatic\.com\/media\/[^"'\s)]+market[^"'\s)]*\.(jpe?g|png)/ig;
-  const matches = Array.from(new Set(html.match(re) || []));
-  if (matches.length === 0) return jsonResponse({ error: "No market-report image found on Wheeler page" }, 404);
-  const imgUrl = matches[0];
+  // Extract latest market-report image URL. Wheeler posts scanned reports as
+  // JPEG on Wix CDN, but the filename varies — sometimes "market", sometimes a
+  // Wix UUID. Collect ALL Wix images on the page and rank them.
+  const allWix = Array.from(new Set(html.match(/https:\/\/static\.wixstatic\.com\/media\/[^"'\s)]+\.(?:jpe?g|png|webp)/ig) || []));
+  if (allWix.length === 0) return jsonResponse({ error: "No Wix-hosted images found on Wheeler page" }, 404);
+
+  function imgScore(u) {
+    let s = 0;
+    if (/market/i.test(u)) s += 100;            // explicit market-report filename
+    if (/report/i.test(u)) s += 60;             // "report" in URL
+    if (/\.jpe?g(\?|$|\/)/i.test(u)) s += 20;    // JPEG (scans are usually JPEG)
+    if (/blur_2/.test(u)) s -= 50;              // Wix's tiny blurred preview
+    const wMatch = u.match(/w_(\d{2,5})/);      // Wix size param: w_980 etc.
+    if (wMatch) s += Math.min(40, parseInt(wMatch[1], 10) / 30);
+    if (/logo|icon|favicon|avatar/i.test(u)) s -= 80;
+    return s;
+  }
+  const ranked = allWix.map(u => ({ u, s: imgScore(u) })).sort((a, b) => b.s - a.s);
+  const imgUrl = ranked[0].u;
 
   // Fetch image bytes
   let imgBytes, mediaType = "image/jpeg";

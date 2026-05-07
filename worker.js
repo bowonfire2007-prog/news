@@ -856,40 +856,58 @@ async function handleCattlePrice(url, env, ctx) {
   // Fetch image bytes. Wix has hotlink protection that 403s requests with a
   // Cloudflare or empty Referer. Try direct first with browser headers; if that
   // fails, fall back to the wsrv.nl image proxy (same trick the frontend uses).
-  async function fetchImage(u, viaProxy) {
-    const target = viaProxy
-      ? "https://wsrv.nl/?url=" + encodeURIComponent(u.replace(/^https?:\/\//, "")) + "&output=jpg&q=92"
-      : u;
-    const headers = viaProxy ? {} : {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      "Referer": "https://www.wheelerlivestock.com/",
-      "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9"
-    };
+  async function fetchImage(u, kind) {
+    // u may have %7E for tilde — decode once so we don't double-encode it.
+    let decoded = u;
+    try { decoded = decodeURIComponent(u); } catch (_) {}
+    const stripped = decoded.replace(/^https?:\/\//, "");
+
+    let target, headers = {};
+    if (kind === "wsrv") {
+      target = "https://wsrv.nl/?url=" + encodeURIComponent(stripped) + "&output=jpg&q=92";
+    } else if (kind === "weserv") {
+      target = "https://images.weserv.nl/?url=" + encodeURIComponent(stripped) + "&output=jpg&q=92";
+    } else {
+      // direct, with browser-like headers to defeat Wix hotlink protection
+      target = decoded;
+      headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Referer": "https://www.wheelerlivestock.com/",
+        "Origin": "https://www.wheelerlivestock.com",
+        "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Sec-Fetch-Dest": "image",
+        "Sec-Fetch-Mode": "no-cors",
+        "Sec-Fetch-Site": "cross-site"
+      };
+    }
     const r = await fetch(target, { headers });
-    if (!r.ok) throw new Error((viaProxy ? "wsrv.nl" : "direct") + " HTTP " + r.status);
+    if (!r.ok) throw new Error(kind + " HTTP " + r.status);
     return r;
   }
 
   let imgBytes, mediaType = "image/jpeg", fetchedVia = "direct";
-  try {
-    let imgRes;
+  // Try direct → wsrv.nl → weserv.nl in sequence
+  const attempts = [];
+  let imgRes = null;
+  for (const kind of ["direct", "wsrv", "weserv"]) {
     try {
-      imgRes = await fetchImage(imgUrl, false);
-    } catch (e1) {
-      // Fall back to wsrv.nl proxy
-      try {
-        imgRes = await fetchImage(imgUrl, true);
-        fetchedVia = "wsrv.nl";
-      } catch (e2) {
-        return jsonResponse({ error: "Wheeler image fetch failed: " + e1.message + " | proxy: " + e2.message, image_url: imgUrl }, 502);
-      }
+      imgRes = await fetchImage(imgUrl, kind);
+      fetchedVia = kind;
+      break;
+    } catch (e) {
+      attempts.push(kind + ":" + e.message);
     }
+  }
+  if (!imgRes) {
+    return jsonResponse({ error: "Wheeler image fetch failed — " + attempts.join(" | "), image_url: imgUrl }, 502);
+  }
+  try {
     const ct = imgRes.headers.get("Content-Type") || "";
     if (ct.includes("png")) mediaType = "image/png";
     imgBytes = await imgRes.arrayBuffer();
   } catch (err) {
-    return jsonResponse({ error: "Wheeler image fetch failed: " + err.message, image_url: imgUrl }, 502);
+    return jsonResponse({ error: "Wheeler image read failed: " + err.message, image_url: imgUrl, fetched_via: fetchedVia }, 502);
   }
 
   const base64 = arrayBufferToBase64(imgBytes);

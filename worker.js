@@ -933,22 +933,38 @@ async function handleCattlePrice(url, env, ctx) {
     return r;
   }
 
-  const model = env.AI_MODEL_VISION || "claude-haiku-4-5-20251001";
+  const model = env.AI_MODEL_VISION || "claude-sonnet-4-5";
 
-  // Common prompt body — the per-prefix is added per attempt below.
+  // Common prompt body — much more directive about grade priority. The user has
+  // observed Haiku picking M/L 1-2 (mixed grade) lines instead of the higher-quality
+  // M/L 1 (single grade) lines. Sonnet + this prompt should fix that.
   const commonPromptBody =
-    "Find the FEEDER STEER line whose weight is CLOSEST TO 500 LBS. Wheeler reports vary week-to-week — " +
-    "sometimes a single average weight (like \"538 lb\", \"583 lb\", \"612 lb\"), sometimes a weight range " +
-    "(like \"450-549\", \"500-600\"). Pick whichever feeder steer entry is closest to 500 lb. " +
-    "Prefer Medium & Large frame, #1 muscle if multiple grades are listed. " +
-    "Read prices very carefully — they are dollars per hundredweight (cwt), typically $200-$400 these days. " +
-    "Return ONLY valid JSON, no other text, no markdown fences. Schema: " +
-    '{"barn":"wheeler","sale_date":"YYYY-MM-DD","weight_class":"<as written, eg \"583 lbs\" or \"500-549\">",' +
-    '"head_count":<number_or_null>,"avg_cwt":<avg_price_dollars>,"low_cwt":<low_price>,"high_cwt":<TOP_DOLLAR_high_price>,' +
-    '"frame_grade":"<eg Med & Lg 1>","notes":"<which weight class you chose and why, plus any caveats>"}. ' +
-    "high_cwt is THE TOP DOLLAR (highest) price for that weight class — read it precisely, the user tracks this number. " +
-    "If a single price is shown (no range), set avg_cwt = low_cwt = high_cwt to that price. " +
-    "If no feeder steer data is visible, return {\"error\":\"no feeder steer data found\"}.";
+    "TASK: Find the SINGLE BEST feeder steer line for the user's tracker. The user wants TOP DOLLAR pricing for the highest-grade feeder steers closest to 500 lb actual weight.\n\n" +
+    "GRADE PRIORITY (strictly enforce):\n" +
+    "1. STRONGLY PREFER 'Medium and Large 1' (also written 'M&L 1', 'M/L 1', 'Med & Lg 1', 'Medium & Large #1'). This is a single-grade, higher-quality line.\n" +
+    "2. Only fall back to 'Medium and Large 1-2' (M&L 1-2, mixed-grade range) if NO M&L 1 feeder steer line exists on the report.\n" +
+    "3. NEVER pick 'Medium and Large 2', 'Medium 2', or any grade 3 line.\n\n" +
+    "WEIGHT SELECTION (within the chosen grade):\n" +
+    "- Wheeler reports vary week to week. Some weeks they show a SINGLE AVERAGE weight (e.g. '583 lbs', '538 lbs', '612 lbs') — usually because all the steers in that pen averaged that weight. Other weeks they show a RANGE (e.g. '500-549 lbs', '450-499 lbs').\n" +
+    "- Pick the entry whose weight is CLOSEST TO 500 LB. For ranges, use the midpoint. For single averages, use that number.\n" +
+    "- IMPORTANT: A single-weight entry like '583 lb M&L 1' is preferred over a range like '500-549 M&L 1-2' even though 524 (midpoint) is mathematically closer to 500 — because the M&L 1 grade priority outranks tiny weight differences.\n\n" +
+    "PRICE READING:\n" +
+    "- Prices are in $/cwt (dollars per hundredweight), typically $200-$400 in current market.\n" +
+    "- high_cwt is the TOP DOLLAR price (the highest number on that line) — this is the headline number the user tracks. Read it carefully, double-check the digits.\n" +
+    "- If only a single price is shown (no range), set avg_cwt = low_cwt = high_cwt to that price.\n\n" +
+    "OUTPUT — Return ONLY valid JSON, no markdown, no commentary outside the JSON. Schema:\n" +
+    '{\n' +
+    '  "barn": "wheeler",\n' +
+    '  "sale_date": "YYYY-MM-DD",\n' +
+    '  "weight_class": "<exactly as written, e.g. \\"583 lbs\\" or \\"500-549\\"">,\n' +
+    '  "head_count": <number_or_null>,\n' +
+    '  "avg_cwt": <avg_price_dollars>,\n' +
+    '  "low_cwt": <low_price>,\n' +
+    '  "high_cwt": <TOP_DOLLAR_HIGH_PRICE>,\n' +
+    '  "frame_grade": "<exact grade as shown, e.g. \\"Med & Lg 1\\" or \\"M&L 1-2\\">",\n' +
+    '  "notes": "<one sentence: which line you picked and why, including grade + weight + whether you fell back from M&L 1 because none existed>"\n' +
+    '}\n' +
+    "If no feeder steer data is visible at all, return {\"error\":\"no feeder steer data found\"}.";
   const promptDirect     = "This is a livestock auction market report from Wheeler Livestock Auction in Osceola, MO. " + commonPromptBody;
   const promptScreenshot = "This is a screenshot of Wheeler Livestock Auction's website. The page shows their latest scanned market report from their auction in Osceola, MO. Look at the market report image embedded on the page and read it carefully. " + commonPromptBody;
 
@@ -963,7 +979,7 @@ async function handleCattlePrice(url, env, ctx) {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 600,
+        max_tokens: 1200,
         messages: [{ role: "user", content: [imageContent, { type: "text", text: useText }] }]
       })
     });
@@ -1116,19 +1132,23 @@ async function handleCattleManual(request, env, ctx) {
   catch { return jsonResponse({ error: "Invalid JSON body" }, 400); }
   if (!body.image_base64) return jsonResponse({ error: "Missing image_base64" }, 400);
   const mediaType = body.media_type || "image/jpeg";
-  const model = env.AI_MODEL_VISION || "claude-haiku-4-5-20251001";
+  const model = env.AI_MODEL_VISION || "claude-sonnet-4-5";
 
-  const prompt = "This is a livestock auction market report image the user uploaded from Wheeler Livestock Auction in Osceola, MO. " +
-    "Find the FEEDER STEER line whose weight is CLOSEST TO 500 LBS. Wheeler reports vary week-to-week — " +
-    "sometimes a single average weight (like \"538 lb\", \"583 lb\", \"612 lb\"), sometimes a weight range " +
-    "(like \"450-549\", \"500-600\"). Pick whichever feeder steer entry is closest to 500 lb. " +
-    "Prefer Medium & Large frame, #1 muscle if multiple grades are listed. " +
-    "Read prices very carefully — they are dollars per hundredweight (cwt), typically $200-$400 these days. " +
-    "Return ONLY valid JSON, no other text, no markdown fences. Schema: " +
-    '{"barn":"wheeler","sale_date":"YYYY-MM-DD","weight_class":"<as written>","head_count":<number_or_null>,' +
-    '"avg_cwt":<avg>,"low_cwt":<low>,"high_cwt":<TOP_DOLLAR>,"frame_grade":"<eg Med & Lg 1>","notes":"<chosen weight class>"}. ' +
-    "high_cwt is THE TOP DOLLAR (highest) price — this is what the user tracks. " +
-    "If a single price is shown, set avg_cwt = low_cwt = high_cwt to that price. " +
+  const prompt =
+    "This is a livestock auction market report image the user uploaded from Wheeler Livestock Auction in Osceola, MO.\n\n" +
+    "TASK: Find the SINGLE BEST feeder steer line for the user's tracker. The user wants TOP DOLLAR pricing for the highest-grade feeder steers closest to 500 lb actual weight.\n\n" +
+    "GRADE PRIORITY (strictly enforce):\n" +
+    "1. STRONGLY PREFER 'Medium and Large 1' (also written 'M&L 1', 'M/L 1', 'Med & Lg 1', 'Medium & Large #1'). This is a single-grade, higher-quality line.\n" +
+    "2. Only fall back to 'Medium and Large 1-2' if NO M&L 1 feeder steer line exists.\n" +
+    "3. NEVER pick M&L 2 or grade 3 lines.\n\n" +
+    "WEIGHT SELECTION: Some weeks Wheeler shows single avg weights (583 lbs, 538 lbs, 612 lbs), some weeks ranges (500-549). Pick whichever entry within the chosen grade is closest to 500 lb. A single-weight 583 lb M&L 1 line is preferred over a 500-549 M&L 1-2 range — grade priority outranks weight proximity.\n\n" +
+    "PRICES are in $/cwt (typically $200-$400). high_cwt is the TOP DOLLAR (highest) price on the line — read it carefully, this is the headline number the user tracks.\n\n" +
+    "OUTPUT — Return ONLY valid JSON, no markdown:\n" +
+    '{\n' +
+    '  "barn": "wheeler", "sale_date": "YYYY-MM-DD", "weight_class": "<as written>",\n' +
+    '  "head_count": <number_or_null>, "avg_cwt": <avg>, "low_cwt": <low>, "high_cwt": <TOP_DOLLAR>,\n' +
+    '  "frame_grade": "<exact grade>", "notes": "<which line you picked and why>"\n' +
+    '}\n' +
     "If no feeder steer data is visible, return {\"error\":\"no feeder steer data found\"}.";
 
   let claudeRes;
@@ -1142,7 +1162,7 @@ async function handleCattleManual(request, env, ctx) {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 600,
+        max_tokens: 1200,
         messages: [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: mediaType, data: body.image_base64 } },
           { type: "text", text: prompt }

@@ -853,16 +853,43 @@ async function handleCattlePrice(url, env, ctx) {
   const ranked = allWix.map(u => ({ u, s: imgScore(u) })).sort((a, b) => b.s - a.s);
   const imgUrl = ranked[0].u;
 
-  // Fetch image bytes
-  let imgBytes, mediaType = "image/jpeg";
+  // Fetch image bytes. Wix has hotlink protection that 403s requests with a
+  // Cloudflare or empty Referer. Try direct first with browser headers; if that
+  // fails, fall back to the wsrv.nl image proxy (same trick the frontend uses).
+  async function fetchImage(u, viaProxy) {
+    const target = viaProxy
+      ? "https://wsrv.nl/?url=" + encodeURIComponent(u.replace(/^https?:\/\//, "")) + "&output=jpg&q=92"
+      : u;
+    const headers = viaProxy ? {} : {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Referer": "https://www.wheelerlivestock.com/",
+      "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9"
+    };
+    const r = await fetch(target, { headers });
+    if (!r.ok) throw new Error((viaProxy ? "wsrv.nl" : "direct") + " HTTP " + r.status);
+    return r;
+  }
+
+  let imgBytes, mediaType = "image/jpeg", fetchedVia = "direct";
   try {
-    const imgRes = await fetch(imgUrl);
-    if (!imgRes.ok) return jsonResponse({ error: "Wheeler image returned HTTP " + imgRes.status }, 502);
+    let imgRes;
+    try {
+      imgRes = await fetchImage(imgUrl, false);
+    } catch (e1) {
+      // Fall back to wsrv.nl proxy
+      try {
+        imgRes = await fetchImage(imgUrl, true);
+        fetchedVia = "wsrv.nl";
+      } catch (e2) {
+        return jsonResponse({ error: "Wheeler image fetch failed: " + e1.message + " | proxy: " + e2.message, image_url: imgUrl }, 502);
+      }
+    }
     const ct = imgRes.headers.get("Content-Type") || "";
     if (ct.includes("png")) mediaType = "image/png";
     imgBytes = await imgRes.arrayBuffer();
   } catch (err) {
-    return jsonResponse({ error: "Wheeler image fetch failed: " + err.message }, 502);
+    return jsonResponse({ error: "Wheeler image fetch failed: " + err.message, image_url: imgUrl }, 502);
   }
 
   const base64 = arrayBufferToBase64(imgBytes);
@@ -919,7 +946,7 @@ async function handleCattlePrice(url, env, ctx) {
 
   if (parsed.error) return jsonResponse({ ...parsed, image_url: imgUrl, model }, 200);
 
-  const result = { ...parsed, model, image_url: imgUrl, generated_at: new Date().toISOString() };
+  const result = { ...parsed, model, image_url: imgUrl, fetched_via: fetchedVia, generated_at: new Date().toISOString() };
   const cacheRes = new Response(JSON.stringify(result), {
     headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=43200" } // 12h
   });

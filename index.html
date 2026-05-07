@@ -533,7 +533,6 @@ const CATEGORIES = [
     { source:"Jefferson City / Cole Co.", url:"https://news.google.com/rss/search?q=%22Jefferson+City%22+Missouri+OR+%22Cole+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Missouri Economy", url:"https://news.google.com/rss/search?q=Missouri+economy+OR+Missouri+jobs+OR+%22Missouri+business%22&hl=en-US&gl=US&ceid=US:en" },
     // ─── ST. LOUIS / OTHER METRO — kept but demoted ───
-    { source:"St. Louis Public Radio", url:"https://news.stlpublicradio.org/rss" },
     { source:"St. Louis Post-Dispatch", url:"https://news.google.com/rss/search?q=when:1d+site:stltoday.com&hl=en-US&gl=US&ceid=US:en" },
     { source:"Columbia Missourian", url:"https://www.columbiamissourian.com/search/?f=rss&t=article&c=news&l=25&s=start_time&sd=desc" },
     { source:"KOMU Columbia", url:"https://news.google.com/rss/search?q=site%3Akomu.com+Missouri&hl=en-US&gl=US&ceid=US:en" },
@@ -2035,12 +2034,15 @@ async function fetchWheelerLatestImage() {
     if (!res.ok) throw new Error("HTTP " + res.status);
     const html = await res.text();
     const re  = /https:\/\/static\.wixstatic\.com\/media\/[^"'\s)]+market[^"'\s)]*\.(jpe?g|png)/ig;
-    const matches = Array.from(new Set(html.match(re) || []));
+    let matches = Array.from(new Set(html.match(re) || []));
     if (matches.length === 0) {
       const re2 = /https:\/\/static\.wixstatic\.com\/media\/[^"'\s)]+\.(jpe?g|png)/ig;
-      return Array.from(new Set(html.match(re2) || [])).slice(0, 2);
+      matches = Array.from(new Set(html.match(re2) || [])).slice(0, 2);
+    } else {
+      matches = matches.slice(0, 4);
     }
-    return matches.slice(0, 4);
+    // Wix has hotlink protection — route through wsrv.nl image proxy so the <img> can load
+    return matches.map(u => "https://wsrv.nl/?url=" + encodeURIComponent(u.replace(/^https?:\/\//, "")) + "&output=jpg&q=85");
   } catch (e) { return null; }
 }
 

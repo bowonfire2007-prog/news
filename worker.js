@@ -37,6 +37,9 @@ export default {
     if (url.pathname === "/fishplan") {
       return handleFishPlan(request, env, ctx);
     }
+    if (url.pathname === "/cattleprice") {
+      return handleCattlePrice(url, env, ctx);
+    }
     return handleRssProxy(url);
   }
 };
@@ -794,3 +797,129 @@ async function hashKey(input) {
     .map(b => b.toString(16).padStart(2, "0"))
     .join("");
 }
+
+// ─────────────── CATTLE PRICE OCR (Wheeler Livestock) ───────────────
+// Fetches Wheeler Livestock's latest scanned market report, sends to Claude vision,
+// and extracts pricing for 500–550 lb feeder steers as structured JSON.
+// Cached 12h by sale date so repeat taps don't re-bill.
+//   GET /cattleprice?barn=wheeler
+//   returns: { barn, sale_date, weight_class, head_count, avg_cwt, low_cwt, high_cwt, frame_grade, notes, image_url, model, generated_at, cached }
+async function handleCattlePrice(url, env, ctx) {
+  const barn = url.searchParams.get("barn") || "wheeler";
+  if (barn !== "wheeler") return jsonResponse({ error: "Only 'wheeler' is supported right now." }, 400);
+  if (!env.ANTHROPIC_API_KEY) return jsonResponse({ error: "ANTHROPIC_API_KEY secret is not set" }, 500);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const cacheKey = "cattleprice:" + barn + ":" + today;
+  const cache = caches.default;
+  const cacheReq = new Request("https://cattleprice-cache.local/" + encodeURIComponent(cacheKey), { method: "GET" });
+  const cached = await cache.match(cacheReq);
+  if (cached) {
+    const cachedJson = await cached.json();
+    return jsonResponse({ ...cachedJson, cached: true });
+  }
+
+  // Fetch Wheeler's market report page
+  const wheelerUrl = "https://www.wheelerlivestock.com/market-report-1";
+  let html;
+  try {
+    const res = await fetch(wheelerUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; CattleReader/1.0)" },
+      cf: { cacheTtl: 600, cacheEverything: true }
+    });
+    if (!res.ok) return jsonResponse({ error: "Wheeler page returned HTTP " + res.status }, 502);
+    html = await res.text();
+  } catch (err) {
+    return jsonResponse({ error: "Wheeler fetch failed: " + err.message }, 502);
+  }
+
+  // Extract latest market-report image URL — Wix posts as JPEG
+  const re = /https:\/\/static\.wixstatic\.com\/media\/[^"'\s)]+market[^"'\s)]*\.(jpe?g|png)/ig;
+  const matches = Array.from(new Set(html.match(re) || []));
+  if (matches.length === 0) return jsonResponse({ error: "No market-report image found on Wheeler page" }, 404);
+  const imgUrl = matches[0];
+
+  // Fetch image bytes
+  let imgBytes, mediaType = "image/jpeg";
+  try {
+    const imgRes = await fetch(imgUrl);
+    if (!imgRes.ok) return jsonResponse({ error: "Wheeler image returned HTTP " + imgRes.status }, 502);
+    const ct = imgRes.headers.get("Content-Type") || "";
+    if (ct.includes("png")) mediaType = "image/png";
+    imgBytes = await imgRes.arrayBuffer();
+  } catch (err) {
+    return jsonResponse({ error: "Wheeler image fetch failed: " + err.message }, 502);
+  }
+
+  const base64 = arrayBufferToBase64(imgBytes);
+  const model = env.AI_MODEL_VISION || "claude-haiku-4-5-20251001";
+  const prompt = "This is a livestock auction market report from Wheeler Livestock Auction in Osceola, MO. " +
+    "Extract pricing data for FEEDER STEERS in the 500-550 lb weight class (Medium and Large frame, #1 muscle if listed). " +
+    "Return ONLY valid JSON, no other text, no markdown fences. Schema: " +
+    '{"barn":"wheeler","sale_date":"YYYY-MM-DD","weight_class":"500-550","head_count":<number_or_null>,' +
+    '"avg_cwt":<number_dollars>,"low_cwt":<number>,"high_cwt":<number>,"frame_grade":"<eg Med & Lg 1>",' +
+    '"notes":"<caveats — eg \"closest match was 500-549 lbs\" if exact range missing>"}. ' +
+    "If the report doesn't contain a 500-550 lb feeder steer line, find the closest weight class and note it in 'notes'. " +
+    "If no feeder steer data is visible, return {\"error\":\"no feeder steer data found\"}.";
+
+  let claudeRes;
+  try {
+    claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 600,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+            { type: "text", text: prompt }
+          ]
+        }]
+      })
+    });
+  } catch (err) {
+    return jsonResponse({ error: "Claude fetch failed: " + err.message }, 502);
+  }
+
+  if (!claudeRes.ok) {
+    const errText = await claudeRes.text();
+    return jsonResponse({ error: "Claude API " + claudeRes.status, details: errText.slice(0, 600) }, 502);
+  }
+
+  const data = await claudeRes.json();
+  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+
+  let parsed;
+  try {
+    const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    parsed = JSON.parse(cleaned);
+  } catch (err) {
+    return jsonResponse({ error: "Could not parse Claude response as JSON", raw: text.slice(0, 600) }, 502);
+  }
+
+  if (parsed.error) return jsonResponse({ ...parsed, image_url: imgUrl, model }, 200);
+
+  const result = { ...parsed, model, image_url: imgUrl, generated_at: new Date().toISOString() };
+  const cacheRes = new Response(JSON.stringify(result), {
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=43200" } // 12h
+  });
+  ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+  return jsonResponse({ ...result, cached: false });
+}
+
+function arrayBufferToBase64(buffer) {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.byteLength; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.byteLength)));
+  }
+  return btoa(binary);
+}
+

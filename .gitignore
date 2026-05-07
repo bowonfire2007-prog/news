@@ -1,0 +1,9 @@
+# Wrangler local state — generated on every deploy, never commit
+.wrangler/
+
+# Editing artifacts from past sessions — safe to delete from disk
+index.html.fixed
+index.html.new
+
+# Standalone debug page
+lake-debug.html

@@ -40,6 +40,9 @@ export default {
     if (url.pathname === "/cattleprice") {
       return handleCattlePrice(url, env, ctx);
     }
+    if (url.pathname === "/cattlemanual") {
+      return handleCattleManual(request, env, ctx);
+    }
     return handleRssProxy(url);
   }
 };
@@ -915,6 +918,8 @@ async function handleCattlePrice(url, env, ctx) {
     else if (kind === "corsproxy")       { target = "https://corsproxy.io/?"         + encodeURIComponent(decoded); headers = browserHeaders; }
     else if (kind === "allorigins-bare") { target = "https://api.allorigins.win/raw?url=" + encodeURIComponent(bare); }
     else if (kind === "allorigins")      { target = "https://api.allorigins.win/raw?url=" + encodeURIComponent(decoded); }
+    else if (kind === "thumio-page")     { target = "https://image.thum.io/get/width/1600/crop/2400/https://www.wheelerlivestock.com/market-report-1"; }
+    else if (kind === "microlink-page")  { target = "https://api.microlink.io/?url=" + encodeURIComponent("https://www.wheelerlivestock.com/market-report-1") + "&screenshot=true&meta=false&embed=screenshot.url"; }
     else throw new Error("unknown kind: " + kind);
 
     const r = await fetch(target, { headers });
@@ -977,14 +982,24 @@ async function handleCattlePrice(url, env, ctx) {
   let claudeData = null;
   let fetchedVia = null;
   const attempts = [];
-  try {
-    claudeData = await callClaude(
-      { type: "image", source: { type: "url", url: imgUrl } },
-      promptDirect
-    );
-    fetchedVia = "anthropic-url";
-  } catch (e) {
-    attempts.push("anthropic-url:" + e.message);
+  // Decoded URL: %7E → ~. Wix sometimes 404s %7E literal paths. Anthropic's
+  // server-side fetcher passes URLs verbatim, so we try both forms.
+  let imgUrlDecoded = imgUrl;
+  try { imgUrlDecoded = decodeURIComponent(imgUrl); } catch (_) {}
+  const urlVariants = imgUrl === imgUrlDecoded
+    ? [{ url: imgUrl, label: "anthropic-url" }]
+    : [{ url: imgUrlDecoded, label: "anthropic-url-decoded" }, { url: imgUrl, label: "anthropic-url" }];
+  for (const variant of urlVariants) {
+    try {
+      claudeData = await callClaude(
+        { type: "image", source: { type: "url", url: variant.url } },
+        promptDirect
+      );
+      fetchedVia = variant.label;
+      break;
+    } catch (e) {
+      attempts.push(variant.label + ":" + e.message.slice(0, 200));
+    }
   }
 
   // ── PLAN B: byte-fetch chain (12 strategies) ──
@@ -1000,7 +1015,9 @@ async function handleCattlePrice(url, env, ctx) {
       "wsrv-bare", "wsrv",
       "weserv-bare", "weserv",
       "corsproxy-bare", "corsproxy",
-      "allorigins-bare", "allorigins"
+      "allorigins-bare", "allorigins",
+      "thumio-page",
+      "microlink-page"
     ];
     for (const kind of strategies) {
       try {
@@ -1055,7 +1072,8 @@ async function handleCattlePrice(url, env, ctx) {
     }
 
     const base64 = arrayBufferToBase64(imgBytes);
-    const usePrompt = fetchedVia === "mshots" ? promptScreenshot : promptDirect;
+    const isScreenshot = fetchedVia === "mshots" || fetchedVia === "thumio-page" || fetchedVia === "microlink-page";
+    const usePrompt = isScreenshot ? promptScreenshot : promptDirect;
     try {
       claudeData = await callClaude(
         { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
@@ -1083,6 +1101,72 @@ async function handleCattlePrice(url, env, ctx) {
   });
   ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
   return jsonResponse({ ...result, cached: false });
+}
+
+
+//   POST /cattlemanual
+//   body: { image_base64, media_type ("image/jpeg" | "image/png") }
+//   returns: same shape as /cattleprice but with fetched_via:"manual-upload"
+async function handleCattleManual(request, env, ctx) {
+  if (request.method !== "POST") return jsonResponse({ error: "POST only" }, 405);
+  if (!env.ANTHROPIC_API_KEY) return jsonResponse({ error: "ANTHROPIC_API_KEY secret is not set" }, 500);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonResponse({ error: "Invalid JSON body" }, 400); }
+  if (!body.image_base64) return jsonResponse({ error: "Missing image_base64" }, 400);
+  const mediaType = body.media_type || "image/jpeg";
+  const model = env.AI_MODEL_VISION || "claude-haiku-4-5-20251001";
+
+  const prompt = "This is a livestock auction market report image the user uploaded from Wheeler Livestock Auction in Osceola, MO. " +
+    "Find the FEEDER STEER line whose weight is CLOSEST TO 500 LBS. Wheeler reports vary week-to-week — " +
+    "sometimes a single average weight (like \"538 lb\", \"583 lb\", \"612 lb\"), sometimes a weight range " +
+    "(like \"450-549\", \"500-600\"). Pick whichever feeder steer entry is closest to 500 lb. " +
+    "Prefer Medium & Large frame, #1 muscle if multiple grades are listed. " +
+    "Read prices very carefully — they are dollars per hundredweight (cwt), typically $200-$400 these days. " +
+    "Return ONLY valid JSON, no other text, no markdown fences. Schema: " +
+    '{"barn":"wheeler","sale_date":"YYYY-MM-DD","weight_class":"<as written>","head_count":<number_or_null>,' +
+    '"avg_cwt":<avg>,"low_cwt":<low>,"high_cwt":<TOP_DOLLAR>,"frame_grade":"<eg Med & Lg 1>","notes":"<chosen weight class>"}. ' +
+    "high_cwt is THE TOP DOLLAR (highest) price — this is what the user tracks. " +
+    "If a single price is shown, set avg_cwt = low_cwt = high_cwt to that price. " +
+    "If no feeder steer data is visible, return {\"error\":\"no feeder steer data found\"}.";
+
+  let claudeRes;
+  try {
+    claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 600,
+        messages: [{ role: "user", content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: body.image_base64 } },
+          { type: "text", text: prompt }
+        ] }]
+      })
+    });
+  } catch (err) {
+    return jsonResponse({ error: "Claude fetch failed: " + err.message }, 502);
+  }
+  if (!claudeRes.ok) {
+    const errText = await claudeRes.text();
+    return jsonResponse({ error: "Claude API " + claudeRes.status, details: errText.slice(0, 600) }, 502);
+  }
+  const data = await claudeRes.json();
+  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+  let parsed;
+  try {
+    const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    parsed = JSON.parse(cleaned);
+  } catch (err) {
+    return jsonResponse({ error: "Could not parse Claude response as JSON", raw: text.slice(0, 600) }, 502);
+  }
+  if (parsed.error) return jsonResponse({ ...parsed, model, fetched_via: "manual-upload" }, 200);
+  return jsonResponse({ ...parsed, model, fetched_via: "manual-upload", generated_at: new Date().toISOString() });
 }
 
 function arrayBufferToBase64(buffer) {

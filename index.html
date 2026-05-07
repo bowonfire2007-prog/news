@@ -2110,8 +2110,10 @@ function renderCattleMarketCard() {
     '<div class="barn-grid">' + tiles + '</div>' +
     '<div class="cattle-actions">' +
       '<button class="cattle-btn primary" id="cattleAutoFetch" type="button">✦ Auto-Fetch Wheeler Top $</button>' +
+      '<button class="cattle-btn" id="cattleManualUpload" type="button">📤 Upload Wheeler Image</button>' +
       '<button class="cattle-btn" id="cattleViewWheeler" type="button"><span class="spark">🤝</span> View Latest Report</button>' +
       '<button class="cattle-btn" id="cattleResetHistory" type="button" style="border-color:var(--border);background:transparent;color:var(--text-muted)">Reset History</button>' +
+      '<input type="file" id="cattleManualFile" accept="image/jpeg,image/png" style="display:none">' +
     '</div>' +
     '<div class="cattle-fetch-result" id="cattleAutoResult" style="display:none"></div>' +
     chartHtml +
@@ -2214,10 +2216,83 @@ function wireCattleMarket() {
         autoResult.className = "cattle-fetch-result cattle-fetch-error";
         autoResult.innerHTML = '⚠ Auto-fetch failed: ' + escapeHtml(String(err.message || err)) +
           '. <a class="barn-link" href="https://www.wheelerlivestock.com/market-report-1" target="_blank" rel="noopener">Open report ↗</a>' +
-          ' or use <em>+ Log $/cwt</em> on the tile to enter manually.';
+          ' — or tap <em>📤 Upload Wheeler Image</em> to send the image directly.';
         autoBtn.classList.remove("is-loading");
         autoBtn.innerHTML = origHtml;
       }
+    });
+  }
+  // ── Manual upload: user saves Wheeler image locally then picks file ──
+  const manualBtn  = card.querySelector("#cattleManualUpload");
+  const manualFile = card.querySelector("#cattleManualFile");
+  if (manualBtn && manualFile && autoResult) {
+    manualBtn.addEventListener("click", () => manualFile.click());
+    manualFile.addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (file.size > 8 * 1024 * 1024) {
+        autoResult.style.display = "block";
+        autoResult.className = "cattle-fetch-result cattle-fetch-error";
+        autoResult.innerHTML = "⚠ Image too large (>8MB). Try a smaller version.";
+        return;
+      }
+      const origHtml = manualBtn.innerHTML;
+      manualBtn.classList.add("is-loading");
+      manualBtn.innerHTML = '<span class="spinner"></span> Reading uploaded image…';
+      autoResult.style.display = "block";
+      autoResult.className = "cattle-fetch-result";
+      autoResult.innerHTML = '<div class="cattle-fetch-loading"><span class="spinner"></span> Sending to Claude vision…</div>';
+      try {
+        // Read file → base64 (without data URL prefix)
+        const base64 = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => {
+            const s = r.result || "";
+            const i = s.indexOf(",");
+            resolve(i >= 0 ? s.slice(i + 1) : s);
+          };
+          r.onerror = () => reject(new Error("FileReader failed"));
+          r.readAsDataURL(file);
+        });
+        const res = await fetch(CF_WORKER.replace(/\/$/, "") + "/cattlemanual", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_base64: base64, media_type: file.type || "image/jpeg" })
+        });
+        const ct = res.headers.get("content-type") || "";
+        let data;
+        if (ct.includes("application/json")) data = await res.json();
+        else { const txt = await res.text(); throw new Error("Worker returned non-JSON: " + txt.slice(0, 80)); }
+        if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
+        const topPrice = isFinite(data.high_cwt) && data.high_cwt > 0 ? +data.high_cwt
+                       : (isFinite(data.avg_cwt) && data.avg_cwt > 0 ? +data.avg_cwt : NaN);
+        if (!isFinite(topPrice) || topPrice <= 0) throw new Error("Couldn't read a price from this image");
+        recordCattlePrice("wheeler", topPrice, data.sale_date);
+        const detail = '✓ Logged top dollar <strong>$' + topPrice.toFixed(2) + '/cwt</strong>' +
+          ' for sale on <strong>' + escapeHtml(data.sale_date || 'today') + '</strong>' +
+          (data.weight_class ? ' · ' + escapeHtml(data.weight_class) : '') +
+          (data.head_count ? ' · ' + data.head_count + ' head' : '') +
+          (isFinite(data.low_cwt) && isFinite(data.high_cwt) && data.low_cwt !== data.high_cwt ? ' · range $' + (+data.low_cwt).toFixed(2) + '–$' + (+data.high_cwt).toFixed(2) : '') +
+          (data.notes ? '<div style="margin-top:4px;font-size:11.5px;color:var(--text-muted)">' + escapeHtml(data.notes) + '</div>' : '') +
+          '<div style="margin-top:2px;font-size:10.5px;opacity:.55">via manual upload</div>';
+        const newHtml = renderCattleMarketCard();
+        const tmp = document.createElement("div"); tmp.innerHTML = newHtml;
+        card.replaceWith(tmp.firstElementChild);
+        wireCattleMarket();
+        const newCard = document.querySelector(".outdoor-card.cattle");
+        const newResult = newCard && newCard.querySelector("#cattleAutoResult");
+        if (newResult) {
+          newResult.style.display = "block";
+          newResult.className = "cattle-fetch-result cattle-fetch-success";
+          newResult.innerHTML = detail;
+        }
+      } catch (err) {
+        autoResult.className = "cattle-fetch-result cattle-fetch-error";
+        autoResult.innerHTML = '⚠ Manual upload failed: ' + escapeHtml(String(err.message || err));
+        manualBtn.classList.remove("is-loading");
+        manualBtn.innerHTML = origHtml;
+      }
+      manualFile.value = ""; // allow re-uploading the same file
     });
   }
   const wheelerBtn = card.querySelector("#cattleViewWheeler");

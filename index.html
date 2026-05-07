@@ -2174,7 +2174,14 @@ function wireCattleMarket() {
       autoResult.innerHTML = '<div class="cattle-fetch-loading"><span class="spinner"></span> Fetching latest Wheeler report &amp; running Claude vision OCR…</div>';
       try {
         const res = await fetch(CF_WORKER + "/cattleprice?barn=wheeler", { method:"GET" });
-        const data = await res.json();
+        const ct  = res.headers.get("content-type") || "";
+        let data;
+        if (ct.includes("application/json")) {
+          data = await res.json();
+        } else {
+          const txt = await res.text();
+          throw new Error("Worker isn't returning JSON — got: \"" + txt.slice(0,80).trim() + "\". The /cattleprice endpoint may not be deployed yet — push worker.js to Cloudflare and try again.");
+        }
         if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
         if (!isFinite(data.avg_cwt) || data.avg_cwt <= 0) throw new Error("Couldn't read a 500-lb steer price from this report");
         recordCattlePrice("wheeler", data.avg_cwt, data.sale_date);

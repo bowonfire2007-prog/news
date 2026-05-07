@@ -1,0 +1,9 @@
+name = "rss-proxy"
+main = "worker.js"
+compatibility_date = "2026-05-01"
+
+# Notes:
+# - Worker name matches the existing one (rss-proxy.bowonfire2007.workers.dev)
+# - Secrets like ANTHROPIC_API_KEY are managed in the Cloudflare dashboard
+#   and are NOT redeployed by wrangler — they persist across deploys.
+# - If you ever need to add a new secret:  wrangler secret put SECRET_NAME

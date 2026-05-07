@@ -325,10 +325,42 @@
   .fish-smart-error { color:#b91c1c; font-size:13px; line-height:1.5; }
   [data-theme="dark"] .fish-smart-error { color:#f87171; }
 
-  /* ── MUSHROOM + GARDEN CARDS ── */
+  /* ── MUSHROOM + GARDEN + CATTLE CARDS ── */
   .outdoor-card { border:1px solid var(--border); border-radius:12px; padding:18px; margin:0 0 18px; }
   .outdoor-card.mushroom { background:color-mix(in srgb,var(--mustard) 6%,var(--bg)); }
   .outdoor-card.garden   { background:color-mix(in srgb,var(--sage) 8%,var(--bg)); }
+  .outdoor-card.cattle   { background:color-mix(in srgb,#8b4513 5%,var(--bg)); }
+  /* Cattle barn tile grid */
+  .barn-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; margin-top:8px; }
+  .barn-tile { border:1px solid var(--border); border-radius:8px; padding:12px 14px; background:var(--card-hover); display:flex; flex-direction:column; gap:5px; position:relative; }
+  .barn-tile.buddy { border-color:color-mix(in srgb,var(--accent) 50%,var(--border)); background:color-mix(in srgb,var(--accent) 7%,var(--card-hover)); }
+  .barn-name { font-weight:700; font-size:14px; line-height:1.25; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .barn-buddy-tag { display:inline-flex; align-items:center; gap:3px; padding:1px 7px; border-radius:999px; background:color-mix(in srgb,var(--accent) 18%,transparent); color:var(--accent); font-size:9.5px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; }
+  .barn-loc { font-size:11px; color:var(--text-muted); }
+  .barn-price { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--text); margin-top:3px; }
+  .barn-price .unit { font-size:11px; font-weight:500; color:var(--text-muted); margin-left:3px; }
+  .barn-price.placeholder { color:var(--text-soft); font-size:13px; font-weight:500; font-style:italic; }
+  .barn-delta { font-size:11.5px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .barn-delta.up   { color:#15803d; } [data-theme="dark"] .barn-delta.up   { color:#4ade80; }
+  .barn-delta.down { color:#b91c1c; } [data-theme="dark"] .barn-delta.down { color:#f87171; }
+  .barn-delta.flat { color:var(--text-muted); }
+  .barn-meta { font-size:10.5px; color:var(--text-soft); margin-top:2px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .barn-link { font-size:10.5px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.04em; text-decoration:none; }
+  .barn-link:hover { text-decoration:underline; }
+  .cattle-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+  .cattle-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:999px; border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); background:color-mix(in srgb,var(--accent) 7%,transparent); color:var(--accent); font-size:12px; font-weight:700; letter-spacing:0.04em; cursor:pointer; font-family:inherit; text-transform:uppercase; transition:background .15s,color .15s; }
+  .cattle-btn:hover { background:var(--accent); color:#fff; }
+  .cattle-btn.is-loading { pointer-events:none; opacity:0.7; }
+  .cattle-spark { width:100%; height:32px; margin-top:6px; opacity:0.85; }
+  .cattle-history-note { font-size:11px; color:var(--text-soft); margin-top:10px; font-style:italic; line-height:1.4; }
+  .wheeler-embed { margin-top:10px; padding:10px; border:1px dashed var(--border); border-radius:8px; background:var(--card-hover); }
+  .wheeler-embed img { max-width:100%; height:auto; display:block; border-radius:4px; }
+  .wheeler-embed-loading { padding:18px; text-align:center; color:var(--text-muted); font-size:13px; }
+  @media (max-width:520px) {
+    .barn-grid { grid-template-columns:1fr; }
+    .barn-price { font-size:16px; }
+  }
+
   .outdoor-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:6px; }
   .outdoor-card-title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:18px; font-weight:700; }
   .outdoor-card-date { font-size:12px; color:var(--text-muted); }
@@ -462,27 +494,46 @@ const CATEGORIES = [
     { source:"DW (Germany)", url:"https://rss.dw.com/rdf/rss-en-all" }
   ]},
   { id:"local", label:"Local (MO)", maxAgeHours:168, feeds:[
+    // ─── ULTRALOCAL — Clinton, Henry County, Truman Lake area ───
     { source:"Clinton Daily Democrat", url:"https://news.google.com/rss/search?q=site%3Aclintondailydem.com+OR+%22Clinton+Daily+Democrat%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"Henry County MO", url:"https://news.google.com/rss/search?q=%22Henry+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Clinton MO News", url:"https://news.google.com/rss/search?q=%22Clinton%2C+Missouri%22+OR+%22Clinton+MO%22&hl=en-US&gl=US&ceid=US:en" },
-    { source:"KDKD Clinton", url:"https://news.google.com/rss/search?q=%22KDKD%22+Clinton+Missouri&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Truman Lake", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+OR+%22Harry+S+Truman+Reservoir%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"KDKD Clinton", url:"https://news.google.com/rss/search?q=%22KDKD%22+OR+%22kdkdradio%22+Clinton+Missouri&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Truman Lake", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+OR+%22Harry+S+Truman+Reservoir%22+OR+%22Truman+Dam%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Henry County Towns", url:"https://news.google.com/rss/search?q=%22Calhoun%2C+Missouri%22+OR+%22Tightwad%22+OR+%22Windsor%2C+Missouri%22+OR+%22Deepwater%22+OR+%22Montrose%2C+Missouri%22+OR+%22Blairstown%22+OR+%22Urich%22+OR+%22Leesville%22&hl=en-US&gl=US&ceid=US:en" },
+    // ─── HYPERLOCAL — Adjacent counties ───
+    { source:"Benton County MO", url:"https://news.google.com/rss/search?q=%22Benton+County%22+Missouri+OR+%22Warsaw%2C+Missouri%22+OR+%22Cole+Camp%22+OR+%22Lincoln%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"St. Clair County MO", url:"https://news.google.com/rss/search?q=%22St.+Clair+County%22+Missouri+OR+%22Osceola%2C+Missouri%22+OR+%22Appleton+City%22+OR+%22Lowry+City%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Bates County MO", url:"https://news.google.com/rss/search?q=%22Bates+County%22+Missouri+OR+%22Butler%2C+Missouri%22+OR+%22Adrian%2C+Missouri%22+OR+%22Rich+Hill%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Hickory County MO", url:"https://news.google.com/rss/search?q=%22Hickory+County%22+Missouri+OR+%22Hermitage%2C+Missouri%22+OR+%22Cross+Timbers%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Knob Noster / Whiteman", url:"https://news.google.com/rss/search?q=%22Knob+Noster%22+OR+%22Whiteman+AFB%22+OR+%22Whiteman+Air+Force+Base%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"Lake of the Ozarks", url:"https://news.google.com/rss/search?q=%22Lake+of+the+Ozarks%22+OR+%22Camden+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
-    { source:"West Central MO", url:"https://news.google.com/rss/search?q=%22West+Central+Missouri%22+OR+%22Benton+County+Missouri%22+OR+%22Warsaw+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"West Central MO", url:"https://news.google.com/rss/search?q=%22West+Central+Missouri%22+OR+%22West-Central+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
+    // ─── REGIONAL — wider west-central / nearby counties ───
     { source:"Sedalia / Pettis Co.", url:"https://news.google.com/rss/search?q=%22Sedalia%22+OR+%22Pettis+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Warrensburg / Johnson Co.", url:"https://news.google.com/rss/search?q=%22Warrensburg%22+OR+%22Johnson+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Cass / Lafayette Co.", url:"https://news.google.com/rss/search?q=%22Cass+County%22+OR+%22Lafayette+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Saline / Marshall MO", url:"https://news.google.com/rss/search?q=%22Saline+County%22+OR+%22Marshall+Missouri%22+OR+%22Slater+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Jefferson City / Cole Co.", url:"https://news.google.com/rss/search?q=%22Jefferson+City%22+Missouri+OR+%22Cole+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Missouri Legislature", url:"https://news.google.com/rss/search?q=Missouri+legislature+OR+Missouri+Senate+OR+%22Missouri+House%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Cass / Lafayette Co.", url:"https://news.google.com/rss/search?q=%22Cass+County%22+OR+%22Lafayette+County%22+Missouri+OR+%22Harrisonville%22+OR+%22Belton%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Vernon / Nevada MO", url:"https://news.google.com/rss/search?q=%22Vernon+County%22+Missouri+OR+%22Nevada%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Polk / Bolivar MO", url:"https://news.google.com/rss/search?q=%22Polk+County%22+Missouri+OR+%22Bolivar%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Cedar / Stockton MO", url:"https://news.google.com/rss/search?q=%22Cedar+County%22+Missouri+OR+%22Stockton%2C+Missouri%22+OR+%22El+Dorado+Springs%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Saline / Marshall MO", url:"https://news.google.com/rss/search?q=%22Saline+County%22+OR+%22Marshall%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"KMOS Warrensburg", url:"https://news.google.com/rss/search?q=%22KMOS-TV%22+OR+%22KMOS+Warrensburg%22&hl=en-US&gl=US&ceid=US:en" },
+    // ─── KC METRO — preferred over StL ───
+    { source:"KCUR", url:"https://www.kcur.org/news.rss" },
+    { source:"Kansas City Star", url:"https://news.google.com/rss/search?q=%22Kansas+City%22+Missouri+news+site:kansascity.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"KMBC 9 KC", url:"https://news.google.com/rss/search?q=site%3Akmbc.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"KSHB 41 KC", url:"https://news.google.com/rss/search?q=site%3Akshb.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Fox 4 KC", url:"https://news.google.com/rss/search?q=site%3Afox4kc.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Kansas City News", url:"https://news.google.com/rss/search?q=%22Kansas+City%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
+    // ─── STATEWIDE ───
     { source:"Missouri Independent", url:"https://missouriindependent.com/feed/" },
     { source:"Missouri Times", url:"https://themissouritimes.com/feed/" },
     { source:"MissouriNet", url:"https://news.google.com/rss/search?q=site%3Amissourinet.com&hl=en-US&gl=US&ceid=US:en" },
-    { source:"KCUR", url:"https://www.kcur.org/news.rss" },
-    { source:"St. Louis Public Radio", url:"https://news.stlpublicradio.org/rss" },
+    { source:"Missouri Legislature", url:"https://news.google.com/rss/search?q=Missouri+legislature+OR+Missouri+Senate+OR+%22Missouri+House%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Jefferson City / Cole Co.", url:"https://news.google.com/rss/search?q=%22Jefferson+City%22+Missouri+OR+%22Cole+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Missouri Economy", url:"https://news.google.com/rss/search?q=Missouri+economy+OR+Missouri+jobs+OR+%22Missouri+business%22&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Kansas City Star", url:"https://news.google.com/rss/search?q=%22Kansas+City%22+Missouri+news+site:kansascity.com&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Kansas City News", url:"https://news.google.com/rss/search?q=%22Kansas+City%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
+    // ─── ST. LOUIS / OTHER METRO — kept but demoted ───
+    { source:"St. Louis Public Radio", url:"https://news.stlpublicradio.org/rss" },
     { source:"St. Louis Post-Dispatch", url:"https://news.google.com/rss/search?q=when:1d+site:stltoday.com&hl=en-US&gl=US&ceid=US:en" },
     { source:"Columbia Missourian", url:"https://www.columbiamissourian.com/search/?f=rss&t=article&c=news&l=25&s=start_time&sd=desc" },
     { source:"KOMU Columbia", url:"https://news.google.com/rss/search?q=site%3Akomu.com+Missouri&hl=en-US&gl=US&ceid=US:en" },
@@ -608,7 +659,11 @@ const TICKER_NEWS_TERMS = {
   "BTC-USD":{ label:"BITCOIN",  q:"Bitcoin+OR+BTC+price" },
   "XRP-USD":{ label:"XRP",      q:"XRP+OR+Ripple+crypto" },
   "CL=F":   { label:"WTI",      q:"%22crude+oil%22+OR+%22WTI+price%22" },
-  "BZ=F":   { label:"BRENT",    q:"%22Brent+crude%22+OR+%22Brent+oil+price%22" }
+  "BZ=F":   { label:"BRENT",    q:"%22Brent+crude%22+OR+%22Brent+oil+price%22" },
+  "GF=F":   { label:"FEEDER",   q:"%22feeder+cattle%22+OR+%22feeder+cattle+futures%22" },
+  "LE=F":   { label:"LIVE-CATTLE", q:"%22live+cattle%22+OR+%22live+cattle+futures%22+OR+%22cattle+market%22" },
+  "ZC=F":   { label:"CORN",     q:"%22corn+futures%22+OR+%22corn+price%22+OR+%22Chicago+corn%22" },
+  "ZS=F":   { label:"SOYBEAN",  q:"%22soybean+futures%22+OR+%22soybean+price%22" }
 };
 function buildStockNewsFeeds(watchlist) {
   return (watchlist || []).map(t => {
@@ -642,9 +697,9 @@ const FEED_TIMEOUT_MS      = 6000;   // reduced from 8s
 const STOCKS_CACHE_TTL_MS  = 60*1000;
 const WEATHER_CACHE_TTL_MS = 15*60*1000;
 const ALERTS_CACHE_TTL_MS  = 5*60*1000;
-const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","LRCX","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F"];
-const WATCHLIST_VERSION = 4;
-const TICKER_DISPLAY = { "BZ=F":"BRENT","CL=F":"WTI","BTC-USD":"BITCOIN","XRP-USD":"XRP" };
+const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","LRCX","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F","GF=F","LE=F","ZC=F","ZS=F"];
+const WATCHLIST_VERSION = 5;
+const TICKER_DISPLAY = { "BZ=F":"BRENT","CL=F":"WTI","BTC-USD":"BITCOIN","XRP-USD":"XRP","GF=F":"FEEDER CATTLE","LE=F":"LIVE CATTLE","ZC=F":"CORN","ZS=F":"SOYBEANS" };
 
 // ── SOURCE TRUST WEIGHTS ──
 const SOURCE_WEIGHT = {
@@ -956,27 +1011,27 @@ function heatScore(item) {
 const BREAKING_RE = /\b(breaking|urgent|alert|developing|just in|emergency|exclusive)\b/i;
 function isBreaking(title) { return BREAKING_RE.test(title); }
 
-// ── LOCAL-NEWS RELEVANCE ──
-// Used only on the "Local (MO)" category. Boost Clinton/Henry/Truman content, demote
-// pure big-city stories that have nothing to do with rural west-central Missouri.
-const HYPERLOCAL_RE = /\b(clinton(,?\s*mo|\s+missouri)?|henry\s+county|truman\s+(lake|reservoir|dam)|warsaw\s+missouri|warsaw,?\s*mo|tightwad|calhoun|windsor\s+missouri|deepwater|sparrowfoot|leesville|montrose|blairstown|urich|cole\s+camp|lincoln,?\s*mo|benton\s+county\s+missouri|hickory\s+county|st\.?\s*clair\s+county|kdkd|grand\s+river\s+arm|osage\s+arm)\b/i;
-const REGIONAL_RE  = /\b(sedalia|warrensburg|pettis\s+county|johnson\s+county\s+missouri|knob\s+noster|kingsville|holden,?\s*mo|lake\s+of\s+the\s+ozarks|camden\s+county|whiteman\s+(afb|air\s+force)|state\s+fair\s+community|west[\s-]?central\s+missouri|west\s+missouri|missouri\s+ozarks|harrisonville|raymore|peculiar)\b/i;
-const STATEWIDE_RE = /\b(missouri\s+(governor|legislature|legislator|senator|state\s+senator|house|representative|attorney\s+general|treasurer|supreme\s+court|department|highway\s+patrol|conservation|state\s+park)|kehoe|mike\s+parson|mdc|modot|state\s+of\s+missouri|missouri\s+farm|missouri\s+agriculture|farm\s+bureau)\b/i;
-const BIG_CITY_RE  = /\b(kansas\s+city|st\.?\s*louis|springfield,?\s*mo|cape\s+girardeau|columbia,?\s*mo|jefferson\s+city|chesterfield|o.fallon|wentzville|st\.?\s*charles|joplin|branson)\b/i;
-const HYPERLOCAL_SOURCES = new Set([
-  "Clinton Daily Democrat","Henry County MO","Clinton MO News","KDKD Clinton",
-  "Truman Lake","West Central MO"
-]);
+// ── LOCAL-NEWS RELEVANCE — tiered for Clinton/Henry/Truman first, KC over StL ──
+const ULTRALOCAL_RE = /\b(clinton(,?\s*mo|\s+missouri|\s+daily\s+democrat)?|henry\s+county|truman\s+(lake|reservoir|dam)|kdkd|tightwad|calhoun(,?\s*mo)?|deepwater|montrose|blairstown|urich|leesville|grand\s+river\s+arm|osage\s+arm|sparrowfoot|brownington|hartwell|coal,?\s*mo)\b/i;
+const HYPERLOCAL_RE = /\b(warsaw\s+missouri|warsaw,?\s*mo|cole\s+camp|lincoln,?\s*mo|benton\s+county\s+missouri|hickory\s+county|hermitage,?\s*mo|cross\s+timbers|st\.?\s*clair\s+county|osceola,?\s*mo|lowry\s+city|appleton\s+city|bates\s+county|butler,?\s*mo|adrian,?\s*mo|rich\s+hill|windsor\s+missouri|knob\s+noster|whiteman\s+(afb|air\s+force))\b/i;
+const REGIONAL_RE  = /\b(sedalia|warrensburg|pettis\s+county|johnson\s+county\s+missouri|kingsville|holden,?\s*mo|lake\s+of\s+the\s+ozarks|camden\s+county|state\s+fair\s+community|west[\s-]?central\s+missouri|west\s+missouri|missouri\s+ozarks|harrisonville|raymore|peculiar|belton,?\s*mo|nevada,?\s*mo|vernon\s+county|el\s+dorado\s+springs|bolivar,?\s*mo|polk\s+county\s+missouri|cedar\s+county\s+missouri|stockton,?\s*mo|saline\s+county|marshall,?\s*mo|kmos)\b/i;
+const KC_RE        = /\b(kansas\s+city|kcmo|jackson\s+county\s+missouri|kc\s+chiefs|chiefs\s+kingdom|kc\s+royals|sporting\s+kc|kc\s+current|kmbc|kshb|fox\s*4\s*kc)\b/i;
+const STATEWIDE_RE = /\b(missouri\s+(governor|legislature|legislator|senator|state\s+senator|house|representative|attorney\s+general|treasurer|supreme\s+court|department|highway\s+patrol|conservation|state\s+park)|kehoe|mike\s+kehoe|mike\s+parson|mdc|modot|state\s+of\s+missouri|missouri\s+farm|missouri\s+agriculture|farm\s+bureau)\b/i;
+const BIG_CITY_RE  = /\b(st\.?\s*louis|springfield,?\s*mo|cape\s+girardeau|columbia,?\s*mo|jefferson\s+city|chesterfield|o.fallon|wentzville|st\.?\s*charles|joplin|branson)\b/i;
+const ULTRALOCAL_SOURCES = new Set(["Clinton Daily Democrat","Henry County MO","Clinton MO News","KDKD Clinton","Truman Lake","Henry County Towns"]);
+const HYPERLOCAL_SOURCES = new Set(["Benton County MO","St. Clair County MO","Bates County MO","Hickory County MO","Knob Noster / Whiteman","Lake of the Ozarks","West Central MO"]);
+const KC_SOURCES = new Set(["KCUR","Kansas City Star","KMBC 9 KC","KSHB 41 KC","Fox 4 KC","Kansas City News"]);
 
 function localRelevance(item) {
-  if (HYPERLOCAL_SOURCES.has(item.source)) return 5;
+  if (ULTRALOCAL_SOURCES.has(item.source)) return 8;   // hyperlocal source — top
+  if (HYPERLOCAL_SOURCES.has(item.source)) return 5;   // adjacent county
   const text = (item.title + " " + (item.description || "")).toLowerCase();
-  if (HYPERLOCAL_RE.test(text)) return 4;        // direct hit on Clinton/Henry/Truman/etc.
-  if (REGIONAL_RE.test(text))   return 2;        // adjacent counties / nearby towns
-  if (STATEWIDE_RE.test(text))  return 1;        // statewide policy that affects everyone
-  if (BIG_CITY_RE.test(text))   return -2;       // big-city only, no rural angle → hide
-  // No signal either way: keep neutral. Big-city-source stories with no city term in
-  // headline still come through but at heat × 1.0 (they'll naturally lose to local).
+  if (ULTRALOCAL_RE.test(text))  return 8;  // Clinton/Henry/Truman by name
+  if (HYPERLOCAL_RE.test(text))  return 5;  // adjacent county by name
+  if (REGIONAL_RE.test(text))    return 2;  // wider west-central MO
+  if (STATEWIDE_RE.test(text))   return 2;  // statewide policy / MO gov
+  if (KC_SOURCES.has(item.source) || KC_RE.test(text)) return 1; // KC — modest boost above neutral
+  if (BIG_CITY_RE.test(text))    return -2; // StL/Columbia/Springfield → demoted
   return 0;
 }
 
@@ -1876,10 +1931,176 @@ function renderGardenCard(g) {
   </div>`;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// CATTLE MARKET — local 500lb feeder steer prices for west-central Missouri
+// Wheeler Auction (Osceola — Matt's buddy's barn) + nearby USDA AMS reporting
+// barns. Manual price logging + localStorage history + sparkline.
+// ──────────────────────────────────────────────────────────────────────────────
+const CATTLE_BARNS = [
+  { id:"wheeler",     name:"Wheeler Livestock",            location:"Osceola, MO · St. Clair Co.",   isBuddy:true, reportUrl:"https://www.wheelerlivestock.com/market-report-1",                  saleDay:"Tuesdays" },
+  { id:"sedalia",     name:"Sedalia Regional Stockyards",  location:"Sedalia, MO · Pettis Co.",                    reportUrl:"https://www.sedaliaregionalstockyards.com/",                          saleDay:"Mondays" },
+  { id:"joplin",      name:"Joplin Regional Stockyards",   location:"Carthage, MO · Jasper Co.",                   reportUrl:"https://www.joplinstockyards.com/market-report/",                     saleDay:"Mon/Wed" },
+  { id:"buffalo",     name:"Buffalo Livestock Market",     location:"Buffalo, MO · Dallas Co.",                    reportUrl:"https://www.buffalolivestock.com/",                                   saleDay:"Saturdays" },
+  { id:"springfield", name:"Springfield Livestock Marketing", location:"Springfield, MO · Greene Co.",             reportUrl:"https://www.springfieldlivestockmarketing.com/",                      saleDay:"Wednesdays" }
+];
+
+const CATTLE_HISTORY_KEY = "news.cattle.history.v1";
+const CATTLE_HISTORY_DAYS = 180;
+
+function loadCattleHistory() {
+  try { const raw = localStorage.getItem(CATTLE_HISTORY_KEY); if (!raw) return {}; return JSON.parse(raw) || {}; } catch { return {}; }
+}
+function saveCattleHistory(h) { try { localStorage.setItem(CATTLE_HISTORY_KEY, JSON.stringify(h)); } catch {} }
+function recordCattlePrice(barnId, dollarsPerCwt, dateStr) {
+  if (!barnId || !isFinite(dollarsPerCwt) || dollarsPerCwt <= 0) return;
+  const hist = loadCattleHistory();
+  const arr  = hist[barnId] || [];
+  const day  = dateStr || new Date().toISOString().slice(0,10);
+  const i = arr.findIndex(e => e.d === day);
+  if (i >= 0) arr[i] = { d:day, p:dollarsPerCwt }; else arr.push({ d:day, p:dollarsPerCwt });
+  arr.sort((a,b) => a.d.localeCompare(b.d));
+  const cutoff = new Date(Date.now() - CATTLE_HISTORY_DAYS*86400000).toISOString().slice(0,10);
+  hist[barnId] = arr.filter(e => e.d >= cutoff);
+  saveCattleHistory(hist);
+  return hist[barnId];
+}
+
+function renderCattleSparkline(series) {
+  if (!series || series.length < 2) return "";
+  const w = 200, h = 32, pad = 2;
+  const ps = series.map(e => e.p);
+  const min = Math.min.apply(null, ps), max = Math.max.apply(null, ps);
+  const span = (max - min) || 1;
+  const xs = (i) => pad + i * (w - 2*pad) / (series.length - 1);
+  const ys = (v) => pad + (h - 2*pad) * (1 - (v - min)/span);
+  const d = series.map((e,i) => (i===0?"M":"L") + xs(i).toFixed(1) + " " + ys(e.p).toFixed(1)).join(" ");
+  const last = series[series.length-1].p, first = series[0].p;
+  const color = last >= first ? "#15803d" : "#b91c1c";
+  return '<svg class="cattle-spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+function fmtCwt(v) { return isFinite(v) ? "$" + v.toFixed(2) : ""; }
+function pctDelta(latest, prev) { if (!isFinite(latest) || !isFinite(prev) || prev <= 0) return null; return ((latest - prev) / prev) * 100; }
+function fmtDelta(d) { if (d === null) return "—"; return (d >= 0 ? "+" : "") + d.toFixed(1) + "%"; }
+function deltaCls(d) { if (d === null || Math.abs(d) < 0.05) return "flat"; return d > 0 ? "up" : "down"; }
+
+function renderBarnTile(barn, history) {
+  const series = history && history.length ? history : [];
+  const latest = series.length ? series[series.length - 1] : null;
+  let prevWeek = null;
+  if (latest) {
+    const target = new Date(latest.d); target.setDate(target.getDate() - 7);
+    const cutoff = target.toISOString().slice(0,10);
+    for (let i = series.length - 2; i >= 0; i--) { if (series[i].d <= cutoff) { prevWeek = series[i]; break; } }
+    if (!prevWeek && series.length > 1) prevWeek = series[0];
+  }
+  const delta = (latest && prevWeek && prevWeek !== latest) ? pctDelta(latest.p, prevWeek.p) : null;
+  const priceHtml = latest ? '<div class="barn-price">' + fmtCwt(latest.p) + '<span class="unit">/cwt</span></div>' : '<div class="barn-price placeholder">No price logged yet</div>';
+  const deltaHtml = (latest && delta !== null) ? '<span class="barn-delta ' + deltaCls(delta) + '">' + fmtDelta(delta) + ' wk</span>' : '';
+  const sparkHtml = series.length >= 2 ? renderCattleSparkline(series) : "";
+  const dateHtml = latest ? '<span>' + new Date(latest.d).toLocaleDateString("en-US",{month:"short",day:"numeric"}) + '</span>' : '<span style="opacity:.6">tap log to start tracking</span>';
+  const buddyTag = barn.isBuddy ? '<span class="barn-buddy-tag">🤝 buddy\'s barn</span>' : '';
+  return '<div class="barn-tile' + (barn.isBuddy ? ' buddy' : '') + '" data-barn="' + barn.id + '">' +
+    '<div class="barn-name">' + escapeHtml(barn.name) + buddyTag + '</div>' +
+    '<div class="barn-loc">' + escapeHtml(barn.location) + ' · ' + escapeHtml(barn.saleDay) + '</div>' +
+    priceHtml + sparkHtml +
+    '<div class="barn-meta">' + dateHtml + ' ' + deltaHtml + '</div>' +
+    '<div class="barn-meta">' +
+      '<a class="barn-link" href="' + escapeHtml(barn.reportUrl) + '" target="_blank" rel="noopener">View Report ↗</a>' +
+      '<button class="barn-link" type="button" data-log="' + barn.id + '" style="background:none;border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:10.5px;letter-spacing:0.04em;text-transform:uppercase;color:var(--accent)">+ Log $/cwt</button>' +
+    '</div></div>';
+}
+
+function renderCattleMarketCard() {
+  const hist = loadCattleHistory();
+  const tiles = CATTLE_BARNS.map(b => renderBarnTile(b, hist[b.id] || [])).join("");
+  const dateStr = new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
+  return '<div class="outdoor-card cattle">' +
+    '<div class="outdoor-card-header"><div class="outdoor-card-title">🐄 Cattle Market — 500lb Feeder Steers</div><div class="outdoor-card-date">' + dateStr + '</div></div>' +
+    '<div class="outdoor-banner"><div class="outdoor-banner-emoji">📊</div><div class="outdoor-banner-info"><div class="outdoor-banner-label">Local barn $/cwt for medium &amp; large 1, 500–550 lb steers</div><div class="outdoor-banner-sub">Tap a barn for the latest report. Use <em>+ Log $/cwt</em> to record today\'s average — history builds over time.</div></div></div>' +
+    '<div class="barn-grid">' + tiles + '</div>' +
+    '<div class="cattle-actions">' +
+      '<button class="cattle-btn" id="cattleViewWheeler" type="button"><span class="spark">🤝</span> Wheeler Latest Report</button>' +
+      '<button class="cattle-btn" id="cattleResetHistory" type="button" style="border-color:var(--border);background:transparent;color:var(--text-muted)">Reset History</button>' +
+    '</div>' +
+    '<div class="wheeler-embed" id="wheelerEmbed" style="display:none"></div>' +
+    '<div class="cattle-history-note">CME Feeder Cattle (GF=F) and Live Cattle (LE=F) futures are now in your Stocks tab — they give the same-day forward signal alongside these auction snapshots.</div>' +
+  '</div>';
+}
+
+async function fetchWheelerLatestImage() {
+  const wheelerUrl = "https://www.wheelerlivestock.com/market-report-1";
+  const proxyUrl = CF_WORKER + "?url=" + encodeURIComponent(wheelerUrl);
+  try {
+    const res = await fetch(proxyUrl, { method:"GET" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const html = await res.text();
+    const re  = /https:\/\/static\.wixstatic\.com\/media\/[^"'\s)]+market[^"'\s)]*\.(jpe?g|png)/ig;
+    const matches = Array.from(new Set(html.match(re) || []));
+    if (matches.length === 0) {
+      const re2 = /https:\/\/static\.wixstatic\.com\/media\/[^"'\s)]+\.(jpe?g|png)/ig;
+      return Array.from(new Set(html.match(re2) || [])).slice(0, 2);
+    }
+    return matches.slice(0, 4);
+  } catch (e) { return null; }
+}
+
+function wireCattleMarket() {
+  const card = document.querySelector(".outdoor-card.cattle");
+  if (!card) return;
+  card.querySelectorAll("[data-log]").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.preventDefault();
+      const barnId = btn.getAttribute("data-log");
+      const barn   = CATTLE_BARNS.find(b => b.id === barnId);
+      if (!barn) return;
+      const input = window.prompt("Today's average $/cwt for 500–550 lb feeder steers at " + barn.name + ":\n(numbers only — e.g. 312.50)", "");
+      if (input === null) return;
+      const val = parseFloat(String(input).replace(/[^0-9.\-]/g, ""));
+      if (!isFinite(val) || val <= 0 || val > 1000) { alert("Please enter a valid $/cwt number between 1 and 1000."); return; }
+      recordCattlePrice(barnId, val);
+      const hist = loadCattleHistory();
+      const newHtml = renderBarnTile(barn, hist[barnId] || []);
+      const oldTile = card.querySelector('.barn-tile[data-barn="' + barnId + '"]');
+      if (oldTile) {
+        const tmp = document.createElement("div"); tmp.innerHTML = newHtml;
+        oldTile.replaceWith(tmp.firstElementChild);
+        wireCattleMarket();
+      }
+    });
+  });
+  const wheelerBtn = card.querySelector("#cattleViewWheeler");
+  const embed      = card.querySelector("#wheelerEmbed");
+  if (wheelerBtn && embed) {
+    wheelerBtn.addEventListener("click", async () => {
+      if (embed.style.display !== "none") { embed.style.display = "none"; embed.innerHTML = ""; return; }
+      embed.style.display = "block";
+      embed.innerHTML = '<div class="wheeler-embed-loading"><span class="spinner"></span> Fetching Wheeler\'s latest market report…</div>';
+      const imgs = await fetchWheelerLatestImage();
+      if (!imgs || imgs.length === 0) {
+        embed.innerHTML = '<div class="wheeler-embed-loading">Could not pull the report automatically. <a class="barn-link" href="https://www.wheelerlivestock.com/market-report-1" target="_blank" rel="noopener">Open on wheelerlivestock.com ↗</a></div>';
+        return;
+      }
+      embed.innerHTML = imgs.map(src => '<img src="' + escapeHtml(src) + '" alt="Wheeler Livestock Market Report" loading="lazy">').join("") +
+        '<div class="cattle-history-note" style="margin-top:8px">Read off the 500–550 lb steer average and tap <em>+ Log $/cwt</em> on the Wheeler tile above to add it to your history.</div>';
+    });
+  }
+  const resetBtn = card.querySelector("#cattleResetHistory");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      if (!window.confirm("Clear all logged cattle prices? This can't be undone.")) return;
+      saveCattleHistory({});
+      const newHtml = renderCattleMarketCard();
+      const tmp = document.createElement("div"); tmp.innerHTML = newHtml;
+      card.replaceWith(tmp.firstElementChild);
+      wireCattleMarket();
+    });
+  }
+}
+
 function renderFishingAdvisor(lake, weather, advice) {
   const mush = renderMushroomCard(getMushroomTips(weather));
   const garden = renderGardenCard(getGardenTips(weather));
-  const extras = mush + garden;
+  const extras = mush + garden + renderCattleMarketCard();
   if (!advice) return '<div class="fish-advisor"><div class="fish-loading">Could not generate fishing report.</div></div>' + extras + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
   const BITE_EMOJI  = ["😴","🐢","🎣","🔥","💥"];
   const BITE_LABEL  = ["Dead Slow","Slow — Be Patient","Moderate — Worth Going","Good — Get Out There","On Fire!"];
@@ -2091,8 +2312,9 @@ async function loadOutdoor(force) {
 
   const advisorDiv = document.createElement("div");
   const initialMush   = renderMushroomCard(getMushroomTips(getCachedWeather()));
+  const initialCattle = renderCattleMarketCard();
   const initialGarden = renderGardenCard(getGardenTips(getCachedWeather()));
-  advisorDiv.innerHTML = '<div class="fish-advisor"><div class="fish-header"><div class="fish-title">🎣 Truman Lake Fishing Report</div></div><div class="fish-loading"><span class="spinner"></span> Loading live conditions…</div></div>' + initialMush + initialGarden + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
+  advisorDiv.innerHTML = '<div class="fish-advisor"><div class="fish-header"><div class="fish-title">🎣 Truman Lake Fishing Report</div></div><div class="fish-loading"><span class="spinner"></span> Loading live conditions…</div></div>' + initialMush + initialGarden + initialCattle + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>'; wireCattleMarket();
   listEl.appendChild(advisorDiv);
 
   const newsDiv = document.createElement("div");
@@ -2114,6 +2336,7 @@ async function loadOutdoor(force) {
   advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice);
   // Wire up the AI Smart Plan button now that the advisor markup is in the DOM
   wireFishSmartPlan(lakeData, weatherData, advice);
+  wireCattleMarket();
 
   const all = newsResults.flat();
   const seen = new Set();
@@ -2601,14 +2824,13 @@ async function loadCategory(force) {
     deduped = deduped
       .map(it => ({ it, rel: localRelevance(it) }))
       .filter(x => x.rel >= 0)
-      .sort((a, b) => (heatScore(b.it) * (1 + 0.5 * b.rel)) - (heatScore(a.it) * (1 + 0.5 * a.rel)))
+      .sort((a, b) => (heatScore(b.it) * Math.max(0.1, 1 + 0.6 * b.rel)) - (heatScore(a.it) * Math.max(0.1, 1 + 0.6 * a.rel)))
       .map(x => x.it);
   }
 
   if (deduped.length === 0) {
     listEl.innerHTML = "";
     statusEl.style.display = "block";
-    statusEl.innerHTML = "Couldn't load any stories. The RSS proxies may be slow or down.<br>" +
       '<span style="opacity:.6">Tried: '+cat.feeds.map(f=>f.source).join(", ")+'</span><br>' +
       '<button class="retry-btn" onclick="loadCategory(true)">Try again</button>';
     return;

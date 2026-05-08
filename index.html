@@ -3013,8 +3013,18 @@ function renderBriefPanel(panel, data, item, btn, initMessages, initSaved) {
   if (saveBtn) {
     saveBtn.addEventListener("click", e => {
       e.preventDefault(); e.stopPropagation();
+      // Mark brief as permanent
       setBriefCache(item.link, data, messages, true);
       isSaved = true;
+      // Also bookmark the article so it shows up in the Saved tab
+      if (!getSaved().some(s => s.link === item.link)) toggleSave(item);
+      // Update the bookmark button on the article card if present
+      const articleEl = panel.closest(".item-wrap")?.querySelector("a.item");
+      if (articleEl) {
+        articleEl.classList.add("bookmarked");
+        const bkmk = articleEl.querySelector(".bkmk-btn");
+        if (bkmk) bkmk.innerHTML = '<span class="bk-icon">🔖</span>Saved';
+      }
       const badge = document.createElement("span");
       badge.className = "brief-saved-badge";
       badge.textContent = "✓ Saved";
@@ -3152,6 +3162,23 @@ async function loadCategory(force) {
     } else {
       currentItems = saved;
       renderNews(saved);
+      // Auto-expand brief panels for any saved article that has a saved AI brief
+      requestAnimationFrame(() => {
+        const wraps = listEl.querySelectorAll(".item-wrap");
+        saved.forEach((item, i) => {
+          const cached = getBriefCache(item.link);
+          if (!cached || !cached.saved || !cached.data || !cached.data.brief) return;
+          const wrap = wraps[i];
+          if (!wrap) return;
+          const panel = wrap.querySelector(".brief-panel");
+          const btn   = wrap.querySelector(".brief-btn");
+          if (panel && btn) {
+            renderBriefPanel(panel, { ...cached.data, cached: true }, item, btn, cached.messages || [], true);
+            panel.classList.add("open");
+            btn.classList.add("is-open");
+          }
+        });
+      });
     }
     return;
   }

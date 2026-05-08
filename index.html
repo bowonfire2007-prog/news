@@ -162,8 +162,8 @@
   .brief-btn.is-loading { pointer-events:none; opacity:0.7; }
   .brief-btn.is-open { background:var(--accent); color:#fff; }
   .brief-btn .spark { font-size:10px; line-height:1; }
-  .brief-panel { margin:0 0 14px; padding:0 16px; max-height:0; overflow:hidden; transition:max-height .25s ease, padding .2s ease; background:color-mix(in srgb,var(--accent) 4%,var(--card-hover)); border-left:3px solid var(--accent); border-radius:0 6px 6px 0; }
-  .brief-panel.open { max-height:1000px; padding:14px 16px; margin:0 0 18px; }
+  .brief-panel { margin:0 0 14px; padding:0 16px; max-height:0; overflow:hidden; transition:max-height .35s ease, padding .2s ease; background:color-mix(in srgb,var(--accent) 4%,var(--card-hover)); border-left:3px solid var(--accent); border-radius:0 6px 6px 0; }
+  .brief-panel.open { max-height:2400px; padding:14px 16px; margin:0 0 18px; }
   .brief-header { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); margin-bottom:8px; }
   .brief-loading { display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:13px; padding:4px 0; }
   .brief-text { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:14.5px; line-height:1.65; color:var(--text); }
@@ -174,6 +174,20 @@
   .brief-refresh:hover { text-decoration:underline; }
   .brief-error { color:#b91c1c; font-size:13px; line-height:1.5; }
   [data-theme="dark"] .brief-error { color:#f87171; }
+  /* ── Follow-up chat ── */
+  .brief-chat { margin-top:14px; padding-top:12px; border-top:1px solid color-mix(in srgb,var(--accent) 18%,var(--border)); display:flex; flex-direction:column; gap:14px; }
+  .brief-chat-msg-q { font-size:11.5px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:5px; }
+  .brief-chat-msg-a { font-size:14px; line-height:1.65; color:var(--text); font-family:"Iowan Old Style","Palatino","Georgia",serif; }
+  .brief-chat-thinking { display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:13px; }
+  .brief-followup-row { display:flex; gap:7px; margin-top:14px; padding-top:10px; border-top:1px solid color-mix(in srgb,var(--accent) 18%,var(--border)); }
+  .brief-followup-input { flex:1; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:13px; font-family:inherit; outline:none; }
+  .brief-followup-input:focus { border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 15%,transparent); }
+  .brief-ask-btn { padding:7px 14px; border:none; border-radius:6px; background:var(--accent); color:#fff; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; letter-spacing:0.03em; }
+  .brief-ask-btn:hover { filter:brightness(1.1); }
+  .brief-ask-btn:disabled { opacity:0.5; pointer-events:none; }
+  .brief-save-btn { background:none; border:none; color:var(--accent); font-weight:700; cursor:pointer; font-size:10px; font-family:inherit; letter-spacing:0.04em; text-transform:uppercase; padding:0; }
+  .brief-save-btn:hover { text-decoration:underline; }
+  .brief-saved-badge { font-size:10px; color:var(--text-soft); letter-spacing:0.04em; text-transform:uppercase; }
   .item-text { flex:1; min-width:0; }
   .meta { display:flex; align-items:center; gap:8px; font-size:12px; margin-top:9px; flex-wrap:wrap; color:var(--text-soft); }
   .source-chip { background:var(--card-hover); color:var(--text-muted); font-size:10px; font-weight:700; padding:2px 6px; border-radius:3px; letter-spacing:0.04em; text-transform:uppercase; }
@@ -2800,7 +2814,8 @@ async function loadStocks(force) {
 
 // ========== AI BRIEF ==========
 const BRIEF_ENDPOINT     = CF_WORKER.replace(/\/$/, "") + "/brief";
-const BRIEF_CACHE_TTL_MS = 7 * 24 * 3600000; // 7 days
+const FOLLOWUP_ENDPOINT  = CF_WORKER.replace(/\/$/, "") + "/followup";
+const BRIEF_CACHE_TTL_MS = 7 * 24 * 3600000; // 7 days (ignored for saved entries)
 
 function briefHash(s) {
   let h = 0;
@@ -2812,13 +2827,23 @@ function getBriefCache(url) {
     const raw = localStorage.getItem("news.brief." + briefHash(url));
     if (!raw) return null;
     const obj = JSON.parse(raw);
-    if (Date.now() - obj.ts > BRIEF_CACHE_TTL_MS) return null;
-    return obj.data;
+    // Saved entries never expire; unsaved entries expire after 7 days
+    if (!obj.saved && Date.now() - obj.ts > BRIEF_CACHE_TTL_MS) {
+      localStorage.removeItem("news.brief." + briefHash(url));
+      return null;
+    }
+    return obj; // { ts, data, messages, saved }
   } catch { return null; }
 }
-function setBriefCache(url, data) {
+function setBriefCache(url, data, messages, saved) {
   try {
-    localStorage.setItem("news.brief." + briefHash(url), JSON.stringify({ ts: Date.now(), data }));
+    const existing = getBriefCache(url);
+    localStorage.setItem("news.brief." + briefHash(url), JSON.stringify({
+      ts: existing ? existing.ts : Date.now(), // keep original research date
+      data,
+      messages: messages !== undefined ? messages : (existing ? existing.messages || [] : []),
+      saved: saved !== undefined ? saved : (existing ? existing.saved || false : false)
+    }));
   } catch {}
 }
 
@@ -2830,8 +2855,8 @@ async function handleBriefClick(item, btn, panel) {
     return;
   }
   const cached = getBriefCache(item.link);
-  if (cached && cached.brief) {
-    renderBriefPanel(panel, { ...cached, cached: true }, item, btn);
+  if (cached && cached.data && cached.data.brief) {
+    renderBriefPanel(panel, { ...cached.data, cached: true }, item, btn, cached.messages || [], cached.saved || false);
     panel.classList.add("open");
     btn.classList.add("is-open");
     return;
@@ -2867,8 +2892,8 @@ async function fetchAndShowBrief(item, btn, panel) {
     if (!res.ok || !data.brief) {
       throw new Error(data.error || ("HTTP " + res.status));
     }
-    setBriefCache(item.link, data);
-    renderBriefPanel(panel, data, item, btn);
+    setBriefCache(item.link, data, [], false);
+    renderBriefPanel(panel, data, item, btn, [], false);
   } catch (err) {
     const msg = err.name === "AbortError" ? "Research timed out — try again" : (err.message || String(err));
     panel.innerHTML =
@@ -2880,7 +2905,7 @@ async function fetchAndShowBrief(item, btn, panel) {
   }
 }
 
-function renderBriefPanel(panel, data, item, btn) {
+function renderBriefPanel(panel, data, item, btn, initMessages, initSaved) {
   const paras = String(data.brief)
     .split(/\n\n+/)
     .filter(p => p.trim())
@@ -2888,13 +2913,116 @@ function renderBriefPanel(panel, data, item, btn) {
     .join("");
   const ts = data.generated_at ? new Date(data.generated_at) : null;
   const tsStr = ts && isFinite(ts) ? ts.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
+
+  // Mutable state for this panel instance
+  let messages = initMessages ? [...initMessages] : [];
+  let isSaved  = initSaved || false;
+
+  function buildChatHtml() {
+    if (!messages.length) return "";
+    return '<div class="brief-chat">' +
+      messages.map(m =>
+        "<div>" +
+          '<div class="brief-chat-msg-q">You asked: ' + escapeHtml(m.q) + "</div>" +
+          '<div class="brief-chat-msg-a">' + escapeHtml(m.a) + "</div>" +
+        "</div>"
+      ).join("") +
+    "</div>";
+  }
+
   panel.innerHTML =
     '<div class="brief-header"><span>✦</span> AI Brief</div>' +
-    '<div class="brief-text">' + paras + '</div>' +
+    '<div class="brief-text">' + paras + "</div>" +
+    buildChatHtml() +
+    '<div class="brief-followup-row">' +
+      '<input class="brief-followup-input" type="text" placeholder="Ask a follow-up question…" />' +
+      '<button class="brief-ask-btn" type="button">Ask</button>' +
+    "</div>" +
     '<div class="brief-meta">' +
-      '<span>' + (data.cached ? "Researched earlier" : "Researched just now") + (tsStr ? " · " + tsStr : "") + '</span>' +
-      '<button class="brief-refresh" type="button">Refresh</button>' +
-    '</div>';
+      "<span>" + (data.cached ? "Researched earlier" : "Researched just now") + (tsStr ? " · " + tsStr : "") + "</span>" +
+      '<div style="display:flex;gap:12px;align-items:center;">' +
+        (isSaved
+          ? '<span class="brief-saved-badge">✓ Saved</span>'
+          : '<button class="brief-save-btn" type="button">Save</button>') +
+        '<button class="brief-refresh" type="button">Refresh</button>' +
+      "</div>" +
+    "</div>";
+
+  // ── Follow-up Q&A ──
+  const input  = panel.querySelector(".brief-followup-input");
+  const askBtn = panel.querySelector(".brief-ask-btn");
+
+  async function submitFollowUp() {
+    const question = input.value.trim();
+    if (!question) return;
+    input.value = "";
+    askBtn.disabled = true;
+    askBtn.textContent = "…";
+
+    // Ensure chat container exists
+    let chat = panel.querySelector(".brief-chat");
+    if (!chat) {
+      chat = document.createElement("div");
+      chat.className = "brief-chat";
+      panel.querySelector(".brief-followup-row").insertAdjacentElement("beforebegin", chat);
+    }
+
+    // Append question + thinking placeholder immediately
+    const msgDiv = document.createElement("div");
+    msgDiv.innerHTML =
+      '<div class="brief-chat-msg-q">You asked: ' + escapeHtml(question) + "</div>" +
+      '<div class="brief-chat-msg-a brief-chat-thinking"><span class="spinner"></span><span>Thinking…</span></div>';
+    chat.appendChild(msgDiv);
+
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 30000);
+      let res;
+      try {
+        res = await fetch(FOLLOWUP_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: item.title, url: item.link, brief: data.brief, question, history: messages }),
+          signal: ctrl.signal
+        });
+      } finally { clearTimeout(timer); }
+
+      const result = await res.json();
+      if (!res.ok || !result.answer) throw new Error(result.error || "No answer returned");
+
+      msgDiv.querySelector(".brief-chat-msg-a").innerHTML = escapeHtml(result.answer);
+      messages = [...messages, { q: question, a: result.answer }];
+      setBriefCache(item.link, data, messages); // auto-persist follow-ups
+
+    } catch (err) {
+      const msg = err.name === "AbortError" ? "Timed out — try again" : (err.message || String(err));
+      msgDiv.querySelector(".brief-chat-msg-a").innerHTML =
+        '<span style="color:#b91c1c">' + escapeHtml(msg) + "</span>";
+    } finally {
+      askBtn.disabled = false;
+      askBtn.textContent = "Ask";
+    }
+  }
+
+  askBtn.addEventListener("click",  e => { e.preventDefault(); e.stopPropagation(); submitFollowUp(); });
+  input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); submitFollowUp(); } });
+  input.addEventListener("click",   e => e.stopPropagation()); // prevent opening article
+
+  // ── Save button ──
+  const saveBtn = panel.querySelector(".brief-save-btn");
+  if (saveBtn) {
+    saveBtn.addEventListener("click", e => {
+      e.preventDefault(); e.stopPropagation();
+      setBriefCache(item.link, data, messages, true);
+      isSaved = true;
+      const badge = document.createElement("span");
+      badge.className = "brief-saved-badge";
+      badge.textContent = "✓ Saved";
+      saveBtn.replaceWith(badge);
+    });
+  }
+
+  // ── Refresh button ──
   panel.querySelector(".brief-refresh").addEventListener("click", e => {
     e.preventDefault(); e.stopPropagation();
     try { localStorage.removeItem("news.brief." + briefHash(item.link)); } catch {}

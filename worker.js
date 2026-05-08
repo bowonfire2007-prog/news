@@ -43,6 +43,9 @@ export default {
     if (url.pathname === "/cattlemanual") {
       return handleCattleManual(request, env, ctx);
     }
+    if (url.pathname === "/followup") {
+      return handleFollowUp(request, env);
+    }
     return handleRssProxy(url);
   }
 };
@@ -157,6 +160,68 @@ TODAY'S CONDITIONS (${monthName}):
 ${lines.join("\n")}
 
 Write a tight, specific fishing plan in 2-3 short paragraphs of plain prose. NO bullet points, NO headers, NO markdown. Lead with the best species for today's conditions and explain WHY given the lake state. Then specify exact technique — bait, rig, depth, retrieve speed. Finally, name where to focus on the Grand River arm near Sparrowfoot — channel bends, flooded timber, mud lines, riprap, creek mouths, points, etc. — and whether tonight or tomorrow morning is a better window. If conditions strongly favor a particular bite (e.g. dam releasing hard = blues stacked in current breaks), say so directly and confidently. Keep it to ~150-200 words total.`;
+}
+
+// ─────────────── FOLLOW-UP Q&A ───────────────
+// Answers follow-up questions about an article using the already-generated brief as context.
+// No web search needed — Claude reasons from the brief + conversation history.
+//   POST /followup
+//   body: { title, url, brief, question, history: [{q, a}] }
+//   returns: { answer, model, generated_at }
+async function handleFollowUp(request, env) {
+  if (request.method !== "POST") return jsonResponse({ error: "POST only" }, 405);
+  if (!env.ANTHROPIC_API_KEY) return jsonResponse({ error: "ANTHROPIC_API_KEY secret is not set" }, 500);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonResponse({ error: "Invalid JSON body" }, 400); }
+
+  const { title, url: articleUrl, brief, question, history = [] } = body;
+  if (!question || !brief) return jsonResponse({ error: "question and brief are required" }, 400);
+
+  const system = `You are a news research assistant. The user is reading a news article and asking follow-up questions. Answer clearly and concisely in plain prose — no bullet points or headers unless explicitly requested. Stay grounded in the brief and your general knowledge; if you don't know something, say so.
+
+Article: "${(title || "").slice(0, 200)}"
+${articleUrl ? "URL: " + articleUrl : ""}
+
+Research brief already generated for this article:
+${brief}`;
+
+  // Build multi-turn conversation
+  const messages = [];
+  for (const { q, a } of history) {
+    messages.push({ role: "user", content: q });
+    messages.push({ role: "assistant", content: a });
+  }
+  messages.push({ role: "user", content: question });
+
+  const model = env.AI_MODEL || "claude-haiku-4-5-20251001";
+
+  let claudeRes;
+  try {
+    claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ model, max_tokens: 600, system, messages })
+    });
+  } catch (err) {
+    return jsonResponse({ error: "Claude fetch failed: " + err.message }, 502);
+  }
+
+  if (!claudeRes.ok) {
+    const errText = await claudeRes.text();
+    return jsonResponse({ error: "Claude API " + claudeRes.status, details: errText.slice(0, 300) }, 502);
+  }
+
+  const data = await claudeRes.json();
+  const answer = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n\n").trim();
+  if (!answer) return jsonResponse({ error: "Empty response from model" }, 502);
+
+  return jsonResponse({ answer, model, generated_at: new Date().toISOString() });
 }
 
 // ─────────────── RSS PROXY ───────────────

@@ -511,7 +511,7 @@ const CATEGORIES = [
     { source:"ABC News", url:"https://abcnews.go.com/abcnews/topstories" },
     { source:"DW (Germany)", url:"https://rss.dw.com/rdf/rss-en-all" }
   ]},
-  { id:"local", label:"Local (MO)", maxAgeHours:168, feeds:[
+  { id:"local", label:"Local (MO)", maxAgeHours:504, feeds:[
     // ─── ULTRALOCAL — Clinton, Henry County, Truman Lake area ───
     { source:"Clinton Daily Democrat", url:"https://news.google.com/rss/search?q=site%3Aclintondailydemocrat.com&hl=en-US&gl=US&ceid=US:en" },
     { source:"Henry County MO", url:"https://news.google.com/rss/search?q=%22Henry+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
@@ -1431,6 +1431,12 @@ function parseXmlFeed(xmlText, source) {
   if (doc.querySelector("parsererror")) return [];
   const isAtom = doc.documentElement.nodeName.toLowerCase()==="feed";
   const entries = Array.from(doc.querySelectorAll(isAtom?"entry":"item"));
+  // Sort newest-first before slicing so PER_FEED_LIMIT keeps the most recent articles,
+  // not whatever order the feed happened to use (Google News uses relevance, not date).
+  entries.sort((a, b) => {
+    const getTs = el => { const n=el.querySelector("pubDate,published,updated"); return n?new Date(n.textContent.trim()).getTime():0; };
+    return getTs(b) - getTs(a);
+  });
   return entries.slice(0, PER_FEED_LIMIT).map(el => {
     const get = sel => { const n=el.querySelector(sel); return n?n.textContent.trim():""; };
     let link="";
@@ -3049,10 +3055,19 @@ async function loadCategory(force) {
   // Local-news relevance pass: drop big-city-only stories with no rural/regional
   // angle, and reorder so Clinton/Henry/Truman headlines float to the top.
   if (cat.id === "local") {
+    // For ultralocal sources use a 168-hour half-life instead of the global 12-hour one,
+    // so a week-old Henry County Sheriff report still floats above a fresh NC wire story.
+    const localScore = ({it, rel}) => {
+      const ageH = (Date.now() - it.pubDate) / 3600000;
+      const halfLife = rel >= 8 ? 168 : 12;
+      const decay = Math.exp(-ageH / halfLife);
+      const w = SOURCE_WEIGHT[it.source] || SOURCE_WEIGHT["default"];
+      return decay * w * Math.max(0.1, 1 + 0.6 * rel);
+    };
     deduped = deduped
       .map(it => ({ it, rel: localRelevance(it) }))
       .filter(x => x.rel >= 0)
-      .sort((a, b) => (heatScore(b.it) * Math.max(0.1, 1 + 0.6 * b.rel)) - (heatScore(a.it) * Math.max(0.1, 1 + 0.6 * a.rel)))
+      .sort((a, b) => localScore(b) - localScore(a))
       .map(x => x.it);
   }
 

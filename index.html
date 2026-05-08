@@ -513,12 +513,12 @@ const CATEGORIES = [
   ]},
   { id:"local", label:"Local (MO)", maxAgeHours:168, feeds:[
     // ─── ULTRALOCAL — Clinton, Henry County, Truman Lake area ───
-    { source:"Clinton Daily Democrat", url:"https://news.google.com/rss/search?q=site%3Aclintondailydem.com+OR+%22Clinton+Daily+Democrat%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Clinton Daily Democrat", url:"https://clintondailydem.com/feed/" },
     { source:"Henry County MO", url:"https://news.google.com/rss/search?q=%22Henry+County%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Clinton MO News", url:"https://news.google.com/rss/search?q=%22Clinton%2C+Missouri%22+OR+%22Clinton+MO%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"KDKD Clinton", url:"https://news.google.com/rss/search?q=%22KDKD%22+OR+%22kdkdradio%22+Clinton+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Truman Lake", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+OR+%22Harry+S+Truman+Reservoir%22+OR+%22Truman+Dam%22&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Henry County Towns", url:"https://news.google.com/rss/search?q=%22Calhoun%2C+Missouri%22+OR+%22Tightwad%22+OR+%22Windsor%2C+Missouri%22+OR+%22Deepwater%22+OR+%22Montrose%2C+Missouri%22+OR+%22Blairstown%22+OR+%22Urich%22+OR+%22Leesville%22&hl=en-US&gl=US&ceid=US:en" },
+
     // ─── HYPERLOCAL — Adjacent counties ───
     { source:"Benton County MO", url:"https://news.google.com/rss/search?q=%22Benton+County%22+Missouri+OR+%22Warsaw%2C+Missouri%22+OR+%22Cole+Camp%22+OR+%22Lincoln%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"St. Clair County MO", url:"https://news.google.com/rss/search?q=%22St.+Clair+County%22+Missouri+OR+%22Osceola%2C+Missouri%22+OR+%22Appleton+City%22+OR+%22Lowry+City%22&hl=en-US&gl=US&ceid=US:en" },
@@ -534,7 +534,7 @@ const CATEGORIES = [
     { source:"Vernon / Nevada MO", url:"https://news.google.com/rss/search?q=%22Vernon+County%22+Missouri+OR+%22Nevada%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"Polk / Bolivar MO", url:"https://news.google.com/rss/search?q=%22Polk+County%22+Missouri+OR+%22Bolivar%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"Cedar / Stockton MO", url:"https://news.google.com/rss/search?q=%22Cedar+County%22+Missouri+OR+%22Stockton%2C+Missouri%22+OR+%22El+Dorado+Springs%22&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Saline / Marshall MO", url:"https://news.google.com/rss/search?q=%22Saline+County%22+OR+%22Marshall%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
+
     { source:"KMOS Warrensburg", url:"https://news.google.com/rss/search?q=%22KMOS-TV%22+OR+%22KMOS+Warrensburg%22&hl=en-US&gl=US&ceid=US:en" },
     // ─── KC METRO — preferred over StL ───
     { source:"KCUR", url:"https://www.kcur.org/news.rss" },
@@ -1035,7 +1035,7 @@ const REGIONAL_RE  = /\b(sedalia|warrensburg|pettis\s+county|johnson\s+county\s+
 const KC_RE        = /\b(kansas\s+city|kcmo|jackson\s+county\s+missouri|kc\s+chiefs|chiefs\s+kingdom|kc\s+royals|sporting\s+kc|kc\s+current|kmbc|kshb|fox\s*4\s*kc)\b/i;
 const STATEWIDE_RE = /\b(missouri\s+(governor|legislature|legislator|senator|state\s+senator|house|representative|attorney\s+general|treasurer|supreme\s+court|department|highway\s+patrol|conservation|state\s+park)|kehoe|mike\s+kehoe|mike\s+parson|mdc|modot|state\s+of\s+missouri|missouri\s+farm|missouri\s+agriculture|farm\s+bureau)\b/i;
 const BIG_CITY_RE  = /\b(st\.?\s*louis|springfield,?\s*mo|cape\s+girardeau|columbia,?\s*mo|jefferson\s+city|chesterfield|o.fallon|wentzville|st\.?\s*charles|joplin|branson)\b/i;
-const ULTRALOCAL_SOURCES = new Set(["Clinton Daily Democrat","Henry County MO","Clinton MO News","KDKD Clinton","Truman Lake","Henry County Towns"]);
+const ULTRALOCAL_SOURCES = new Set(["Clinton Daily Democrat","Henry County MO","Clinton MO News","KDKD Clinton","Truman Lake"]);
 const HYPERLOCAL_SOURCES = new Set(["Benton County MO","St. Clair County MO","Bates County MO","Hickory County MO","Knob Noster / Whiteman","Lake of the Ozarks","West Central MO"]);
 const KC_SOURCES = new Set(["KCUR","Kansas City Star","KMBC 9 KC","KSHB 41 KC","Fox 4 KC","Kansas City News"]);
 

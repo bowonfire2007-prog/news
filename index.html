@@ -420,6 +420,62 @@
     .outdoor-banner-label { font-size:14px; }
     .outdoor-tip { font-size:13px; padding:8px 10px; }
   }
+
+  /* ── MISSOURI WEEKLY MARKET CARD ── */
+  .weekly-card { background:color-mix(in srgb,#2d5a1b 5%,var(--bg)); border:1px solid color-mix(in srgb,#2d5a1b 25%,var(--border)); border-radius:12px; padding:18px; margin:14px 0; }
+  [data-theme="dark"] .weekly-card { background:color-mix(in srgb,#4a8c2a 8%,var(--bg)); border-color:color-mix(in srgb,#4a8c2a 20%,var(--border)); }
+  .weekly-card-header { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .weekly-card-title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:17px; font-weight:800; color:var(--text); }
+  .weekly-card-meta { font-size:11.5px; color:var(--text-muted); margin-top:2px; }
+  .weekly-upload-btn { display:inline-flex; align-items:center; gap:5px; padding:6px 13px; border-radius:999px; border:1px solid color-mix(in srgb,#2d5a1b 40%,var(--border)); background:color-mix(in srgb,#2d5a1b 10%,transparent); color:#2d5a1b; font-size:11.5px; font-weight:700; letter-spacing:0.04em; cursor:pointer; font-family:inherit; text-transform:uppercase; transition:background .15s,color .15s; flex-shrink:0; }
+  [data-theme="dark"] .weekly-upload-btn { color:#7ec850; border-color:color-mix(in srgb,#7ec850 35%,var(--border)); background:color-mix(in srgb,#7ec850 10%,transparent); }
+  .weekly-upload-btn:hover { background:#2d5a1b; color:#fff; }
+  [data-theme="dark"] .weekly-upload-btn:hover { background:#4a8c2a; color:#fff; }
+  .weekly-upload-btn.is-loading { pointer-events:none; opacity:.7; }
+  /* Stat row */
+  .weekly-stat-row { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-bottom:12px; }
+  .weekly-stat { padding:10px 12px; border-radius:8px; background:var(--card-hover); border:1px solid var(--border); }
+  .weekly-stat-label { font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); }
+  .weekly-stat-val { font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--text); margin:3px 0 1px; line-height:1.1; }
+  .weekly-stat-val .unit { font-size:11px; font-weight:500; color:var(--text-muted); margin-left:2px; }
+  .weekly-stat-sub { font-size:11px; color:var(--text-muted); }
+  .weekly-stat.highlight { background:color-mix(in srgb,#2d5a1b 9%,var(--card-hover)); border-color:color-mix(in srgb,#2d5a1b 30%,var(--border)); }
+  [data-theme="dark"] .weekly-stat.highlight { background:color-mix(in srgb,#4a8c2a 12%,var(--card-hover)); }
+  /* Chart */
+  .weekly-chart-wrap { margin-top:12px; padding:14px 10px 8px; border:1px solid var(--border); border-radius:8px; background:var(--card-hover); }
+  .weekly-chart-header { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; padding:0 2px; }
+  .weekly-chart-title { font-size:11.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--text-muted); }
+  .weekly-chart-legend { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .weekly-chart-legend-item { display:flex; align-items:center; gap:4px; font-size:10.5px; color:var(--text-muted); font-weight:600; }
+  .weekly-chart-legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .weekly-chart { width:100%; display:block; overflow:visible; }
+  .weekly-chart-empty { text-align:center; padding:24px 12px; color:var(--text-muted); font-size:13px; line-height:1.5; }
+  .weekly-chart-empty strong { color:var(--accent); }
+  /* Narrative */
+  .weekly-narrative { margin-top:12px; padding:10px 13px; border-radius:8px; background:var(--card-hover); font-size:13px; line-height:1.55; color:var(--text); border-left:3px solid color-mix(in srgb,#2d5a1b 50%,var(--border)); }
+  [data-theme="dark"] .weekly-narrative { border-left-color:#4a8c2a; }
+  .weekly-narrative-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:4px; }
+  /* Upload modal */
+  .weekly-modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .weekly-modal { background:var(--bg); border:1px solid var(--border); border-radius:14px; padding:22px; width:100%; max-width:360px; box-shadow:0 8px 32px rgba(0,0,0,.25); }
+  .weekly-modal-title { font-size:16px; font-weight:800; margin-bottom:4px; }
+  .weekly-modal-sub { font-size:12.5px; color:var(--text-muted); margin-bottom:16px; line-height:1.4; }
+  .weekly-modal label { display:block; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); margin-bottom:4px; }
+  .weekly-modal input[type=password], .weekly-modal input[type=text] { width:100%; padding:9px 12px; border-radius:8px; border:1px solid var(--border); background:var(--card-hover); color:var(--text); font-size:14px; font-family:inherit; outline:none; margin-bottom:12px; }
+  .weekly-modal input:focus { border-color:#2d5a1b; }
+  .weekly-modal-file-area { border:2px dashed var(--border); border-radius:8px; padding:18px; text-align:center; cursor:pointer; font-size:13px; color:var(--text-muted); transition:border-color .15s; margin-bottom:14px; }
+  .weekly-modal-file-area:hover, .weekly-modal-file-area.has-file { border-color:#2d5a1b; color:var(--text); }
+  .weekly-modal-actions { display:flex; gap:8px; }
+  .weekly-modal-submit { flex:1; padding:9px; border-radius:8px; border:none; background:#2d5a1b; color:#fff; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .weekly-modal-submit:disabled { opacity:.5; cursor:not-allowed; }
+  .weekly-modal-cancel { padding:9px 14px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:14px; cursor:pointer; font-family:inherit; }
+  .weekly-modal-result { margin-top:10px; padding:9px 12px; border-radius:8px; font-size:12.5px; line-height:1.4; }
+  .weekly-modal-result.success { background:color-mix(in srgb,#15803d 10%,var(--card-hover)); border:1px solid color-mix(in srgb,#15803d 30%,var(--border)); color:var(--text); }
+  .weekly-modal-result.error   { background:color-mix(in srgb,#b91c1c 8%,var(--card-hover));  border:1px solid color-mix(in srgb,#b91c1c 28%,var(--border));  color:var(--text); }
+  @media (max-width:520px) {
+    .weekly-stat-val { font-size:17px; }
+    .weekly-stat-row { grid-template-columns:1fr 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -1969,6 +2025,341 @@ function renderGardenCard(g) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// MISSOURI WEEKLY MARKET SUMMARY
+// Data is stored in Cloudflare KV via /weeklyupload (POST, PIN-gated) so ALL
+// devices and users see the same numbers — no localStorage, no per-device drift.
+// Matt uploads the MDA weekly PDF each Monday; friends on iOS/Android auto-see it.
+// ──────────────────────────────────────────────────────────────────────────────
+
+let _weeklyRecords = null; // module-level cache so we don't re-fetch on re-render
+
+async function fetchWeeklyData() {
+  if (_weeklyRecords !== null) return _weeklyRecords;
+  try {
+    const res = await fetch(CF_WORKER.replace(/\/$/, "") + "/weeklydata?limit=300");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    _weeklyRecords = Array.isArray(data.records) ? data.records : [];
+  } catch (e) {
+    console.warn("[weekly] fetch failed:", e);
+    _weeklyRecords = [];
+  }
+  return _weeklyRecords;
+}
+
+function weeklyFmt(v, dec) {
+  if (v === null || v === undefined || !isFinite(v)) return "—";
+  return Number(v).toFixed(dec !== undefined ? dec : 2);
+}
+
+function weeklyBuildChart(records, seriesConfig, chartH) {
+  // seriesConfig = [{ key, color, label }]
+  // Returns SVG string for a multi-line chart with date x-axis ticks
+  if (!records || records.length < 2) {
+    return '<div class="weekly-chart-empty">Upload a few weekly PDFs to start building your multi-year price chart.</div>';
+  }
+  const W = 600, H = chartH || 160;
+  const padL = 44, padR = 10, padT = 12, padB = 28;
+  const cW = W - padL - padR, cH = H - padT - padB;
+
+  // Collect all values across all series to compute shared y scale
+  let allVals = [];
+  seriesConfig.forEach(s => {
+    records.forEach(r => { const v = r[s.key]; if (v !== null && isFinite(v)) allVals.push(v); });
+  });
+  if (!allVals.length) return '<div class="weekly-chart-empty">No numeric data to plot yet.</div>';
+  const minV = Math.min.apply(null, allVals);
+  const maxV = Math.max.apply(null, allVals);
+  const span = (maxV - minV) || 1;
+  // Add 8% padding top/bottom
+  const lo = minV - span * 0.08, hi = maxV + span * 0.08, rng = hi - lo;
+
+  const xOf = (i) => padL + i * cW / Math.max(records.length - 1, 1);
+  const yOf = (v) => padT + cH * (1 - (v - lo) / rng);
+
+  // Y grid lines (4 ticks)
+  const ticks = 4;
+  let gridSvg = "", yLabelSvg = "";
+  for (let t = 0; t <= ticks; t++) {
+    const v = lo + rng * (t / ticks);
+    const y = yOf(v);
+    gridSvg += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>`;
+    yLabelSvg += `<text x="${(padL - 4).toFixed(1)}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-soft)">${v >= 1000 ? (v/100).toFixed(0)+"h" : v.toFixed(0)}</text>`;
+  }
+
+  // X axis date ticks — show up to 6
+  let xTickSvg = "";
+  const tickCount = Math.min(6, records.length);
+  const step = Math.max(1, Math.round(records.length / tickCount));
+  for (let i = 0; i < records.length; i += step) {
+    const r = records[i];
+    const x = xOf(i);
+    const d = r.report_date ? r.report_date.slice(5) : ""; // MM-DD
+    xTickSvg += `<text x="${x.toFixed(1)}" y="${(H - 6).toFixed(1)}" text-anchor="middle" font-size="8.5" fill="var(--text-soft)">${d}</text>`;
+    xTickSvg += `<line x1="${x.toFixed(1)}" y1="${(H - padB).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(H - padB + 3).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>`;
+  }
+
+  // Series lines + dots
+  let linesSvg = "";
+  seriesConfig.forEach(s => {
+    const pts = records.map((r, i) => ({ x: xOf(i), y: r[s.key] !== null && isFinite(r[s.key]) ? yOf(r[s.key]) : null }));
+    let d = ""; let first = true;
+    pts.forEach(p => {
+      if (p.y === null) { first = true; return; }
+      d += (first ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1) + " ";
+      first = false;
+    });
+    if (d) linesSvg += `<path d="${d.trim()}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>`;
+    // Dots only if ≤20 records (gets crowded otherwise)
+    if (records.length <= 20) {
+      pts.forEach(p => {
+        if (p.y !== null) linesSvg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.8" fill="${s.color}" opacity="0.85"/>`;
+      });
+    }
+  });
+
+  // Most-recent value callouts
+  let calloutSvg = "";
+  seriesConfig.forEach(s => {
+    for (let i = records.length - 1; i >= 0; i--) {
+      const v = records[i][s.key];
+      if (v !== null && isFinite(v)) {
+        const x = xOf(i), y = yOf(v);
+        calloutSvg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${s.color}" stroke="var(--bg)" stroke-width="2"/>`;
+        break;
+      }
+    }
+  });
+
+  return `<svg class="weekly-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">${gridSvg}${yLabelSvg}${xTickSvg}${linesSvg}${calloutSvg}</svg>`;
+}
+
+function renderWeeklyMarketCard(records) {
+  const latest = records && records.length ? records[records.length - 1] : null;
+
+  // ── Stat values from latest record ──
+  const stockerVal  = latest ? weeklyFmt(latest.stocker_formula_cwt) : "—";
+  const steerLo     = latest ? weeklyFmt(latest.feeder_steer_500_600_avg_low, 2) : "—";
+  const steerHi     = latest ? weeklyFmt(latest.feeder_steer_500_600_avg_high, 2) : "—";
+  const cornKC      = latest ? weeklyFmt(latest.corn_kc_fri, 2) : "—";
+  const soyKC       = latest ? weeklyFmt(latest.soybean_kc_fri, 2) : "—";
+  const boxedChoice = latest ? weeklyFmt(latest.boxed_beef_choice_5day, 2) : "—";
+  const receipts    = latest ? (latest.total_receipts ? Number(latest.total_receipts).toLocaleString() : "—") : "—";
+  const reportDate  = latest ? latest.report_date : null;
+  const narrative   = latest ? (latest.market_narrative || "") : "";
+
+  // Week-over-week change for stocker formula
+  let stockerDelta = "";
+  if (records && records.length >= 2) {
+    const prev = records[records.length - 2].stocker_formula_cwt;
+    const curr = records[records.length - 1].stocker_formula_cwt;
+    if (isFinite(prev) && isFinite(curr)) {
+      const diff = curr - prev;
+      const sign = diff >= 0 ? "+" : "";
+      const cls  = diff >= 0 ? "color:#15803d" : "color:#b91c1c";
+      stockerDelta = `<span style="${cls};font-size:12px;font-weight:700;margin-left:5px">${sign}${diff.toFixed(2)}</span>`;
+    }
+  }
+
+  // ── Main feeder steer chart (stocker formula avg over time) ──
+  const feederSeries = [
+    { key:"stocker_formula_cwt", color:"#2d5a1b", label:"Stocker Formula $/cwt" },
+    { key:"feeder_steer_500_600_avg_high", color:"#7ec850", label:"500-600lb High" },
+    { key:"feeder_steer_500_600_avg_low",  color:"#a3c98a", label:"500-600lb Low" }
+  ];
+  const feederChart = weeklyBuildChart(records, feederSeries, 160);
+
+  // ── Grain chart (corn & soybeans) ──
+  const grainSeries = [
+    { key:"corn_kc_fri",    color:"#c49b3f", label:"Corn KC $/bu" },
+    { key:"soybean_kc_fri", color:"#8b5e3c", label:"Soy KC $/bu" }
+  ];
+  const grainChart = weeklyBuildChart(records, grainSeries, 120);
+
+  const metaLine = reportDate
+    ? `Week of ${reportDate} · ${records.length} week${records.length !== 1 ? "s" : ""} on record`
+    : (records && records.length === 0 ? "No data yet — upload your first PDF" : "Loading…");
+
+  return `<div class="weekly-card" id="weeklyMarketCard">
+  <div class="weekly-card-header">
+    <div>
+      <div class="weekly-card-title">📋 Missouri Weekly Market</div>
+      <div class="weekly-card-meta">${metaLine}</div>
+    </div>
+    <button class="weekly-upload-btn" id="weeklyUploadBtn" type="button">📤 Upload PDF</button>
+  </div>
+
+  <div class="weekly-stat-row">
+    <div class="weekly-stat highlight">
+      <div class="weekly-stat-label">Stocker Formula</div>
+      <div class="weekly-stat-val">${stockerVal}${stockerDelta}<span class="unit">$/cwt</span></div>
+      <div class="weekly-stat-sub">${latest && latest.stocker_formula_weight ? weeklyFmt(latest.stocker_formula_weight,0)+" lb avg" : "MO statewide 400-649 lb"}</div>
+    </div>
+    <div class="weekly-stat">
+      <div class="weekly-stat-label">500-600 lb Steers</div>
+      <div class="weekly-stat-val" style="font-size:15px">${steerLo}–${steerHi}<span class="unit">$/cwt</span></div>
+      <div class="weekly-stat-sub">MO regional avg range</div>
+    </div>
+    <div class="weekly-stat">
+      <div class="weekly-stat-label">Corn (KC)</div>
+      <div class="weekly-stat-val">${cornKC}<span class="unit">$/bu</span></div>
+      <div class="weekly-stat-sub">Kansas City Friday cash</div>
+    </div>
+    <div class="weekly-stat">
+      <div class="weekly-stat-label">Soybeans (KC)</div>
+      <div class="weekly-stat-val">${soyKC}<span class="unit">$/bu</span></div>
+      <div class="weekly-stat-sub">Kansas City Friday cash</div>
+    </div>
+    <div class="weekly-stat">
+      <div class="weekly-stat-label">Boxed Beef Choice</div>
+      <div class="weekly-stat-val">${boxedChoice}<span class="unit">$/cwt</span></div>
+      <div class="weekly-stat-sub">5-day avg cutout</div>
+    </div>
+    <div class="weekly-stat">
+      <div class="weekly-stat-label">Weekly Receipts</div>
+      <div class="weekly-stat-val" style="font-size:16px">${receipts}</div>
+      <div class="weekly-stat-sub">MO total head</div>
+    </div>
+  </div>
+
+  <div class="weekly-chart-wrap">
+    <div class="weekly-chart-header">
+      <div class="weekly-chart-title">📈 Feeder Steer Prices — $/cwt</div>
+      <div class="weekly-chart-legend">
+        <div class="weekly-chart-legend-item"><div class="weekly-chart-legend-dot" style="background:#2d5a1b"></div>Stocker Avg</div>
+        <div class="weekly-chart-legend-item"><div class="weekly-chart-legend-dot" style="background:#7ec850"></div>500-600lb Hi</div>
+        <div class="weekly-chart-legend-item"><div class="weekly-chart-legend-dot" style="background:#a3c98a"></div>500-600lb Lo</div>
+      </div>
+    </div>
+    ${feederChart}
+  </div>
+
+  <div class="weekly-chart-wrap" style="margin-top:10px">
+    <div class="weekly-chart-header">
+      <div class="weekly-chart-title">🌽 Grain Prices — $/bu (Kansas City)</div>
+      <div class="weekly-chart-legend">
+        <div class="weekly-chart-legend-item"><div class="weekly-chart-legend-dot" style="background:#c49b3f"></div>Corn</div>
+        <div class="weekly-chart-legend-item"><div class="weekly-chart-legend-dot" style="background:#8b5e3c"></div>Soybeans</div>
+      </div>
+    </div>
+    ${grainChart}
+  </div>
+
+  ${narrative ? `<div class="weekly-narrative"><div class="weekly-narrative-lbl">Market Summary</div>${escapeHtml(narrative)}</div>` : ""}
+</div>`;
+}
+
+function wireWeeklyMarket() {
+  const card = document.getElementById("weeklyMarketCard");
+  if (!card) return;
+  const uploadBtn = card.querySelector("#weeklyUploadBtn");
+  if (!uploadBtn) return;
+
+  uploadBtn.addEventListener("click", () => {
+    // Build modal
+    const backdrop = document.createElement("div");
+    backdrop.className = "weekly-modal-backdrop";
+    backdrop.innerHTML = `<div class="weekly-modal">
+      <div class="weekly-modal-title">📤 Upload Weekly PDF</div>
+      <div class="weekly-modal-sub">Upload the Missouri MDA Weekly Market Summary PDF. Claude will extract prices and make them visible to all users instantly.</div>
+      <label>Upload PIN</label>
+      <input type="password" id="wUploadPin" placeholder="Enter your admin PIN" autocomplete="off">
+      <label>PDF File</label>
+      <div class="weekly-modal-file-area" id="wFileArea">Tap to select the weekly PDF<br><small style="opacity:.6">Missouri MDA Weekly Market Summary</small></div>
+      <input type="file" id="wFileInput" accept="application/pdf" style="display:none">
+      <div class="weekly-modal-result" id="wUploadResult" style="display:none"></div>
+      <div class="weekly-modal-actions">
+        <button class="weekly-modal-cancel" id="wCancelBtn">Cancel</button>
+        <button class="weekly-modal-submit" id="wSubmitBtn" disabled>Upload &amp; Parse</button>
+      </div>
+    </div>`;
+    document.body.appendChild(backdrop);
+
+    const pinInput    = backdrop.querySelector("#wUploadPin");
+    const fileArea    = backdrop.querySelector("#wFileArea");
+    const fileInput   = backdrop.querySelector("#wFileInput");
+    const submitBtn   = backdrop.querySelector("#wSubmitBtn");
+    const cancelBtn   = backdrop.querySelector("#wCancelBtn");
+    const resultEl    = backdrop.querySelector("#wUploadResult");
+    let selectedFile  = null;
+
+    const checkReady = () => { submitBtn.disabled = !(selectedFile && pinInput.value.trim()); };
+    pinInput.addEventListener("input", checkReady);
+
+    fileArea.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", e => {
+      selectedFile = e.target.files && e.target.files[0];
+      if (selectedFile) {
+        fileArea.textContent = "✓ " + selectedFile.name + " (" + (selectedFile.size / 1024).toFixed(0) + " KB)";
+        fileArea.classList.add("has-file");
+      }
+      checkReady();
+    });
+
+    const close = () => document.body.removeChild(backdrop);
+    cancelBtn.addEventListener("click", close);
+    backdrop.addEventListener("click", e => { if (e.target === backdrop) close(); });
+
+    submitBtn.addEventListener("click", async () => {
+      if (!selectedFile || !pinInput.value.trim()) return;
+      if (selectedFile.size > 25 * 1024 * 1024) {
+        resultEl.style.display = "block";
+        resultEl.className = "weekly-modal-result error";
+        resultEl.innerHTML = "⚠ File too large (max 25 MB). Please use a smaller PDF.";
+        return;
+      }
+      submitBtn.disabled = true;
+      submitBtn.textContent = "⏳ Uploading…";
+      resultEl.style.display = "block";
+      resultEl.className = "weekly-modal-result";
+      resultEl.innerHTML = '<span style="color:var(--text-muted)">Sending PDF to Claude for parsing… this takes 10-20 seconds.</span>';
+
+      try {
+        // Read PDF → base64
+        const base64 = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => { const s = r.result || ""; const i = s.indexOf(","); resolve(i >= 0 ? s.slice(i+1) : s); };
+          r.onerror = () => reject(new Error("FileReader failed"));
+          r.readAsDataURL(selectedFile);
+        });
+
+        const res = await fetch(CF_WORKER.replace(/\/$/, "") + "/weeklyupload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pdf_base64: base64, upload_pin: pinInput.value.trim() })
+        });
+        const ct = res.headers.get("content-type") || "";
+        let data;
+        if (ct.includes("application/json")) data = await res.json();
+        else { const t = await res.text(); throw new Error("Worker returned non-JSON: " + t.slice(0, 100)); }
+
+        if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
+
+        resultEl.className = "weekly-modal-result success";
+        resultEl.innerHTML = `✅ Saved week of <strong>${escapeHtml(data.date)}</strong>! Stocker formula: <strong>$${weeklyFmt(data.data && data.data.stocker_formula_cwt)}/cwt</strong>. Refreshing…`;
+
+        // Invalidate cache and re-render the card
+        _weeklyRecords = null;
+        setTimeout(async () => {
+          const fresh = await fetchWeeklyData();
+          const newHtml = renderWeeklyMarketCard(fresh);
+          const tmp = document.createElement("div"); tmp.innerHTML = newHtml;
+          card.replaceWith(tmp.firstElementChild);
+          wireWeeklyMarket();
+          close();
+        }, 1800);
+
+      } catch (err) {
+        resultEl.className = "weekly-modal-result error";
+        resultEl.innerHTML = "⚠ Upload failed: " + escapeHtml(String(err.message || err));
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Upload & Parse";
+      }
+    });
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // CATTLE MARKET — Wheeler Livestock (Osceola, MO — Matt's buddy's barn)
 // Auto-fetches latest sale via Cloudflare Worker /cattleprice (Claude vision OCR
 // of Wheeler's scanned market report). Builds a 1-year price chart in
@@ -2345,10 +2736,10 @@ function wireCattleMarket() {
 }
 
 
-function renderFishingAdvisor(lake, weather, advice) {
+function renderFishingAdvisor(lake, weather, advice, weeklyRecs) {
   const mush = renderMushroomCard(getMushroomTips(weather));
   const garden = renderGardenCard(getGardenTips(weather));
-  const extras = mush + garden + renderCattleMarketCard();
+  const extras = mush + garden + renderCattleMarketCard() + renderWeeklyMarketCard(weeklyRecs || []);
   if (!advice) return '<div class="fish-advisor"><div class="fish-loading">Could not generate fishing report.</div></div>' + extras + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
   const BITE_EMOJI  = ["😴","🐢","🎣","🔥","💥"];
   const BITE_LABEL  = ["Dead Slow","Slow — Be Patient","Moderate — Worth Going","Good — Get Out There","On Fire!"];
@@ -2559,10 +2950,13 @@ async function loadOutdoor(force) {
   newPillEl.style.display = "none";
 
   const advisorDiv = document.createElement("div");
-  const initialMush   = renderMushroomCard(getMushroomTips(getCachedWeather()));
-  const initialCattle = renderCattleMarketCard();
-  const initialGarden = renderGardenCard(getGardenTips(getCachedWeather()));
-  advisorDiv.innerHTML = '<div class="fish-advisor"><div class="fish-header"><div class="fish-title">🎣 Truman Lake Fishing Report</div></div><div class="fish-loading"><span class="spinner"></span> Loading live conditions…</div></div>' + initialMush + initialGarden + initialCattle + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>'; wireCattleMarket();
+  const initialMush    = renderMushroomCard(getMushroomTips(getCachedWeather()));
+  const initialCattle  = renderCattleMarketCard();
+  const initialGarden  = renderGardenCard(getGardenTips(getCachedWeather()));
+  const initialWeekly  = renderWeeklyMarketCard([]);
+  advisorDiv.innerHTML = '<div class="fish-advisor"><div class="fish-header"><div class="fish-title">🎣 Truman Lake Fishing Report</div></div><div class="fish-loading"><span class="spinner"></span> Loading live conditions…</div></div>' + initialMush + initialGarden + initialCattle + initialWeekly + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
+  wireCattleMarket();
+  wireWeeklyMarket();
   listEl.appendChild(advisorDiv);
 
   const newsDiv = document.createElement("div");
@@ -2574,17 +2968,19 @@ async function loadOutdoor(force) {
   const cat = CATEGORIES.find(c => c.id==="outdoor");
   if (force) cat.feeds.forEach(f => localStorage.removeItem("news.cache."+f.url));
 
-  const [lakeData, newsResults] = await Promise.all([
+  const [lakeData, weeklyRecords, newsResults] = await Promise.all([
     fetchTrumanLake(),
+    fetchWeeklyData(),
     Promise.all(cat.feeds.map(f => fetchFeed(f).catch(()=>[])))
   ]);
 
   const weatherData = getCachedWeather();
   const advice = generateFishingAdvice(lakeData, weatherData);
-  advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice);
+  advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice, weeklyRecords);
   // Wire up the AI Smart Plan button now that the advisor markup is in the DOM
   wireFishSmartPlan(lakeData, weatherData, advice);
   wireCattleMarket();
+  wireWeeklyMarket();
 
   const all = newsResults.flat();
   const seen = new Set();

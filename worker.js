@@ -46,6 +46,12 @@ export default {
     if (url.pathname === "/followup") {
       return handleFollowUp(request, env);
     }
+    if (url.pathname === "/weeklyupload") {
+      return handleWeeklyUpload(request, env, ctx);
+    }
+    if (url.pathname === "/weeklydata") {
+      return handleWeeklyData(url, env, ctx);
+    }
     return handleRssProxy(url);
   }
 };
@@ -1264,3 +1270,182 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
+
+// ─────────────── MISSOURI WEEKLY MARKET SUMMARY — UPLOAD ───────────────
+// POST /weeklyupload
+// Body (JSON): { pdf_base64: string, upload_pin: string }
+// Accepts the Missouri Weekly Market Summary PDF, uses Claude to extract
+// key commodity data, then stores it in Cloudflare KV so ALL users see it.
+//
+// One-time setup (run these in your terminal):
+//   wrangler kv namespace create WEEKLY_KV          ← creates the namespace, prints the id
+//   wrangler secret put UPLOAD_PIN                  ← set any PIN you want (e.g. "cattle25")
+//   Then paste the id into wrangler.toml and run: wrangler deploy
+
+async function handleWeeklyUpload(request, env, ctx) {
+  if (request.method !== "POST") return jsonResponse({ error: "POST only" }, 405);
+  if (!env.ANTHROPIC_API_KEY) return jsonResponse({ error: "ANTHROPIC_API_KEY secret not set" }, 500);
+  if (!env.WEEKLY_KV) return jsonResponse({ error: "WEEKLY_KV namespace not bound — see wrangler.toml setup" }, 500);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonResponse({ error: "Invalid JSON body" }, 400); }
+
+  // PIN gate so only you can push data
+  const expectedPin = env.UPLOAD_PIN || "cattle25";
+  if (!body.upload_pin || body.upload_pin !== expectedPin) {
+    return jsonResponse({ error: "Invalid upload PIN" }, 403);
+  }
+
+  if (!body.pdf_base64) return jsonResponse({ error: "pdf_base64 is required" }, 400);
+
+  // ── Call Claude with the PDF document ──────────────────────────────────
+  const model = env.AI_MODEL || "claude-sonnet-4-5";
+  let claudeRes;
+  try {
+    claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "pdfs-2024-09-25",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1024,
+        messages: [{
+          role: "user",
+          content: [
+            {
+              type: "document",
+              source: {
+                type: "base64",
+                media_type: "application/pdf",
+                data: body.pdf_base64
+              }
+            },
+            {
+              type: "text",
+              text: `You are extracting data from a Missouri Weekly Market Summary PDF published by the Missouri Department of Agriculture.
+
+Return ONLY valid JSON (no markdown, no explanation) with EXACTLY these fields:
+
+{
+  "report_date": "YYYY-MM-DD",
+  "stocker_formula_cwt": <number: Missouri Stocker Formula weighted average price per cwt for 400-649 lb steers>,
+  "stocker_formula_weight": <number: weighted average weight in lbs for the stocker formula>,
+  "stocker_formula_head": <number: head count in stocker formula>,
+  "feeder_steer_500_600_avg_low": <number: average of the LOW ends of the 500-600 lb feeder steer price ranges across ALL Missouri regions listed>,
+  "feeder_steer_500_600_avg_high": <number: average of the HIGH ends of the 500-600 lb feeder steer price ranges across ALL Missouri regions listed>,
+  "corn_kc_fri": <number: Kansas City Friday corn cash price per bushel, midpoint if a range>,
+  "corn_stl_fri": <number: St. Louis Friday corn cash price per bushel, midpoint if a range>,
+  "corn_central_fri": <number: Central Missouri Friday corn cash price per bushel, midpoint if a range>,
+  "soybean_kc_fri": <number: Kansas City Friday soybean cash price per bushel, midpoint if a range>,
+  "soybean_stl_fri": <number: St. Louis Friday soybean cash price per bushel, midpoint if a range>,
+  "boxed_beef_choice_5day": <number: 5-day simple average for Choice boxed beef cutout>,
+  "boxed_beef_select_5day": <number: 5-day simple average for Select boxed beef cutout>,
+  "total_receipts": <integer: total weekly cattle receipts>,
+  "week_ago_receipts": <integer: week-ago cattle receipts>,
+  "year_ago_receipts": <integer: year-ago cattle receipts>,
+  "market_narrative": "<2-3 sentence plain-English summary of the week's market conditions from the main weekly summary section>"
+}
+
+Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY across regions that explicitly list a 500-600 lb steer line (skip any region that doesn't list it).`
+            }
+          ]
+        }]
+      })
+    });
+  } catch (err) {
+    return jsonResponse({ error: "Claude API fetch failed: " + err.message }, 502);
+  }
+
+  if (!claudeRes.ok) {
+    const errText = await claudeRes.text();
+    return jsonResponse({ error: "Claude API error " + claudeRes.status, details: errText.slice(0, 600) }, 502);
+  }
+
+  const claudeData = await claudeRes.json();
+  const rawText = (claudeData.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+
+  let extracted;
+  try {
+    const cleaned = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    extracted = JSON.parse(cleaned);
+  } catch (err) {
+    return jsonResponse({ error: "Could not parse Claude response as JSON", raw: rawText.slice(0, 800) }, 502);
+  }
+
+  if (!extracted.report_date || !/^\d{4}-\d{2}-\d{2}$/.test(extracted.report_date)) {
+    return jsonResponse({ error: "Claude did not return a valid report_date", raw: rawText.slice(0, 400) }, 502);
+  }
+
+  // ── Store in KV ────────────────────────────────────────────────────────
+  const record = {
+    ...extracted,
+    uploaded_at: new Date().toISOString(),
+    model
+  };
+  const kvKey = "weekly:" + extracted.report_date;
+
+  // KV TTL: 4 years (won't expire within any normal tracking window)
+  await env.WEEKLY_KV.put(kvKey, JSON.stringify(record), { expirationTtl: 4 * 365 * 24 * 3600 });
+
+  // Update the sorted date index
+  const indexRaw = await env.WEEKLY_KV.get("weekly:index");
+  const index = indexRaw ? JSON.parse(indexRaw) : [];
+  if (!index.includes(extracted.report_date)) {
+    index.push(extracted.report_date);
+    index.sort();
+    await env.WEEKLY_KV.put("weekly:index", JSON.stringify(index), { expirationTtl: 4 * 365 * 24 * 3600 });
+  }
+
+  return jsonResponse({ success: true, date: extracted.report_date, data: record });
+}
+
+// ─────────────── MISSOURI WEEKLY MARKET SUMMARY — READ ───────────────
+// GET /weeklydata[?limit=N]
+// Returns all stored weekly records from KV (sorted oldest → newest).
+// Called by every user's browser to render charts and the latest summary.
+// Cached at the CDN edge for 1 hour so reads are fast everywhere.
+
+async function handleWeeklyData(url, env, ctx) {
+  if (!env.WEEKLY_KV) return jsonResponse({ error: "WEEKLY_KV namespace not bound — see wrangler.toml setup" }, 500);
+
+  const limit = Math.min(parseInt(url.searchParams.get("limit") || "300", 10), 300);
+
+  // ── Try CDN cache first ───────────────────────────────────────────────
+  const cache = caches.default;
+  const cacheKey = "https://weeklydata-cache.local/v1/limit=" + limit;
+  const cached = await cache.match(new Request(cacheKey));
+  if (cached) {
+    const payload = await cached.json();
+    return jsonResponse({ ...payload, cache_hit: true });
+  }
+
+  // ── Read index then fetch each record ─────────────────────────────────
+  const indexRaw = await env.WEEKLY_KV.get("weekly:index");
+  if (!indexRaw) return jsonResponse({ records: [], count: 0 });
+
+  const index = JSON.parse(indexRaw);
+  const dates = index.slice(-limit);
+
+  const records = (await Promise.all(
+    dates.map(async d => {
+      const raw = await env.WEEKLY_KV.get("weekly:" + d);
+      return raw ? JSON.parse(raw) : null;
+    })
+  )).filter(Boolean).sort((a, b) => a.report_date.localeCompare(b.report_date));
+
+  const payload = { records, count: records.length, fetched_at: new Date().toISOString() };
+
+  // Cache at edge for 1 hour
+  ctx.waitUntil(
+    cache.put(new Request(cacheKey), new Response(JSON.stringify(payload), {
+      headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" }
+    }))
+  );
+
+  return jsonResponse(payload);
+}

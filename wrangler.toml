@@ -2,6 +2,20 @@ name = "rss-proxy"
 main = "worker.js"
 compatibility_date = "2026-05-01"
 
+# ── KV namespace for Missouri Weekly Market Summary data ──────────────────────
+# One-time setup:
+#   1. Run:  wrangler kv namespace create WEEKLY_KV
+#   2. Copy the printed `id = "..."` value and paste it below (replace the placeholder)
+#   3. Deploy:  wrangler deploy
+# The WEEKLY_KV data persists forever and is shared across ALL users on every device.
+[[kv_namespaces]]
+binding = "WEEKLY_KV"
+id = "0f86e3f7503f41279b0af5e8f132cacd"
+
+# ── Secrets (set in Cloudflare dashboard or via wrangler secret put) ──────────
+# ANTHROPIC_API_KEY  — Claude API key for PDF parsing and cattle price OCR
+# UPLOAD_PIN         — PIN to protect the weekly PDF upload endpoint (set any value you like)
+#
 # Notes:
 # - Worker name matches the existing one (rss-proxy.bowonfire2007.workers.dev)
 # - Secrets like ANTHROPIC_API_KEY are managed in the Cloudflare dashboard

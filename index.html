@@ -272,20 +272,31 @@
     main { padding:4px 16px max(env(safe-area-inset-bottom),24px); }
     header { padding-top:max(env(safe-area-inset-top),4px); }
     header .header-row { padding-bottom:2px; }
-    .weather { padding:6px 0; }
-    .quote-bar { padding:7px 0; margin-bottom:3px; }
-    .quote-text { font-size:13px; line-height:1.45; }
-    .quote-author { margin-top:4px; }
-    .section-bar { margin-top:8px; padding:6px 0 5px; }
-    .section-label { font-size:14px; letter-spacing:0.16em; }
-    .quick-tabs { padding:3px 0 6px; gap:5px; }
-    .qtab { padding:4px 11px; font-size:12px; }
+    /* ── Compact mobile header — save ~130px of sticky chrome ── */
+    header { padding-top:max(env(safe-area-inset-top),3px); }
+    header .header-row { padding-bottom:1px; }
+    /* Hide quote of the day in the sticky header — biggest single space-saver */
+    .quote-bar { display:none; }
+    /* Collapse weather to current-conditions only — hide the multi-day forecast row */
+    .weather { padding:4px 0 3px; gap:4px; }
+    .w-forecast { display:none; }
+    /* Trim meta row to just the essentials (wind + precip) */
+    .w-meta { font-size:10.5px; gap:5px; }
+    .w-meta span:not(.w-lake) { white-space:nowrap; }
+    .w-temp { font-size:19px; }
+    .w-icon { font-size:19px; }
+    /* Shrink dateline — hide the centre motto, keep date + edition */
+    .dateline { padding:3px 0 4px; }
+    .dateline-volume { display:none; }
+    /* Tighten section bar and tabs */
+    .section-bar { margin-top:5px; padding:4px 0 4px; }
+    .section-label { font-size:13px; letter-spacing:0.14em; }
+    .quick-tabs { padding:2px 0 5px; gap:4px; }
+    .qtab { padding:4px 10px; font-size:11.5px; }
     .icon-btn { width:32px; height:32px; }
     .icon-btn svg { width:15px; height:15px; }
     main, .header-row, header, .weather, .section-bar, .quick-tabs, .quote-bar, .search-wrap, .dateline { padding-left:14px; padding-right:14px; }
     .weather, .section-bar, .quick-tabs, .quote-bar, .dateline { padding-left:0; padding-right:0; }
-    .w-temp { font-size:20px; }
-    .w-meta { font-size:11px; gap:6px; }
     .skel-img { width:84px; height:84px; }
     .font-btn { display:none; }
   }

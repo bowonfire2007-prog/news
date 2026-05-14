@@ -637,7 +637,12 @@ const CATEGORIES = [
     { source:"Reuters (via Google)", url:"https://news.google.com/rss/search?q=when:1d+site:reuters.com&hl=en-US&gl=US&ceid=US:en" },
     { source:"Washington Post", url:"https://feeds.washingtonpost.com/rss/world" },
     { source:"ABC News", url:"https://abcnews.go.com/abcnews/topstories" },
-    { source:"DW (Germany)", url:"https://rss.dw.com/rdf/rss-en-all" }
+    { source:"DW (Germany)", url:"https://rss.dw.com/rdf/rss-en-all" },
+    { source:"WSJ World", url:"https://news.google.com/rss/search?q=when:1d+site:wsj.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Axios", url:"https://api.axios.com/feed/" },
+    { source:"PBS NewsHour", url:"https://www.pbs.org/newshour/feeds/rss/headlines" },
+    { source:"Politico", url:"https://www.politico.com/rss/politics08.xml" },
+    { source:"The Hill", url:"https://thehill.com/feed/" }
   ]},
   { id:"local", label:"Local (MO)", maxAgeHours:504, feeds:[
     // ─── ULTRALOCAL — Clinton, Henry County, Truman Lake area ───
@@ -694,7 +699,9 @@ const CATEGORIES = [
     { source:"Kyiv Post", url:"https://www.kyivpost.com/feed" },
     { source:"BBC Europe", url:"https://feeds.bbci.co.uk/news/world/europe/rss.xml" },
     { source:"Guardian Ukraine", url:"https://www.theguardian.com/world/ukraine/rss" },
-    { source:"RFE/RL Ukraine", url:"https://www.rferl.org/api/zrqiteuuir" }
+    { source:"RFE/RL Ukraine", url:"https://www.rferl.org/api/zrqiteuuir" },
+    { source:"Institute for the Study of War", url:"https://www.understandingwar.org/rss.xml" },
+    { source:"Meduza", url:"https://meduza.io/rss/en/all" }
   ]},
   { id:"iran", label:"Iran / Middle East", maxAgeHours:48, feeds:[
     { source:"Google News", url:"https://news.google.com/rss/search?q=iran+israel+war&hl=en-US&gl=US&ceid=US:en" },
@@ -705,7 +712,10 @@ const CATEGORIES = [
     { source:"Jerusalem Post", url:"https://rss.jpost.com/rss/rssfeedsfrontpage.aspx" },
     { source:"Middle East Eye", url:"https://www.middleeasteye.net/rss" },
     { source:"Iran International", url:"https://www.iranintl.com/en/rss.xml" },
-    { source:"Guardian ME", url:"https://www.theguardian.com/world/middleeast/rss" }
+    { source:"Guardian ME", url:"https://www.theguardian.com/world/middleeast/rss" },
+    { source:"Reuters ME", url:"https://news.google.com/rss/search?q=when:1d+site:reuters.com+%22middle+east%22+OR+israel+OR+iran+OR+gaza&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Arab News", url:"https://www.arabnews.com/rss.xml" },
+    { source:"The National UAE", url:"https://www.thenationalnews.com/rss" }
   ]},
   { id:"scs", label:"South China Sea", maxAgeHours:48, feeds:[
     { source:"Google News (SCS)", url:"https://news.google.com/rss/search?q=%22south+china+sea%22+OR+taiwan+OR+philippines+china&hl=en-US&gl=US&ceid=US:en" },
@@ -715,7 +725,10 @@ const CATEGORIES = [
     { source:"SCMP (HK)", url:"https://www.scmp.com/rss/91/feed" },
     { source:"Straits Times", url:"https://www.straitstimes.com/news/asia/rss.xml" },
     { source:"Focus Taiwan", url:"https://focustaiwan.tw/RSS/PD.aspx" },
-    { source:"Inquirer (PH)", url:"https://www.inquirer.net/fullfeed" }
+    { source:"Inquirer (PH)", url:"https://www.inquirer.net/fullfeed" },
+    { source:"Naval News", url:"https://www.navalnews.com/feed/" },
+    { source:"The Diplomat", url:"https://thediplomat.com/feed" },
+    { source:"Japan Times", url:"https://www.japantimes.co.jp/feed/" }
   ]},
   { id:"tech", label:"Tech", maxAgeHours:72, feeds:[
     { source:"The Verge", url:"https://www.theverge.com/rss/index.xml" },
@@ -724,7 +737,10 @@ const CATEGORIES = [
     { source:"TechCrunch", url:"https://techcrunch.com/feed/" },
     { source:"Engadget", url:"https://www.engadget.com/rss.xml" },
     { source:"Wired", url:"https://www.wired.com/feed/rss" },
-    { source:"MIT Tech Review", url:"https://www.technologyreview.com/feed/" }
+    { source:"MIT Tech Review", url:"https://www.technologyreview.com/feed/" },
+    { source:"9to5Mac", url:"https://9to5mac.com/feed/" },
+    { source:"9to5Google", url:"https://9to5google.com/feed/" },
+    { source:"Tom's Hardware", url:"https://www.tomshardware.com/feeds/all" }
   ]},
   { id:"business", label:"Business", maxAgeHours:48, feeds:[
     { source:"BBC Business", url:"https://feeds.bbci.co.uk/news/business/rss.xml" },
@@ -732,7 +748,10 @@ const CATEGORIES = [
     { source:"Yahoo Finance", url:"https://finance.yahoo.com/news/rssindex" },
     { source:"Fortune", url:"https://fortune.com/feed/" },
     { source:"MarketWatch", url:"https://feeds.content.dowjones.io/public/rss/mw_topstories" },
-    { source:"Bloomberg (Google)", url:"https://news.google.com/rss/search?q=when:1d+site:bloomberg.com&hl=en-US&gl=US&ceid=US:en" }
+    { source:"Bloomberg (Google)", url:"https://news.google.com/rss/search?q=when:1d+site:bloomberg.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"WSJ Markets", url:"https://news.google.com/rss/search?q=when:1d+site:wsj.com+markets+OR+earnings+OR+stocks&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Reuters Business", url:"https://news.google.com/rss/search?q=when:1d+site:reuters.com+business+OR+markets&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Financial Times", url:"https://news.google.com/rss/search?q=when:1d+site:ft.com&hl=en-US&gl=US&ceid=US:en" }
   ]},
   { id:"science", label:"Science", maxAgeHours:96, feeds:[
     { source:"BBC Science", url:"https://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
@@ -740,7 +759,10 @@ const CATEGORIES = [
     { source:"New Scientist", url:"https://www.newscientist.com/feed/home/" },
     { source:"Scientific American", url:"https://rss.sciam.com/ScientificAmerican-Global" },
     { source:"Nature", url:"https://www.nature.com/nature.rss" },
-    { source:"NASA", url:"https://www.nasa.gov/news-release/feed/" }
+    { source:"NASA", url:"https://www.nasa.gov/news-release/feed/" },
+    { source:"Science Magazine", url:"https://www.science.org/rss/news_current.xml" },
+    { source:"Quanta Magazine", url:"https://www.quantamagazine.org/feed/" },
+    { source:"Phys.org", url:"https://phys.org/rss-feed/" }
   ]},
   { id:"philippines", label:"Philippines", maxAgeHours:72, feeds:[
     { source:"Panay News", url:"https://www.panaynews.net/feed/" },
@@ -753,7 +775,10 @@ const CATEGORIES = [
     { source:"Manila Bulletin", url:"https://mb.com.ph/feed/" },
     { source:"ABS-CBN News", url:"https://news.abs-cbn.com/rss/news" },
     { source:"GMA News", url:"https://data.gmanetwork.com/gno/rss/news/nation/feed.xml" },
-    { source:"SunStar Iloilo (Google)", url:"https://news.google.com/rss/search?q=site%3Asunstar.com.ph+Iloilo&hl=en-PH&gl=PH&ceid=PH:en" }
+    { source:"SunStar Iloilo (Google)", url:"https://news.google.com/rss/search?q=site%3Asunstar.com.ph+Iloilo&hl=en-PH&gl=PH&ceid=PH:en" },
+    { source:"Philippine News Agency", url:"https://www.pna.gov.ph/rss/news" },
+    { source:"Manila Times", url:"https://www.manilatimes.net/feed/" },
+    { source:"Mindanao News", url:"https://news.google.com/rss/search?q=Mindanao+OR+Davao+OR+%22Cagayan+de+Oro%22&hl=en-PH&gl=PH&ceid=PH:en" }
   ]},
   { id:"cannabis", label:"Cannabis", maxAgeHours:96, feeds:[
     { source:"Marijuana Moment", url:"https://www.marijuanamoment.net/feed/" },
@@ -767,7 +792,9 @@ const CATEGORIES = [
     { source:"Cannabis Science", url:"https://news.google.com/rss/search?q=cannabis+science+study+cannabinoid+research&hl=en-US&gl=US&ceid=US:en" },
     { source:"THC/CBD Research", url:"https://news.google.com/rss/search?q=THC+OR+CBD+OR+cannabinoid+research+study+2025+2026&hl=en-US&gl=US&ceid=US:en" },
     { source:"Cannabis Competitions", url:"https://news.google.com/rss/search?q=%22Cannabis+Cup%22+OR+%22Emerald+Cup%22+OR+cannabis+award&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Missouri Cannabis", url:"https://news.google.com/rss/search?q=Missouri+cannabis+marijuana&hl=en-US&gl=US&ceid=US:en" }
+    { source:"Missouri Cannabis", url:"https://news.google.com/rss/search?q=Missouri+cannabis+marijuana&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Leafly News", url:"https://www.leafly.com/news/feed" },
+    { source:"Cannabis Now", url:"https://cannabisnow.com/feed/" }
   ]},
   { id:"outdoor", label:"MO Outdoor", isOutdoor:true, maxAgeHours:168, feeds:[
     // ─── OFFICIAL / AUTHORITATIVE ───
@@ -868,15 +895,16 @@ const SOURCE_WEIGHT = {
   "NPR":1.7,
   "Guardian":1.6,"Guardian Ukraine":1.6,"Guardian ME":1.6,
   "NYT World":1.6,"Al Jazeera":1.5,"Washington Post":1.5,
-  "DW (Germany)":1.4,"CNN":1.4,"ABC News":1.4,
-  "Kyiv Independent":1.8,"Ukrainska Pravda":1.7,"RFE/RL Ukraine":1.6,"Ukrinform":1.5,"United24 Media":1.4,"Kyiv Post":1.4,
-  "Times of Israel":1.6,"Iran International":1.6,"Haaretz":1.5,"Jerusalem Post":1.4,"Middle East Eye":1.4,
-  "Nikkei Asia":1.7,"Focus Taiwan":1.6,"Straits Times":1.5,"SCMP (HK)":1.5,
-  "Ars Technica":1.6,"Ars Science":1.6,"MIT Tech Review":1.6,"Wired":1.5,"The Verge":1.5,"TechCrunch":1.4,"Engadget":1.3,
-  "Bloomberg (Google)":1.8,"CNBC":1.5,"MarketWatch":1.5,"Fortune":1.4,"Yahoo Finance":1.3,
-  "Nature":1.9,"Scientific American":1.7,"New Scientist":1.6,"NASA":1.5,
+  "DW (Germany)":1.4,"CNN":1.4,"ABC News":1.4,"WSJ World":1.7,"PBS NewsHour":1.6,"Axios":1.5,"Politico":1.4,"The Hill":1.2,
+  "Institute for the Study of War":1.9,"Kyiv Independent":1.8,"Ukrainska Pravda":1.7,"Meduza":1.6,"RFE/RL Ukraine":1.6,"Ukrinform":1.5,"United24 Media":1.4,"Kyiv Post":1.4,
+  "Reuters ME":1.8,"Times of Israel":1.6,"Iran International":1.6,"Haaretz":1.5,"The National UAE":1.4,"Jerusalem Post":1.4,"Middle East Eye":1.4,"Arab News":1.3,
+  "Nikkei Asia":1.7,"Focus Taiwan":1.6,"The Diplomat":1.6,"Straits Times":1.5,"SCMP (HK)":1.5,"Japan Times":1.5,"Naval News":1.5,
+  "Ars Technica":1.6,"Ars Science":1.6,"MIT Tech Review":1.6,"Wired":1.5,"The Verge":1.5,"TechCrunch":1.4,"Tom's Hardware":1.4,"9to5Mac":1.3,"9to5Google":1.3,"Engadget":1.3,
+  "Bloomberg (Google)":1.8,"WSJ Markets":1.8,"Reuters Business":1.8,"Financial Times":1.7,"CNBC":1.5,"MarketWatch":1.5,"Fortune":1.4,"Yahoo Finance":1.3,
+  "Nature":1.9,"Science Magazine":1.9,"Scientific American":1.7,"Quanta Magazine":1.7,"New Scientist":1.6,"NASA":1.5,"Phys.org":1.3,
   "Missouri Independent":1.7,"KCUR":1.5,"St. Louis Public Radio":1.4,"Missouri Times":1.3,
-  "Marijuana Moment":1.6,"MJBizDaily":1.5,
+  "Marijuana Moment":1.6,"MJBizDaily":1.5,"Leafly News":1.4,"Cannabis Now":1.3,
+  "Philippine News Agency":1.5,"Manila Times":1.3,
   // ── OUTDOOR / FISHING / HUNTING ──
   "MDC News":1.7,"USACE Kansas City":1.6,
   "In-Fisherman":1.5,"Bassmaster":1.5,"Wired2Fish":1.4,"Major League Fishing":1.4,

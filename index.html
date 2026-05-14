@@ -2139,7 +2139,7 @@ function getMushroomTips(weather) {
     spots = ["South-facing river bottom slopes warm first","Dying elms along the Grand & Tebo"];
     tips.push("Soil temp is the trigger — when 4-inch soil hits 50°F and stays there, the first greys pop within days. Until then, scout terrain and mark dying elms so you're ready.");
     tips.push("First flush is almost always grey morels on south-facing slopes near water. Big yellows follow 1–2 weeks later on flatter ground.");
-  } else if (month === 4 || (month === 3 && day >= 25) || (month === 5 && day <= 15)) {
+  } else if (month === 4 || (month === 3 && day >= 25)) {
     phase = "morel"; banner = "🍄"; headline = "Morel Season — Prime Window";
     sub = "Hunt mornings after a warm rain. Move slow.";
     species = ["Grey Morels","Yellow Morels","Pheasant Back","Half-Frees"];
@@ -2151,7 +2151,19 @@ function getMushroomTips(weather) {
     if (recentMm > 0.1 || rain > 0.1) tips.push("Rain just hit — wait 24–48 hours. Morels swell visibly after a warm rain, and that's when they're easiest to spot.");
     idTip = "TRUE morels have a hollow stem and the cap is fully attached and pitted like a honeycomb. FALSE morels (Gyromitra / 'big reds') have a chambered, brain-like cap and are toxic. When in doubt, slice top-to-bottom: true morels are completely hollow.";
     warnTip = "Never eat any wild mushroom you haven't 100% positively ID'd — get a second opinion the first few times. Cook all morels thoroughly; raw morels can make you sick even when correctly ID'd.";
-  } else if ((month === 5 && day > 15) || month === 6) {
+  } else if (month === 5 && day <= 12) {
+    phase = "post-morel"; banner = "🌿"; headline = "Morels Are Done — Pivot to Summer Crew";
+    sub = "Season is over for morels. Pheasant back still going; chanterelles 4–6 weeks out.";
+    species = ["Pheasant Back (Dryad's Saddle)","Oyster (on dead hardwoods)","Wine Cap (in mulched areas)","Wood Ear (on elder)"];
+    spots = ["Dead standing cottonwood, box elder, sweet gum (oysters)","Large dying elm or ash with shelf fungi (pheasant back)","Mulched garden beds or wood chip piles (wine cap)","Dead elderberry stems (wood ear)"];
+    tips.push("Morel season is finished for Henry County — soil temps are too high and any remaining fruitings are old, degraded, or slimy. Don't waste time chasing them.");
+    tips.push("Pheasant Back (Dryad's Saddle) is often still going through mid-May on large dying elms, ash, and cottonwood. Pick the young, tender growth at the outer edge — the middle gets tough fast. It smells like watermelon rind.");
+    tips.push("Oyster mushrooms can appear on dead standing hardwoods during warm, humid stretches right now. Look up — they often grow 6–15 ft high on box elder, cottonwood, and sweet gum.");
+    tips.push("This is a good time to scout your summer spots. Walk oak-hickory ridges and note where deer trails cross mossy ground — those areas will push chanterelles in 4–6 weeks after warm rains.");
+    if (temp !== null && temp >= 70 && (rain > 0.1 || recentMm > 0.1)) tips.push("Warm and wet right now — check dead hardwoods for oysters and pheasant back. The conditions are right.");
+    idTip = "Pheasant Back has a distinctive watermelon-rind smell, pore surface underneath (not gills), and grows in overlapping shelves from living or recently dead wood. No dangerous lookalikes in Missouri.";
+    warnTip = "Never eat any wild mushroom you haven't 100% positively ID'd. When in doubt, leave it out.";
+  } else if ((month === 5 && day > 12) || month === 6) {
     phase = "early-summer"; banner = "🌾"; headline = "Morels Done — Summer Crew Coming";
     sub = "Switch focus to oak/hickory ridges after warm rains.";
     species = ["Chanterelles (golden)","Chicken-of-the-Woods","Black Trumpets","Oyster (on dead hardwoods)","Indigo Milky","Wood Ear (on elder)"];

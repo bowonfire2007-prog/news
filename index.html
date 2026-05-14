@@ -770,16 +770,31 @@ const CATEGORIES = [
     { source:"Missouri Cannabis", url:"https://news.google.com/rss/search?q=Missouri+cannabis+marijuana&hl=en-US&gl=US&ceid=US:en" }
   ]},
   { id:"outdoor", label:"MO Outdoor", isOutdoor:true, maxAgeHours:168, feeds:[
+    // ─── OFFICIAL / AUTHORITATIVE ───
+    { source:"MDC News", url:"https://mdc.mo.gov/newsroom/rss" },
+    { source:"USACE Kansas City", url:"https://news.google.com/rss/search?q=%22Kansas+City+District%22+%22Corps+of+Engineers%22+OR+%22Truman+Dam%22+OR+%22Truman+Lake%22+release&hl=en-US&gl=US&ceid=US:en" },
+    // ─── MISSOURI-SPECIFIC ───
     { source:"Truman Lake Fishing", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+fishing+OR+crappie+OR+bass+OR+catfish&hl=en-US&gl=US&ceid=US:en" },
     { source:"Missouri Fishing", url:"https://news.google.com/rss/search?q=Missouri+fishing+crappie+bass+catfish+walleye&hl=en-US&gl=US&ceid=US:en" },
-    { source:"MO Conservation", url:"https://news.google.com/rss/search?q=site:mdc.mo.gov+fishing+OR+hunting&hl=en-US&gl=US&ceid=US:en" },
     { source:"MO Hunting", url:"https://news.google.com/rss/search?q=Missouri+hunting+deer+turkey+duck+dove+season&hl=en-US&gl=US&ceid=US:en" },
+    { source:"CWD Missouri", url:"https://news.google.com/rss/search?q=Missouri+%22chronic+wasting+disease%22+OR+CWD+deer&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Game & Fish MO", url:"https://news.google.com/rss/search?q=site%3Agameandfishmag.com+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Lake of the Ozarks Fishing", url:"https://news.google.com/rss/search?q=%22Lake+of+the+Ozarks%22+fishing+OR+boating&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MO State Parks", url:"https://news.google.com/rss/search?q=Missouri+state+park+OR+%22Corps+of+Engineers%22+campground+lake&hl=en-US&gl=US&ceid=US:en" },
+    // ─── REGIONAL / NATIONAL ───
     { source:"Midwest Fishing Report", url:"https://news.google.com/rss/search?q=midwest+fishing+report+bass+crappie+catfish+walleye&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Wired2Fish", url:"https://www.wired2fish.com/feed/" },
+    { source:"Bassmaster", url:"https://www.bassmaster.com/rss.xml" },
+    { source:"Major League Fishing", url:"https://majorleaguefishing.com/feed/" },
+    { source:"Crappie Tournaments", url:"https://news.google.com/rss/search?q=%22Crappie+Masters%22+OR+%22Crappie+USA%22+tournament&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Bass Pro 1Source", url:"https://1source.basspro.com/feed" },
+    { source:"MeatEater", url:"https://news.google.com/rss/search?q=site%3Athemeateater.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Realtree", url:"https://www.realtree.com/feed" },
+    { source:"Ducks Unlimited", url:"https://news.google.com/rss/search?q=%22Ducks+Unlimited%22+waterfowl+OR+duck+season&hl=en-US&gl=US&ceid=US:en" },
+    { source:"NWTF Turkey", url:"https://news.google.com/rss/search?q=%22National+Wild+Turkey+Federation%22+OR+NWTF+turkey+hunting&hl=en-US&gl=US&ceid=US:en" },
     { source:"Outdoor Life", url:"https://www.outdoorlife.com/rss/" },
     { source:"Field & Stream", url:"https://www.fieldandstream.com/rss/" },
-    { source:"In-Fisherman", url:"https://www.in-fisherman.com/rss/" },
-    { source:"MO State Parks", url:"https://news.google.com/rss/search?q=Missouri+state+park+OR+%22Corps+of+Engineers%22+campground+lake&hl=en-US&gl=US&ceid=US:en" }
+    { source:"In-Fisherman", url:"https://www.in-fisherman.com/rss/" }
   ]}
 ];
 
@@ -862,6 +877,11 @@ const SOURCE_WEIGHT = {
   "Nature":1.9,"Scientific American":1.7,"New Scientist":1.6,"NASA":1.5,
   "Missouri Independent":1.7,"KCUR":1.5,"St. Louis Public Radio":1.4,"Missouri Times":1.3,
   "Marijuana Moment":1.6,"MJBizDaily":1.5,
+  // ── OUTDOOR / FISHING / HUNTING ──
+  "MDC News":1.7,"USACE Kansas City":1.6,
+  "In-Fisherman":1.5,"Bassmaster":1.5,"Wired2Fish":1.4,"Major League Fishing":1.4,
+  "MeatEater":1.4,"Field & Stream":1.3,"Outdoor Life":1.3,"Game & Fish MO":1.3,
+  "Realtree":1.2,"Bass Pro 1Source":1.1,
   "default":1.0
 };
 

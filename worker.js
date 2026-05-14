@@ -52,6 +52,9 @@ export default {
     if (url.pathname === "/weeklydata") {
       return handleWeeklyData(url, env, ctx);
     }
+    if (url.pathname === "/watertemp") {
+      return handleWaterTemp(url, ctx);
+    }
     if (url.pathname === "/lake-reading") {
       return handleLakeReading(request, env, ctx);
     }
@@ -142,10 +145,22 @@ async function handleFishPlan(request, env, ctx) {
 }
 
 function buildFishPlanPrompt(b) {
-  const lake = b.lake || {};
-  const wx = b.weather || {};
-  const wind = b.wind || {};
-  const history = Array.isArray(b.lakeHistory) ? b.lakeHistory : [];
+  const lake    = b.lake    || {};
+  const wx      = b.weather || {};
+  const wind    = b.wind    || {};
+  const moon    = b.moon    || {};
+  const sol     = b.solunar || {};
+  const baro    = b.baro    || null;
+  const history = Array.isArray(b.lakeHistory)    ? b.lakeHistory    : [];
+  const catches = Array.isArray(b.recentCatches)  ? b.recentCatches  : [];
+
+  // Determine the target date/time and month
+  const targetDate = b.targetDateTime ? new Date(b.targetDateTime) : new Date();
+  const monthNum  = targetDate.getUTCMonth() + 1;
+  const monthName = targetDate.toLocaleDateString("en-US", { month: "long" });
+  const targetLabel = b.targetLabel || targetDate.toLocaleString("en-US", { weekday:"long", month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
+
+  // ── Conditions block ──
   const lines = [];
   if (Number.isFinite(lake.stage))       lines.push(`Pool elevation: ${lake.stage.toFixed(1)} ft (normal pool 706.0 ft, flood pool 739.6 ft)`);
   if (Number.isFinite(lake.dailyChange)) lines.push(`24h change: ${lake.dailyChange >= 0 ? "+" : ""}${lake.dailyChange.toFixed(2)} ft (${lake.dailyChange < -0.1 ? "falling" : lake.dailyChange > 0.1 ? "rising" : "stable"})`);
@@ -153,55 +168,62 @@ function buildFishPlanPrompt(b) {
     const net = lake.inflow - lake.outflow;
     lines.push(`Inflow: ${lake.inflow.toLocaleString()} cfs / Outflow: ${lake.outflow.toLocaleString()} cfs (net ${net >= 0 ? "+" : ""}${net.toLocaleString()} cfs — dam ${net < -2000 ? "releasing hard" : net > 2000 ? "holding back" : "near balance"})`);
   }
-  if (wind.dir) lines.push(`Wind: ${wind.dir}${Number.isFinite(wind.speed) ? " " + Math.round(wind.speed) + " mph" : ""}${Number.isFinite(wind.sustainedHours) ? ", sustained " + wind.sustainedHours + "h" : ""}`);
-  if (Number.isFinite(wx.temp))   lines.push(`Air temp: ${Math.round(wx.temp)}°F${Number.isFinite(wx.feels) ? " (feels " + Math.round(wx.feels) + "°)" : ""}`);
-  if (wx.condition)               lines.push(`Sky: ${wx.condition}`);
-  if (Number.isFinite(wx.humidity)) lines.push(`Humidity: ${wx.humidity}%`);
+  if (Number.isFinite(b.waterTempF)) lines.push(`Water temp: ${b.waterTempF}°F (USGS)`);
+  if (wind.dir)                      lines.push(`Wind: ${wind.dir}${Number.isFinite(wind.speed) ? " " + Math.round(wind.speed) + " mph" : ""}${Number.isFinite(wind.sustainedHours) ? ", sustained " + wind.sustainedHours + "h" : ""}`);
+  if (Number.isFinite(wx.temp))      lines.push(`Air temp: ${Math.round(wx.temp)}°F${Number.isFinite(wx.feels) ? " (feels " + Math.round(wx.feels) + "°)" : ""}`);
+  if (wx.condition)                  lines.push(`Sky: ${wx.condition}`);
+  if (Number.isFinite(wx.humidity))  lines.push(`Humidity: ${wx.humidity}%`);
 
-  // Multi-week lake trend from KV history
+  // ── Barometric pressure ──
+  const baroLine = baro
+    ? `Barometer: ${baro.pressure} hPa — ${baro.trend} (${baro.change > 0 ? "+" : ""}${baro.change} hPa / 6h)`
+    : "";
+
+  // ── Moon & solunar ──
+  const moonLine = moon.phaseName
+    ? `Moon: ${moon.emoji || ""} ${moon.phaseName}, ${moon.illumination}% illuminated, day ${Math.floor(moon.age || 0)} of cycle`
+    : "";
+  const solLines = (sol.major1 && sol.major2) ? [
+    `Solunar major feed windows: ${sol.major1} and ${sol.major2} (peak activity — plan to be on the water)`,
+    `Solunar minor feed windows: ${sol.minor1} and ${sol.minor2}`
+  ] : [];
+
+  // ── Multi-week lake trend ──
   const historyLines = [];
   if (history.length >= 3) {
-    const oldest = history[0];
-    const newest = history[history.length - 1];
-    const msPerDay = 86400000;
-    const daySpan = Math.max(1, Math.round((new Date(newest.date) - new Date(oldest.date)) / msPerDay));
+    const oldest = history[0], newest = history[history.length - 1];
+    const daySpan = Math.max(1, Math.round((new Date(newest.date) - new Date(oldest.date)) / 86400000));
     const totalChange = newest.elevation - oldest.elevation;
     const trendWord = totalChange < -0.3 ? "falling" : totalChange > 0.3 ? "rising" : "stable";
-    historyLines.push(`Multi-week trend (${daySpan} days): ${trendWord} ${Math.abs(totalChange).toFixed(1)} ft total — from ${oldest.elevation.toFixed(1)} ft to ${newest.elevation.toFixed(1)} ft`);
-
-    // Count consecutive falling/rising days at the end of the series
+    historyLines.push(`${daySpan}-day trend: ${trendWord} ${Math.abs(totalChange).toFixed(1)} ft total — from ${oldest.elevation.toFixed(1)} ft to ${newest.elevation.toFixed(1)} ft`);
     let fallingStreak = 0, risingStreak = 0;
-    for (let i = history.length - 1; i > 0; i--) {
-      if (history[i].elevation < history[i-1].elevation - 0.02) fallingStreak++;
-      else break;
-    }
-    for (let i = history.length - 1; i > 0; i--) {
-      if (history[i].elevation > history[i-1].elevation + 0.02) risingStreak++;
-      else break;
-    }
-    if (fallingStreak >= 3) historyLines.push(`Consecutive falling days: ${fallingStreak} days in a row — fish have been adjusting to dropping water; look for them to pull away from bank cover and stage on channel edges and main-lake points`);
-    else if (risingStreak >= 3) historyLines.push(`Consecutive rising days: ${risingStreak} days in a row — rising water pulls fish into newly flooded timber and shallow flats`);
+    for (let i = history.length - 1; i > 0; i--) { if (history[i].elevation < history[i-1].elevation - 0.02) fallingStreak++; else break; }
+    for (let i = history.length - 1; i > 0; i--) { if (history[i].elevation > history[i-1].elevation + 0.02) risingStreak++; else break; }
+    if (fallingStreak >= 3) historyLines.push(`${fallingStreak} consecutive falling days — fish pulling off bank cover, staging on channel edges and main-lake points`);
+    else if (risingStreak >= 3) historyLines.push(`${risingStreak} consecutive rising days — fish moving into flooded timber and shallow flats`);
   }
 
-  const monthNum = new Date().getUTCMonth() + 1; // 1-12
-  const monthName = new Date().toLocaleDateString("en-US", { month: "long" });
-
-  // Seasonal spawning / baitfish calendar for Truman Lake / central Missouri
+  // ── Spawn calendar ──
   const spawningNotes = {
-    3:  "Pre-spawn: water warming from 40s→50s°F. Blue cats feeding up before spawn. Crappie moving shallow. Gizzard shad beginning to school near surface.",
-    4:  "Spawn ramp-up: water 55-65°F. Crappie spawning on shallow brush when water hits 60°F+. Blue cats pre-spawn feeding binge — best blue cat bite of the year approaching. Gizzard shad schooling in coves.",
-    5:  "Peak spawn: crappie full spawn in brushy coves 2-6 ft deep. Blue catfish spawn starting when water hits 70-75°F — they move to rocky banks and timber edges. Gizzard shad spawn May-June (65°F+) — fresh shad are concentrated and excellent cutbait. Flatheads becoming active.",
-    6:  "Post-spawn: crappie retreating to deeper structure (8-15 ft). Blue and flathead cats actively guarding nests then recovering — summer pattern establishing. Shad scattered after spawn; surface activity early/late.",
-    7:  "Summer pattern: blues schooled in current below dam and deep channel bends. Crappie suspended 10-20 ft on structure. Night bite excellent for flatheads on live bream.",
-    8:  "Late summer: oxygen stratification pushes fish to thermocline depth or current areas. Blues stack in main channel below Harry S. Truman Dam outflow. Crappie deep and sluggish midday.",
-    9:  "Fall transition: cooling water triggers feed-up. Blues go on fall binge — one of the best times of year. Crappie moving shallower. Shad schooling on surface again.",
-    10: "Peak fall: water 55-65°F, excellent blue cat action. Crappie stacking on brush in 8-15 ft. Shad tightly schooled — perfect for cast-netting.",
-    11: "Late fall: water cooling to 50s°F. Blues and crappie still active but slowing. Focus on sunny-warmed shallows mid-afternoon.",
-    12: "Winter: water 40-50°F. Blues sluggish but catchable on deep channel ledges (20-30 ft). Crappie tight to structure in 15-25 ft. Slow presentations.",
-    1:  "Deep winter: water 38-45°F. Hardest month. Blues alive in deep holes. Crappie barely moving. Best bite is midday warmth near dam outflow.",
-    2:  "Late winter / pre-season: water starting to warm. Blues begin stirring. End of month crappie start staging near spawning structure."
+    3:  "Pre-spawn (Mar): water warming 40s→50s°F. Blues feeding hard pre-spawn. Crappie moving shallow. Shad schooling near surface.",
+    4:  "Spawn ramp-up (Apr): crappie spawn triggers at 60°F on shallow brush. Blue cat pre-spawn feeding binge — best blue cat bite of the year approaching. Shad schooling in coves.",
+    5:  "Peak spawn (May): crappie full spawn 2-6 ft on brush when water hits 60°F+. Blues move to spawn at 70-75°F on rocky banks and timber edges. Gizzard shad spawn May-June (65°F+) — fresh shad concentrated and ideal cutbait. Flatheads turning on.",
+    6:  "Post-spawn (Jun): crappie retreat to 8-15 ft. Blues and flatheads guarding nests then recovering. Summer pattern establishing. Shad scattered.",
+    7:  "Summer (Jul): blues stacked in current below dam and deep channel bends. Crappie suspended 10-20 ft. Night bite prime for flatheads on live bream.",
+    8:  "Late summer (Aug): oxygen stratification — fish at thermocline or in current. Blues concentrate in main channel below Truman Dam outflow.",
+    9:  "Fall transition (Sep): cooling water triggers feed-up. Blue cat fall binge starts — one of the best times of year. Crappie moving shallower. Shad schooling again.",
+    10: "Peak fall (Oct): 55-65°F water, excellent blue cat action. Crappie stacking on brush 8-15 ft. Shad tightly schooled — ideal cast-netting.",
+    11: "Late fall (Nov): water cooling to 50s. Blues and crappie still active but slowing. Best bite mid-afternoon on sunny days.",
+    12: "Winter (Dec): water 40-50°F. Blues on deep channel ledges 20-30 ft. Crappie tight to structure 15-25 ft. Slow presentations.",
+    1:  "Deep winter (Jan): water 38-45°F. Blues in deep holes. Crappie barely moving. Best bite near dam outflow at midday.",
+    2:  "Late winter (Feb): blues beginning to stir. Crappie staging near spawning structure by end of month."
   };
   const spawnNote = spawningNotes[monthNum] || "";
+
+  // ── Recent catches from trip log ──
+  const catchSection = catches.length
+    ? `\nANGLER'S RECENT CATCHES (use to spot patterns):\n${catches.map(c => `- ${c}`).join("\n")}`
+    : "";
 
   return `You are an expert fishing guide for Truman Lake in west-central Missouri. The angler fishes from Sparrowfoot Park on the Grand River arm and has access to BOTH boat and bank.
 
@@ -212,12 +234,24 @@ TARGET SPECIES (these only — do NOT recommend largemouth bass, walleye, or whi
 - Gizzard shad — for cast-netting bait
 - Bluegill — only in nearby farm ponds, not the lake
 
-TODAY'S CONDITIONS (${monthName}):
-${lines.join("\n")}
-${historyLines.length ? "\nLAKE LEVEL HISTORY:\n" + historyLines.join("\n") : ""}
-${spawnNote ? "\nSEASONAL CONTEXT (${monthName}):\n" + spawnNote : ""}
+PLAN FOR: ${targetLabel} (${monthName})
 
-Write a tight, specific fishing plan in 2-3 short paragraphs of plain prose. NO bullet points, NO headers, NO markdown. Lead with the best species for today's conditions and explain WHY given the lake state AND the recent lake trend (if the lake has been falling for multiple days, say so and explain how that changes where fish are holding). Then specify exact technique — bait, rig, depth, retrieve speed — accounting for spawn phase if relevant (e.g. crappie on beds, blue cats pre-spawn feeding). Finally, name where to focus on the Grand River arm near Sparrowfoot — channel bends, flooded timber, mud lines, riprap, creek mouths, points, etc. — and whether tonight or tomorrow morning is a better window. Keep it to ~150-200 words total.`;
+LAKE & WEATHER CONDITIONS:
+${lines.join("\n")}
+${baroLine ? baroLine : ""}
+
+MOON & SOLUNAR:
+${moonLine}
+${solLines.join("\n")}
+
+LAKE LEVEL HISTORY:
+${historyLines.length ? historyLines.join("\n") : "Not enough history yet."}
+
+SEASONAL CONTEXT:
+${spawnNote}
+${catchSection}
+
+Write a tight, specific fishing plan in 2-3 short paragraphs of plain prose. NO bullet points, NO headers, NO markdown. Open by naming the best species AND timing for the planned trip date/time — if the solunar major window overlaps their planned time, say so and emphasize it. Explain why given today's lake state AND the multi-week trend (if falling for many days, say fish have relocated). Include exact technique: bait type, rig, depth, retrieve. Factor in spawn phase — crappie on beds needs a different approach than blues on a post-spawn summer pattern. Name specific spots on the Grand River arm near Sparrowfoot. If the angler has recent catches logged, reference the pattern if it helps. End with whether tonight, tomorrow morning, or another window this week looks better based on solunar and conditions. ~175-220 words.`;
 }
 
 // ─────────────── FOLLOW-UP Q&A ───────────────
@@ -280,6 +314,48 @@ ${brief}`;
   if (!answer) return jsonResponse({ error: "Empty response from model" }, 502);
 
   return jsonResponse({ answer, model, generated_at: new Date().toISOString() });
+}
+
+// ─────────────── TRUMAN LAKE WATER TEMPERATURE ───────────────
+// Scrapes LakeMonster's server-rendered og:description tag which contains the
+// current surface water temp for Harry S. Truman Reservoir.
+// Cached 3 hours — water temp doesn't change that fast.
+//   GET /watertemp  →  { tempF, source, fetched_at, cached }
+async function handleWaterTemp(url, ctx) {
+  const cache = caches.default;
+  const cacheReq = new Request("https://watertemp-cache.local/truman-v1", { method: "GET" });
+
+  const cached = await cache.match(cacheReq);
+  if (cached) {
+    const j = await cached.json();
+    return jsonResponse({ ...j, cached: true });
+  }
+
+  let tempF = null;
+  try {
+    const res = await fetch(
+      "https://lakemonster.com/lake/Missouri-lakes/Harry-S.-Truman-Reservoir-water-temperature-650",
+      { headers: { "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)" } }
+    );
+    if (res.ok) {
+      const html = await res.text();
+      // og:description contains e.g. 'Water temp: 65°F - Perfect for fishing!'
+      const m = html.match(/Water temp:\s*(\d+)°F/i);
+      if (m) tempF = parseInt(m[1], 10);
+    }
+  } catch {}
+
+  if (tempF === null) {
+    return jsonResponse({ error: "Could not parse water temp from LakeMonster" }, 502);
+  }
+
+  const result = { tempF, source: "LakeMonster / Harry S. Truman Reservoir", fetched_at: new Date().toISOString() };
+  const cacheRes = new Response(JSON.stringify(result), {
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=10800" } // 3h
+  });
+  ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+
+  return jsonResponse({ ...result, cached: false });
 }
 
 // ─────────────── LAKE LEVEL HISTORY ───────────────

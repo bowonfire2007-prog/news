@@ -332,6 +332,51 @@
   /* AI Smart Plan button + response panel */
   .lake-history-chart { margin:12px 0 6px; padding:10px 12px 6px; background:color-mix(in srgb,var(--accent) 4%,var(--bg)); border:1px solid var(--border); border-radius:8px; }
   .lake-history-label { font-size:11px; font-weight:600; letter-spacing:0.04em; color:var(--text-soft); text-transform:uppercase; margin-bottom:6px; }
+
+  /* Moon / baro / solunar meta row */
+  .fish-meta-row { display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 4px; }
+  .fish-meta-block { flex:1; min-width:140px; background:color-mix(in srgb,var(--accent) 5%,var(--bg)); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+  .fish-solunar-block { flex:2; min-width:220px; }
+  .fish-meta-label { font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-soft); margin-bottom:4px; }
+  .fish-meta-val { font-size:15px; font-weight:700; color:var(--text); }
+  .fish-meta-sub { font-size:11px; color:var(--text-soft); margin-top:1px; }
+  .fish-solunar-grid { display:grid; grid-template-columns:auto 1fr; gap:2px 8px; font-size:11px; }
+  .sol-major { color:var(--accent); font-weight:700; }
+  .sol-minor { color:var(--text-soft); }
+  .fish-baro-note { font-size:12px; color:var(--text-soft); border-left:3px solid; padding-left:10px; margin:6px 0 10px; line-height:1.5; }
+
+  /* Trip planner */
+  .fish-trip-planner { background:color-mix(in srgb,var(--accent) 6%,var(--bg)); border:1px solid color-mix(in srgb,var(--accent) 25%,var(--border)); border-radius:10px; padding:14px 16px 10px; margin:14px 0 4px; }
+  .fish-trip-label { font-size:12px; font-weight:700; color:var(--text); margin-bottom:10px; letter-spacing:0.02em; }
+  .fish-trip-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .fish-trip-input { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:6px 10px; color:var(--text); font-family:inherit; font-size:13px; }
+  .fish-trip-go { font-size:12px; padding:7px 14px; }
+
+  /* Trip log */
+  .fish-log-row { text-align:center; margin:10px 0 2px; }
+  .fish-log-btn { background:transparent; border:1px solid var(--border); border-radius:999px; color:var(--text-soft); font-family:inherit; font-size:12px; padding:5px 14px; cursor:pointer; transition:all .15s; }
+  .fish-log-btn:hover { background:var(--card-hover); color:var(--text); }
+  .fish-log-panel { max-height:0; overflow:hidden; transition:max-height .3s ease; }
+  .fish-log-panel.open { max-height:1600px; }
+  .trip-log-form { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:16px; margin:10px 0; }
+  .trip-log-form-title { font-weight:700; font-size:14px; margin-bottom:12px; }
+  .trip-log-field-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; font-size:12px; color:var(--text-soft); }
+  .trip-log-field-row label { min-width:52px; font-weight:600; }
+  .trip-log-chips { display:flex; flex-wrap:wrap; gap:5px; }
+  .trip-chip { padding:3px 9px; border-radius:999px; border:1px solid var(--border); font-size:11px; cursor:pointer; transition:all .12s; color:var(--text-soft); background:var(--bg); }
+  .trip-chip.selected { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .trip-log-save-btn { background:var(--accent); color:#fff; border:none; border-radius:6px; padding:8px 18px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; margin-top:4px; }
+  .trip-log-history { margin-top:12px; }
+  .trip-log-hist-title { font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--text-soft); margin-bottom:8px; }
+  .trip-log-entry { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+  .trip-log-entry-header { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+  .trip-log-date { font-weight:700; font-size:12px; }
+  .trip-log-moon { font-size:11px; color:var(--text-soft); }
+  .trip-log-del { margin-left:auto; background:transparent; border:none; color:var(--text-soft); cursor:pointer; font-size:12px; padding:0; }
+  .trip-log-species { font-size:13px; font-weight:600; color:var(--text); }
+  .trip-log-detail { font-size:11px; color:var(--text-soft); margin-top:3px; }
+  .trip-log-notes { font-size:11px; color:var(--text-soft); font-style:italic; margin-top:3px; }
+  .trip-log-cond { font-size:10px; color:var(--text-soft); margin-top:3px; opacity:0.7; }
   .fish-smart-row { padding:12px 0 4px; text-align:center; }
   .fish-smart-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; border-radius:999px; border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border)); background:color-mix(in srgb,var(--accent) 8%,transparent); color:var(--accent); font-size:13px; font-weight:700; letter-spacing:0.05em; cursor:pointer; font-family:inherit; text-transform:uppercase; transition:background .15s,color .15s,border-color .15s; }
   .fish-smart-btn:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -1682,6 +1727,252 @@ function shadBankAdvice(windDir, windMph, sustainedHours) {
   return "Wind from "+fromDir+" at "+Math.round(windMph)+" mph for "+sustainedHours+"h — shad "+strength+" on "+bankSide+". "+sparrowfootNote;
 }
 
+// ═══════════════════════════════════════════════════════════
+// MOON PHASE, SOLUNAR, BARO TREND, WATER TEMP, TRIP LOG
+// ═══════════════════════════════════════════════════════════
+
+function getMoonPhase(date) {
+  // Known new moon: Jan 6, 2000 18:14 UTC — accurate enough for fishing purposes
+  const knownNewMoon = new Date("2000-01-06T18:14:00Z").getTime();
+  const lunarCycle   = 29.530588853 * 86400000; // ms
+  const ageMs = ((date.getTime() - knownNewMoon) % lunarCycle + lunarCycle) % lunarCycle;
+  const age   = ageMs / 86400000; // days (0 = new moon)
+  const phase = age / 29.530588853; // 0–1
+  const illumination = Math.round((1 - Math.cos(2 * Math.PI * phase)) / 2 * 100);
+  let phaseName, emoji;
+  if      (age <  1.85) { phaseName = "New Moon";        emoji = "🌑"; }
+  else if (age <  7.38) { phaseName = "Waxing Crescent"; emoji = "🌒"; }
+  else if (age <  9.22) { phaseName = "First Quarter";   emoji = "🌓"; }
+  else if (age < 14.77) { phaseName = "Waxing Gibbous";  emoji = "🌔"; }
+  else if (age < 16.61) { phaseName = "Full Moon";       emoji = "🌕"; }
+  else if (age < 22.15) { phaseName = "Waning Gibbous";  emoji = "🌖"; }
+  else if (age < 23.99) { phaseName = "Last Quarter";    emoji = "🌗"; }
+  else                  { phaseName = "Waning Crescent";  emoji = "🌘"; }
+  return { age, phase, illumination, phaseName, emoji };
+}
+
+function getSolunarTimes(date) {
+  // Moon transits meridian ~50 min later each day vs solar noon.
+  // New moon (age 0) ≈ noon local; Full moon (age 14.77) ≈ midnight.
+  const { age } = getMoonPhase(date);
+  const transitMin = (12 * 60 + age * 50) % 1440; // minutes from midnight local
+  const fmt = mins => {
+    const m = ((Math.round(mins) % 1440) + 1440) % 1440;
+    const h = Math.floor(m / 60), mn = m % 60;
+    const ap = h < 12 ? "AM" : "PM";
+    return `${h === 0 ? 12 : h > 12 ? h - 12 : h}:${String(mn).padStart(2,"0")} ${ap}`;
+  };
+  const win = (peak, dur) => `${fmt(peak - dur/2)} – ${fmt(peak + dur/2)}`;
+  return {
+    major1: { label: "Moon Overhead",   window: win(transitMin,       120), peak: fmt(transitMin) },
+    major2: { label: "Moon Underfoot",  window: win(transitMin + 720, 120), peak: fmt(transitMin + 720) },
+    minor1: { label: "Moonrise",        window: win(transitMin - 360,  60), peak: fmt(transitMin - 360) },
+    minor2: { label: "Moonset",         window: win(transitMin + 360,  60), peak: fmt(transitMin + 360) }
+  };
+}
+
+function getBaroTrend() {
+  const weather = getCachedWeather();
+  if (!weather?.hourly?.surface_pressure || !weather?.hourly?.time) return null;
+  const times = weather.hourly.time, pressures = weather.hourly.surface_pressure;
+  const now = Date.now();
+  const recent = [];
+  for (let i = 0; i < times.length; i++) {
+    const t = new Date(times[i]).getTime();
+    const ageH = (now - t) / 3600000;
+    if (ageH >= 0 && ageH <= 6 && pressures[i] != null) recent.push({ t, p: pressures[i] });
+  }
+  if (recent.length < 2) return null;
+  recent.sort((a, b) => a.t - b.t);
+  const change = recent[recent.length - 1].p - recent[0].p;
+  const current = recent[recent.length - 1].p;
+  let trend, desc, color;
+  if      (change < -2)   { trend = "falling fast"; desc = "Sharp pressure drop — fish often go deep and shut down. Work slower and deeper."; color = "var(--accent-red,#e87)"; }
+  else if (change < -0.5) { trend = "falling";      desc = "Pressure easing down — bite may slow, especially for crappie. Keep moving."; color = "#fa3"; }
+  else if (change >  2)   { trend = "rising fast";  desc = "Pressure climbing hard — post-frontal feed-up window, often excellent for blues."; color = "var(--sage,#6a9)"; }
+  else if (change >  0.5) { trend = "rising";       desc = "Pressure building — fish becoming more active. Good conditions."; color = "var(--sage,#6a9)"; }
+  else                    { trend = "steady";        desc = "Stable pressure — normal feeding patterns, no pressure-related disruption."; color = "var(--text-soft)"; }
+  return { pressure: current.toFixed(1), change: change.toFixed(1), trend, desc, color };
+}
+
+// Get forecast weather values (temp, condition, wind) for a specific target hour from cached hourly data
+function getForecastAtTime(targetDate) {
+  const weather = getCachedWeather();
+  if (!weather?.hourly?.time) return null;
+  const target = targetDate.getTime();
+  const times  = weather.hourly.time;
+  let bestIdx = -1, bestDiff = Infinity;
+  for (let i = 0; i < times.length; i++) {
+    const diff = Math.abs(new Date(times[i]).getTime() - target);
+    if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+  }
+  if (bestIdx === -1 || bestDiff > 6 * 3600000) return null;
+  const h = weather.hourly;
+  return {
+    temp:      h.temperature_2m?.[bestIdx] ?? null,
+    feels:     h.apparent_temperature?.[bestIdx] ?? null,
+    humidity:  h.relative_humidity_2m?.[bestIdx] ?? null,
+    windSpeed: h.wind_speed_10m?.[bestIdx] ?? null,
+    windDir:   h.wind_direction_10m?.[bestIdx] ?? null,
+    pressure:  h.surface_pressure?.[bestIdx] ?? null,
+    code:      h.weather_code?.[bestIdx] ?? null
+  };
+}
+
+const WATERTEMP_ENDPOINT = CF_WORKER.replace(/\/$/, "") + "/watertemp";
+const WATERTEMP_CACHE_KEY = "news.fishing.watertemp.v2";
+
+async function fetchWaterTemp() {
+  // Try worker scrape of LakeMonster first (cached 3h server-side)
+  // Falls back to manually entered value in localStorage
+  try {
+    const res = await fetch(WATERTEMP_ENDPOINT);
+    if (res.ok) {
+      const data = await res.json();
+      if (isFinite(data.tempF)) {
+        // Cache locally too so it survives brief worker hiccups
+        try { localStorage.setItem(WATERTEMP_CACHE_KEY, JSON.stringify({ temp: data.tempF, ts: Date.now(), source: "lakemonster" })); } catch {}
+        return data.tempF;
+      }
+    }
+  } catch {}
+  // Fall back to localStorage (manual entry or last good scrape)
+  try {
+    const raw = localStorage.getItem(WATERTEMP_CACHE_KEY) || localStorage.getItem("news.fishing.watertemp");
+    if (!raw) return null;
+    const { temp, ts } = JSON.parse(raw);
+    if (Date.now() - ts > 7 * 86400000) return null; // expire after 7 days
+    return isFinite(temp) ? temp : null;
+  } catch { return null; }
+}
+
+// ── TRIP LOG ──
+const TRIP_LOG_KEY = "news.fishing.log.v1";
+function getTripLog() {
+  try { return JSON.parse(localStorage.getItem(TRIP_LOG_KEY) || "[]"); } catch { return []; }
+}
+function saveTripLog(entries) {
+  try { localStorage.setItem(TRIP_LOG_KEY, JSON.stringify(entries.slice(-50))); } catch {} // keep last 50
+}
+function addTripEntry(entry) {
+  const log = getTripLog();
+  log.push({ ...entry, id: Date.now() });
+  saveTripLog(log);
+}
+function deleteTripEntry(id) {
+  saveTripLog(getTripLog().filter(e => e.id !== id));
+}
+
+function renderTripLogPanel(panel, lake, waterTempF) {
+  const log = getTripLog().slice().reverse(); // newest first
+  const moon = getMoonPhase(new Date());
+
+  const formHtml = `
+  <div class="trip-log-form">
+    <div class="trip-log-form-title">🎣 Log Today's Catch</div>
+    <div class="trip-log-field-row">
+      <label>Date</label>
+      <input type="date" id="tl-date" class="fish-trip-input" value="${new Date().toISOString().slice(0,10)}">
+      <label>Time</label>
+      <input type="time" id="tl-time" class="fish-trip-input" value="${new Date().toTimeString().slice(0,5)}">
+    </div>
+    <div class="trip-log-field-row">
+      <label>Species caught</label>
+      <div class="trip-log-chips" id="tl-species-chips">
+        ${["Blue Catfish","Flathead Catfish","Crappie","Shad","Bluegill","Other"].map(s=>
+          `<span class="trip-chip" data-val="${s}">${s}</span>`
+        ).join("")}
+      </div>
+    </div>
+    <div class="trip-log-field-row">
+      <label>Bait / rig</label>
+      <div class="trip-log-chips" id="tl-bait-chips">
+        ${["Cut shad","Live shad","Chicken liver","Stink bait","Jig","Crankbait","Other"].map(b=>
+          `<span class="trip-chip" data-val="${b}">${b}</span>`
+        ).join("")}
+      </div>
+    </div>
+    <div class="trip-log-field-row">
+      <label>Spot / area</label>
+      <input type="text" id="tl-spot" class="fish-trip-input" placeholder="e.g. Channel bend, Timber flat, Sparrowfoot ramp" style="flex:1">
+    </div>
+    <div class="trip-log-field-row">
+      <label>Depth (ft)</label>
+      <input type="number" id="tl-depth" class="fish-trip-input" placeholder="e.g. 12" style="width:80px">
+      <label>Count</label>
+      <input type="number" id="tl-count" class="fish-trip-input" placeholder="# fish" style="width:80px">
+    </div>
+    <div class="trip-log-field-row">
+      <label>Notes</label>
+      <input type="text" id="tl-notes" class="fish-trip-input" placeholder="Anything else — bait size, bite timing, action" style="flex:1">
+    </div>
+    <button class="trip-log-save-btn" id="tl-save-btn">💾 Save Entry</button>
+  </div>`;
+
+  const histHtml = log.length ? `
+  <div class="trip-log-history">
+    <div class="trip-log-hist-title">Recent Trips</div>
+    ${log.map(e => `
+    <div class="trip-log-entry" data-id="${e.id}">
+      <div class="trip-log-entry-header">
+        <span class="trip-log-date">${e.date}${e.timeOfDay?" "+e.timeOfDay:""}</span>
+        ${e.moonPhase?`<span class="trip-log-moon">${e.moonPhase}</span>`:""}
+        <button class="trip-log-del" data-id="${e.id}" title="Delete">✕</button>
+      </div>
+      <div class="trip-log-species">${(e.species||[]).join(", ")||"—"}</div>
+      <div class="trip-log-detail">
+        ${e.baits?.length?`🪝 ${e.baits.join(", ")} `:""}
+        ${e.spot?`📍 ${escapeHtml(e.spot)} `:""}
+        ${e.depth?`⬇ ${e.depth}ft `:""}
+        ${e.count?`🐟 ${e.count} fish `:""}
+      </div>
+      ${e.notes?`<div class="trip-log-notes">${escapeHtml(e.notes)}</div>`:""}
+      ${e.lakeElev?`<div class="trip-log-cond">Pool ${e.lakeElev.toFixed(1)}ft${e.waterTempF?" · "+e.waterTempF+"°F water":""}</div>`:""}
+    </div>`).join("")}
+  </div>` : `<div style="text-align:center;color:var(--text-soft);padding:20px 0;font-size:13px">No catches logged yet.</div>`;
+
+  panel.innerHTML = formHtml + histHtml;
+
+  // Chip toggle selection
+  panel.querySelectorAll(".trip-log-chips").forEach(group => {
+    group.querySelectorAll(".trip-chip").forEach(chip => {
+      chip.addEventListener("click", () => chip.classList.toggle("selected"));
+    });
+  });
+
+  // Delete buttons
+  panel.querySelectorAll(".trip-log-del").forEach(btn => {
+    btn.addEventListener("click", () => {
+      deleteTripEntry(parseInt(btn.dataset.id));
+      renderTripLogPanel(panel, lake, waterTempF); // re-render
+    });
+  });
+
+  // Save
+  const saveBtn = panel.querySelector("#tl-save-btn");
+  if (saveBtn) {
+    saveBtn.addEventListener("click", () => {
+      const species = [...panel.querySelectorAll("#tl-species-chips .trip-chip.selected")].map(c => c.dataset.val);
+      const baits   = [...panel.querySelectorAll("#tl-bait-chips .trip-chip.selected")].map(c => c.dataset.val);
+      const entry = {
+        date:       panel.querySelector("#tl-date")?.value  || new Date().toISOString().slice(0,10),
+        timeOfDay:  panel.querySelector("#tl-time")?.value  || "",
+        species,
+        baits,
+        spot:       panel.querySelector("#tl-spot")?.value.trim()  || "",
+        depth:      panel.querySelector("#tl-depth")?.value || "",
+        count:      panel.querySelector("#tl-count")?.value || "",
+        notes:      panel.querySelector("#tl-notes")?.value.trim()  || "",
+        moonPhase:  moon.emoji + " " + moon.phaseName,
+        lakeElev:   lake?.stage ?? null,
+        waterTempF: waterTempF ?? null
+      };
+      addTripEntry(entry);
+      renderTripLogPanel(panel, lake, waterTempF);
+    });
+  }
+}
+
 function generateFishingAdvice(lake, weather) {
   // Tailored to Matt's targets at Sparrowfoot / Grand River arm:
   //   Blue Catfish, Flathead Catfish, Crappie, Shad (cast netting), Farm Pond Bluegill
@@ -2825,7 +3116,7 @@ function renderLakeHistoryChart(history) {
 </div>`;
 }
 
-function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory) {
+function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, waterTempF) {
   const mush = renderMushroomCard(getMushroomTips(weather));
   const garden = renderGardenCard(getGardenTips(weather));
   const extras = mush + garden + renderCattleMarketCard() + renderWeeklyMarketCard(weeklyRecs || []);
@@ -2855,6 +3146,11 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory) {
        </div>`
     : `<div class="fish-lake-stat"><div class="fish-stat-lbl" style="color:var(--text-soft)">Level unavailable</div></div>`;
 
+  // Moon, solunar, baro for today
+  const moon  = getMoonPhase(new Date());
+  const sol   = getSolunarTimes(new Date());
+  const baro  = getBaroTrend();
+
   const speciesHtml  = advice.topSpecies.map(s=>`<span class="fish-chip">${s}</span>`).join("");
   const baitsHtml    = advice.baits.map(b=>`<span class="fish-chip fish-chip-bait">${escapeHtml(b)}</span>`).join("");
   const hotspotsHtml = advice.hotspots.map(h=>`<span class="fish-chip fish-chip-spot">📍 ${escapeHtml(h)}</span>`).join("");
@@ -2870,6 +3166,11 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory) {
     : "";
   const stars = "★".repeat(advice.bite)+"☆".repeat(5-advice.bite);
   const dateStr = new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
+
+  // Default trip planner: today's date, next even hour
+  const defaultDate = new Date().toISOString().slice(0, 10);
+  const nextHour = new Date(); nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
+  const defaultTime = nextHour.toTimeString().slice(0, 5);
 
   return `<div class="fish-advisor">
   <div class="fish-header">
@@ -2887,15 +3188,59 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory) {
       ${(lake && Number.isFinite(lake.inflow))  ? `<div class="fish-lake-stat"><div class="fish-stat-val">${lake.inflow.toLocaleString()}</div><div class="fish-stat-lbl">Inflow cfs</div></div>` : ""}
       ${(lake && Number.isFinite(lake.outflow)) ? `<div class="fish-lake-stat"><div class="fish-stat-val">${lake.outflow.toLocaleString()}</div><div class="fish-stat-lbl">Outflow cfs</div></div>` : ""}
       <div class="fish-lake-stat"><div class="fish-stat-val">${temp}</div><div class="fish-stat-lbl">Air Temp</div></div>
+      ${waterTempF != null ? `<div class="fish-lake-stat"><div class="fish-stat-val">${waterTempF}°F</div><div class="fish-stat-lbl">Water Temp</div></div>` : ""}
       <div class="fish-lake-stat"><div class="fish-stat-val">${wind}</div><div class="fish-stat-lbl">Wind</div></div>
     </div>
   </div>
+
+  <div class="fish-meta-row">
+    <div class="fish-meta-block">
+      <div class="fish-meta-label">Moon</div>
+      <div class="fish-meta-val">${moon.emoji} ${moon.phaseName}</div>
+      <div class="fish-meta-sub">${moon.illumination}% lit · Day ${Math.floor(moon.age)}</div>
+    </div>
+    ${baro ? `<div class="fish-meta-block">
+      <div class="fish-meta-label">Barometer</div>
+      <div class="fish-meta-val" style="color:${baro.color}">${baro.pressure} hPa</div>
+      <div class="fish-meta-sub" style="color:${baro.color}">${baro.trend} (${baro.change > 0 ? "+" : ""}${baro.change})</div>
+    </div>` : ""}
+    <div class="fish-meta-block fish-solunar-block">
+      <div class="fish-meta-label">🌙 Solunar Feed Windows</div>
+      <div class="fish-solunar-grid">
+        <span class="sol-major">★ MAJOR</span><span>${sol.major1.window}</span>
+        <span class="sol-major">★ MAJOR</span><span>${sol.major2.window}</span>
+        <span class="sol-minor">◇ minor</span><span>${sol.minor1.window}</span>
+        <span class="sol-minor">◇ minor</span><span>${sol.minor2.window}</span>
+      </div>
+    </div>
+  </div>
+
+  ${baro ? `<div class="fish-baro-note" style="border-left-color:${baro.color}">⬙ ${escapeHtml(baro.desc)}</div>` : ""}
+
   ${renderLakeHistoryChart(lakeHistory || [])}
-  <div class="fish-smart-row">
-    <button class="fish-smart-btn" type="button" id="fishSmartBtn"><span class="spark">✦</span> AI Smart Plan — Custom for Today</button>
-    <div class="fish-smart-sub">Asks Claude to write a tailored plan from today's actual conditions.</div>
+
+  <div class="fish-trip-planner">
+    <div class="fish-trip-label">📅 Plan a Trip — When do you want to fish?</div>
+    <div class="fish-trip-row">
+      <input type="date" id="fishPlanDate" class="fish-trip-input" value="${defaultDate}">
+      <input type="time" id="fishPlanTime" class="fish-trip-input" value="${defaultTime}">
+      <button class="fish-smart-btn fish-trip-go" type="button" id="fishSmartBtn">
+        <span class="spark">✦</span> Get AI Plan
+      </button>
+    </div>
+    <div class="fish-trip-row" style="margin-top:8px;align-items:center;gap:8px">
+      <label style="font-size:12px;color:var(--text-soft);font-weight:600;white-space:nowrap">🌡️ Water Temp (°F)</label>
+      <input type="number" id="fishWaterTemp" class="fish-trip-input" placeholder="e.g. 68" min="32" max="95" style="width:90px" value="${waterTempF != null ? waterTempF : ""}">
+      <span style="font-size:11px;color:var(--text-soft)">Enter from thermometer or fishing report — saved for 7 days</span>
+    </div>
+    <div class="fish-smart-sub">Claude writes a plan tuned to conditions for the date &amp; time you pick.</div>
   </div>
   <div class="fish-smart-panel" id="fishSmartPanel"></div>
+
+  <div class="fish-log-row">
+    <button class="fish-log-btn" type="button" id="fishLogBtn">📓 Log a Catch</button>
+  </div>
+  <div class="fish-log-panel" id="fishLogPanel"></div>
   <div class="fish-section"><div class="fish-section-label">🎯 Target Species</div>${speciesHtml}</div>
   ${tipsHtml}
   ${shadHtml}
@@ -2958,44 +3303,85 @@ function renderFishSmartPanel(panel, plan, fromCache, onRefresh) {
   panel.querySelector(".fish-smart-refresh").addEventListener("click", () => onRefresh());
 }
 
-async function fetchAndShowSmartPlan(lake, weather, panel, btn, force, lakeHistory) {
+async function fetchAndShowSmartPlan(lake, weather, panel, btn, force, lakeHistory, waterTempF, targetDate) {
   const cacheKey = fishPlanCacheKey(lake, weather);
   if (!force) {
     const cached = getFishPlanCache(cacheKey);
     if (cached) {
-      renderFishSmartPanel(panel, cached, true, () => fetchAndShowSmartPlan(lake, weather, panel, btn, true, lakeHistory));
+      renderFishSmartPanel(panel, cached, true, () => fetchAndShowSmartPlan(lake, weather, panel, btn, true, lakeHistory, waterTempF, targetDate));
       return;
     }
   }
   panel.classList.add("open");
+  const target = targetDate instanceof Date && isFinite(targetDate) ? targetDate : new Date();
+  const isToday = target.toDateString() === new Date().toDateString();
+  const targetLabel = target.toLocaleDateString("en-US", {weekday:"short", month:"short", day:"numeric"}) +
+    " at " + target.toLocaleTimeString("en-US", {hour:"numeric", minute:"2-digit"});
   panel.innerHTML =
-    '<div class="fish-smart-header"><span class="spark">✦</span> AI SMART PLAN — TUNED FOR TODAY</div>' +
+    `<div class="fish-smart-header"><span class="spark">✦</span> AI SMART PLAN — ${escapeHtml(targetLabel.toUpperCase())}</div>` +
     '<div class="fish-smart-loading"><span class="spinner"></span>Claude is reading the conditions and writing a plan…</div>';
   btn.classList.add("is-loading");
   try {
-    const c = weather?.current || {};
-    const sustained = (weather?.hourly && isFinite(c.wind_direction_10m))
-      ? computeSustainedWindHours(weather.hourly, c.wind_direction_10m) : null;
+    // Use forecast weather for the target time if not today
+    const forecast = getForecastAtTime(target);
+    const c = (isToday && !forecast) ? (weather?.current || {}) : {};
+    const wx = forecast || {
+      temp:     isFinite(c.temperature_2m)        ? c.temperature_2m        : null,
+      feels:    isFinite(c.apparent_temperature)   ? c.apparent_temperature  : null,
+      humidity: isFinite(c.relative_humidity_2m)  ? c.relative_humidity_2m  : null,
+      windSpeed:isFinite(c.wind_speed_10m)         ? c.wind_speed_10m        : null,
+      windDir:  isFinite(c.wind_direction_10m)     ? c.wind_direction_10m    : null,
+      code:     c.weather_code ?? null
+    };
+    const sustained = (weather?.hourly && isFinite(wx.windDir))
+      ? computeSustainedWindHours(weather.hourly, wx.windDir) : null;
+
+    // Moon + solunar for target time
+    const moonAtTarget = getMoonPhase(target);
+    const solAtTarget  = getSolunarTimes(target);
+
+    // Recent trip log entries (last 5)
+    const tripLog = getTripLog().slice(-5).map(e =>
+      `${e.date} ${e.timeOfDay||""}: ${(e.species||[]).join(", ")||"unspecified"} on ${(e.baits||[]).join(", ")||"unknown bait"}${e.spot?" at "+e.spot:""}${e.notes?" — "+e.notes:""}`.trim()
+    );
+
     const payload = {
+      targetDateTime: target.toISOString(),
+      targetLabel,
       lake: {
-        stage: lake?.stage ?? null,
+        stage:       lake?.stage       ?? null,
         dailyChange: lake?.dailyChange ?? null,
-        inflow: lake?.inflow ?? null,
-        outflow: lake?.outflow ?? null,
-        trend: lake?.trend || null
+        inflow:      lake?.inflow      ?? null,
+        outflow:     lake?.outflow     ?? null,
+        trend:       lake?.trend       || null
       },
+      waterTempF: waterTempF ?? null,
       weather: {
-        temp: isFinite(c.temperature_2m) ? c.temperature_2m : null,
-        feels: isFinite(c.apparent_temperature) ? c.apparent_temperature : null,
-        humidity: isFinite(c.relative_humidity_2m) ? c.relative_humidity_2m : null,
-        condition: (WEATHER_CODE_MAP[c.weather_code] || ["",""])[0]
+        temp:      isFinite(wx.temp)     ? wx.temp     : null,
+        feels:     isFinite(wx.feels)    ? wx.feels    : null,
+        humidity:  isFinite(wx.humidity) ? wx.humidity : null,
+        condition: (WEATHER_CODE_MAP[wx.code] || ["",""])[0]
       },
       wind: {
-        dir: isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m) : null,
-        speed: isFinite(c.wind_speed_10m) ? c.wind_speed_10m : null,
+        dir:            isFinite(wx.windDir)   ? compassFromDegrees(wx.windDir) : null,
+        speed:          isFinite(wx.windSpeed) ? wx.windSpeed                   : null,
         sustainedHours: sustained
       },
-      lakeHistory: Array.isArray(lakeHistory) ? lakeHistory.slice(-30) : []
+      moon: {
+        phaseName:    moonAtTarget.phaseName,
+        emoji:        moonAtTarget.emoji,
+        illumination: moonAtTarget.illumination,
+        age:          Math.round(moonAtTarget.age * 10) / 10
+      },
+      solunar: {
+        major1: solAtTarget.major1.window,
+        major2: solAtTarget.major2.window,
+        minor1: solAtTarget.minor1.window,
+        minor2: solAtTarget.minor2.window
+      },
+      baro: getBaroTrend() ? { pressure: getBaroTrend().pressure, trend: getBaroTrend().trend, change: getBaroTrend().change } : null,
+      lakeHistory:  Array.isArray(lakeHistory) ? lakeHistory.slice(-30) : [],
+      recentCatches: tripLog
     };
     const res = await fetch(FISHPLAN_ENDPOINT, {
       method: "POST",
@@ -3011,7 +3397,7 @@ async function fetchAndShowSmartPlan(lake, weather, panel, btn, force, lakeHisto
     }
     const data = await res.json();
     setFishPlanCache(cacheKey, data);
-    renderFishSmartPanel(panel, data, false, () => fetchAndShowSmartPlan(lake, weather, panel, btn, true, lakeHistory));
+    renderFishSmartPanel(panel, data, false, () => fetchAndShowSmartPlan(lake, weather, panel, btn, true, lakeHistory, waterTempF, targetDate));
   } catch (err) {
     panel.innerHTML =
       '<div class="fish-smart-header"><span class="spark">✦</span> AI SMART PLAN</div>' +
@@ -3021,10 +3407,37 @@ async function fetchAndShowSmartPlan(lake, weather, panel, btn, force, lakeHisto
   }
 }
 
-function wireFishSmartPlan(lake, weather, advice, lakeHistory) {
+function wireFishSmartPlan(lake, weather, advice, lakeHistory, waterTempF) {
   const btn = document.getElementById("fishSmartBtn");
   const panel = document.getElementById("fishSmartPanel");
   if (!btn || !panel) return;
+
+  const getTargetDate = () => {
+    const dateEl = document.getElementById("fishPlanDate");
+    const timeEl = document.getElementById("fishPlanTime");
+    const dateStr = dateEl?.value || new Date().toISOString().slice(0, 10);
+    const timeStr = timeEl?.value || "12:00";
+    return new Date(`${dateStr}T${timeStr}:00`);
+  };
+
+  const getManualWaterTemp = () => {
+    const el = document.getElementById("fishWaterTemp");
+    const v = el ? parseFloat(el.value) : NaN;
+    if (isFinite(v) && v > 32 && v < 95) {
+      try { localStorage.setItem("news.fishing.watertemp", JSON.stringify({ temp: v, ts: Date.now() })); } catch {}
+      return v;
+    }
+    return waterTempF; // fall back to stored value
+  };
+
+  const doGenerate = () => {
+    const targetDate = getTargetDate();
+    const currentWaterTemp = getManualWaterTemp();
+    panel.classList.add("open");
+    btn.classList.add("is-open");
+    fetchAndShowSmartPlan(lake, weather, panel, btn, false, lakeHistory, currentWaterTemp, targetDate);
+  };
+
   btn.addEventListener("click", () => {
     if (panel.classList.contains("open")) {
       panel.classList.remove("open");
@@ -3032,9 +3445,23 @@ function wireFishSmartPlan(lake, weather, advice, lakeHistory) {
       setTimeout(() => { panel.innerHTML = ""; }, 250);
       return;
     }
-    btn.classList.add("is-open");
-    fetchAndShowSmartPlan(lake, weather, panel, btn, false, lakeHistory);
+    doGenerate();
   });
+
+  // Wire up the trip log button
+  const logBtn = document.getElementById("fishLogBtn");
+  const logPanel = document.getElementById("fishLogPanel");
+  if (logBtn && logPanel) {
+    logBtn.addEventListener("click", () => {
+      if (logPanel.classList.contains("open")) {
+        logPanel.classList.remove("open");
+        setTimeout(() => { logPanel.innerHTML = ""; }, 250);
+        return;
+      }
+      logPanel.classList.add("open");
+      renderTripLogPanel(logPanel, lake, waterTempF);
+    });
+  }
 }
 
 async function loadOutdoor(force) {
@@ -3061,10 +3488,11 @@ async function loadOutdoor(force) {
   const cat = CATEGORIES.find(c => c.id==="outdoor");
   if (force) cat.feeds.forEach(f => localStorage.removeItem("news.cache."+f.url));
 
-  const [lakeData, weeklyRecords, lakeHistoryResult, newsResults] = await Promise.all([
+  const [lakeData, weeklyRecords, lakeHistoryResult, waterTempF, newsResults] = await Promise.all([
     fetchTrumanLake(),
     fetchWeeklyData(),
     fetch(LAKE_HISTORY_ENDPOINT).then(r => r.ok ? r.json() : { readings: [] }).catch(() => ({ readings: [] })),
+    fetchWaterTemp(),
     Promise.all(cat.feeds.map(f => fetchFeed(f).catch(()=>[])))
   ]);
 
@@ -3081,9 +3509,9 @@ async function loadOutdoor(force) {
 
   const weatherData = getCachedWeather();
   const advice = generateFishingAdvice(lakeData, weatherData);
-  advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice, weeklyRecords, lakeHistory);
+  advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice, weeklyRecords, lakeHistory, waterTempF);
   // Wire up the AI Smart Plan button now that the advisor markup is in the DOM
-  wireFishSmartPlan(lakeData, weatherData, advice, lakeHistory);
+  wireFishSmartPlan(lakeData, weatherData, advice, lakeHistory, waterTempF);
   wireCattleMarket();
   wireWeeklyMarket();
 

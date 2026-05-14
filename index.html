@@ -2111,6 +2111,86 @@ function generateFishingAdvice(lake, weather) {
     tips.push("Night fishing on Truman is prime: flatheads are actively prowling timber, blues feed heavily on deep channels. Live bluegill set near big laydowns for flatheads, fresh-cut shad on the channel for blues.");
   }
 
+  // ── BAROMETRIC PRESSURE ──
+  const baro = getBaroTrend();
+  if (baro) {
+    if (baro.trend === "falling fast") {
+      bite = Math.max(1, bite - 1.5);
+      tips.push(`⬙ Barometer dropping fast (${baro.change} hPa / 6h) — this is a bite-killer. Fish are moving to deeper water and tightening up. Slow way down, downsize your presentation, and work the deepest structure you can reach. Blues may still eat but crappie will nearly shut off.`);
+    } else if (baro.trend === "falling") {
+      bite = Math.max(1, bite - 0.5);
+      tips.push(`⬙ Pressure easing down — bite may slow over the next few hours, especially for crappie. Blues are more tolerant; keep working cut shad on channel edges but don't expect fast action.`);
+    } else if (baro.trend === "rising fast") {
+      bite = Math.min(5, bite + 1);
+      tips.push(`⬆ Barometer climbing hard (${baro.change} hPa / 6h) — classic post-front feed-up window. Fish that went deep during the pressure drop are moving back to feeding zones. Blues especially will be aggressive on channel edges and current seams right now.`);
+    } else if (baro.trend === "rising") {
+      bite = Math.min(5, bite + 0.5);
+      tips.push(`⬆ Pressure building — conditions improving. Fish are becoming more active and predictable. Work shallow-to-mid structure and expect better response on reaction presentations.`);
+    }
+    // steady = no adjustment, no extra tip needed
+  }
+
+  // ── MOON PHASE & SOLUNAR ──
+  const moon = getMoonPhase(now);
+  const sol  = getSolunarTimes(now);
+
+  // Determine if we're currently in a major or minor solunar window
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const moonTransitMin = (12 * 60 + moon.age * 50) % 1440;
+  const windows = [
+    { name: "MAJOR",  center: moonTransitMin,        half: 60 },
+    { name: "MAJOR",  center: moonTransitMin + 720,  half: 60 },
+    { name: "minor",  center: moonTransitMin - 360,  half: 30 },
+    { name: "minor",  center: moonTransitMin + 360,  half: 30 }
+  ];
+  let activeWindow = null;
+  for (const w of windows) {
+    const center = ((w.center % 1440) + 1440) % 1440;
+    let diff = Math.abs(nowMin - center);
+    if (diff > 720) diff = 1440 - diff; // wrap around midnight
+    if (diff <= w.half) { activeWindow = w; break; }
+  }
+
+  // Moon phase bite adjustment
+  if (moon.age < 1.5 || moon.age > 28) {
+    // New moon — dark nights, flatheads and blues feed aggressively all night
+    bite = Math.min(5, bite + 0.5);
+    if (isNight) tips.push(`🌑 New moon tonight — dark water means flatheads and blues are on the prowl hard. Best night of the lunar cycle for big cats. Keep bait in the water as long as you can.`);
+    else tips.push(`🌑 New moon phase — night fishing this week will be exceptional for flatheads and blues. Plan an overnight trip if you can.`);
+  } else if (moon.age > 13.5 && moon.age < 16) {
+    // Full moon — night fishing disrupted; daytime bite often better
+    if (isNight) {
+      bite = Math.max(1, bite - 0.5);
+      tips.push(`🌕 Full moon — bright water tends to scatter baitfish and makes night fishing tougher than usual. Blues and flatheads may be less aggressive. Try mid-depth structure away from bright shallows, or focus on the pre-dawn hour when moon is low.`);
+    } else {
+      tips.push(`🌕 Full moon phase — daytime bite is often stronger than night this week since fish feed more in moonlit hours overnight and rest during the day. Hit them hard at dawn.`);
+    }
+  } else if (moon.age > 6.5 && moon.age < 8.5) {
+    tips.push(`🌓 First quarter moon — evening bite window is excellent. Fish feed actively as the moon rises around sunset. Plan to be on the water from 5 PM through dark.`);
+  } else if (moon.age > 21 && moon.age < 23.5) {
+    tips.push(`🌗 Last quarter moon — early morning bite window is your best bet. Moon rises near midnight and sets around noon; pre-dawn feeding is strong.`);
+  }
+
+  // Active solunar window — bump bite and call it out
+  if (activeWindow) {
+    bite = Math.min(5, bite + (activeWindow.name === "MAJOR" ? 1 : 0.5));
+    tips.push(`🌙 You're inside a solunar ${activeWindow.name} feed window right now — get your lines in the water. This is when fish are most likely moving and actively feeding. ${activeWindow.name === "MAJOR" ? "Major windows are the prime windows of the day." : "Minor windows are shorter but still worth fishing."}`);
+  } else {
+    // Find next window
+    let nextWin = null, nextDiff = Infinity;
+    for (const w of windows) {
+      const center = ((w.center % 1440) + 1440) % 1440;
+      let diff = center - nowMin;
+      if (diff < 0) diff += 1440;
+      if (diff < nextDiff) { nextDiff = diff; nextWin = { ...w, minsAway: diff }; }
+    }
+    if (nextWin && nextWin.minsAway < 180) {
+      const h = Math.floor(nextWin.minsAway / 60), m = nextWin.minsAway % 60;
+      const timeStr = h > 0 ? `${h}h ${m}m` : `${m} min`;
+      tips.push(`🌙 Next solunar ${nextWin.name} window in ${timeStr} — worth timing your best spots around it.`);
+    }
+  }
+
   bite = Math.round(Math.max(1, Math.min(5, bite)));
   return { bite, tips, topSpecies, baits, hotspots, season, shadTip, pondTip, windBankAdvice };
 }

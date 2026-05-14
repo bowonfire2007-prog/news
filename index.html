@@ -330,6 +330,8 @@
   .outdoor-news-header { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:18px; font-weight:700; padding:16px 0 8px; border-bottom:2px solid var(--border); margin-bottom:4px; }
   .fish-loading { padding:24px 0; text-align:center; color:var(--text-muted); font-size:14px; }
   /* AI Smart Plan button + response panel */
+  .lake-history-chart { margin:12px 0 6px; padding:10px 12px 6px; background:color-mix(in srgb,var(--accent) 4%,var(--bg)); border:1px solid var(--border); border-radius:8px; }
+  .lake-history-label { font-size:11px; font-weight:600; letter-spacing:0.04em; color:var(--text-soft); text-transform:uppercase; margin-bottom:6px; }
   .fish-smart-row { padding:12px 0 4px; text-align:center; }
   .fish-smart-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; border-radius:999px; border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border)); background:color-mix(in srgb,var(--accent) 8%,transparent); color:var(--accent); font-size:13px; font-weight:700; letter-spacing:0.05em; cursor:pointer; font-family:inherit; text-transform:uppercase; transition:background .15s,color .15s,border-color .15s; }
   .fish-smart-btn:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -2747,7 +2749,83 @@ function wireCattleMarket() {
 }
 
 
-function renderFishingAdvisor(lake, weather, advice, weeklyRecs) {
+function renderLakeHistoryChart(history) {
+  if (!history || history.length < 2) return "";
+  // Build a compact SVG sparkline of pool elevation over time
+  const pts = history.filter(r => Number.isFinite(r.elevation));
+  if (pts.length < 2) return "";
+
+  const W = 460, H = 72, PAD = { l: 38, r: 8, t: 8, b: 22 };
+  const innerW = W - PAD.l - PAD.r;
+  const innerH = H - PAD.t - PAD.b;
+
+  const elevs = pts.map(p => p.elevation);
+  let minE = Math.min(...elevs), maxE = Math.max(...elevs);
+  const span = maxE - minE;
+  // Add a bit of padding so the line isn't flush with top/bottom
+  minE -= span * 0.15 + 0.1;
+  maxE += span * 0.15 + 0.1;
+  const scaleX = i => PAD.l + (i / (pts.length - 1)) * innerW;
+  const scaleY = e => PAD.t + innerH - ((e - minE) / (maxE - minE)) * innerH;
+
+  // Polyline points
+  const polyline = pts.map((p, i) => `${scaleX(i).toFixed(1)},${scaleY(p.elevation).toFixed(1)}`).join(" ");
+
+  // Fill path (closed area under the line)
+  const fillPath = `M${scaleX(0).toFixed(1)},${(PAD.t + innerH).toFixed(1)} ` +
+    pts.map((p, i) => `L${scaleX(i).toFixed(1)},${scaleY(p.elevation).toFixed(1)}`).join(" ") +
+    ` L${scaleX(pts.length - 1).toFixed(1)},${(PAD.t + innerH).toFixed(1)} Z`;
+
+  // Y axis ticks — 3 evenly spaced
+  const yTicks = [minE + (maxE - minE) * 0.1, minE + (maxE - minE) * 0.5, minE + (maxE - minE) * 0.9];
+  const yTickHtml = yTicks.map(e => {
+    const y = scaleY(e);
+    return `<text x="${PAD.l - 4}" y="${y.toFixed(1)}" fill="var(--text-soft)" font-size="8" text-anchor="end" dominant-baseline="middle">${e.toFixed(0)}</text>
+<line x1="${PAD.l}" y1="${y.toFixed(1)}" x2="${W - PAD.r}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2,3"/>`;
+  }).join("");
+
+  // X axis labels — first, middle, last dates
+  const dateFmt = s => { const d = new Date(s + "T12:00:00"); return d.toLocaleDateString("en-US", {month:"short", day:"numeric"}); };
+  const xLabelHtml = [0, Math.floor((pts.length-1)/2), pts.length-1].map(i => {
+    const x = scaleX(i);
+    return `<text x="${x.toFixed(1)}" y="${(H - 5).toFixed(1)}" fill="var(--text-soft)" font-size="8" text-anchor="middle">${dateFmt(pts[i].date)}</text>`;
+  }).join("");
+
+  // Highlight the last point
+  const lastX = scaleX(pts.length - 1);
+  const lastY = scaleY(pts[pts.length - 1].elevation);
+
+  // Trend summary text
+  const first = pts[0], last = pts[pts.length - 1];
+  const totalChange = last.elevation - first.elevation;
+  const days = Math.round((new Date(last.date) - new Date(first.date)) / 86400000);
+  const trendTxt = totalChange < -0.2
+    ? `▼ ${Math.abs(totalChange).toFixed(1)} ft over ${days} days`
+    : totalChange > 0.2
+    ? `▲ +${totalChange.toFixed(1)} ft over ${days} days`
+    : `— Stable ±${Math.abs(totalChange).toFixed(1)} ft over ${days} days`;
+  const trendColor = totalChange < -0.2 ? "var(--accent-red,#e87)" : totalChange > 0.2 ? "var(--sage,#6a9)" : "var(--text-soft)";
+
+  return `<div class="lake-history-chart">
+  <div class="lake-history-label">📈 Pool Elevation History <span style="color:${trendColor};font-weight:600;margin-left:6px">${escapeHtml(trendTxt)}</span></div>
+  <svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible;display:block" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="lakeGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02"/>
+      </linearGradient>
+    </defs>
+    ${yTickHtml}
+    <path d="${fillPath}" fill="url(#lakeGrad)"/>
+    <polyline points="${polyline}" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.5"/>
+    ${xLabelHtml}
+    <text x="${PAD.l - 4}" y="${PAD.t}" fill="var(--text-soft)" font-size="7" text-anchor="end">ft</text>
+  </svg>
+</div>`;
+}
+
+function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory) {
   const mush = renderMushroomCard(getMushroomTips(weather));
   const garden = renderGardenCard(getGardenTips(weather));
   const extras = mush + garden + renderCattleMarketCard() + renderWeeklyMarketCard(weeklyRecs || []);
@@ -2812,6 +2890,7 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs) {
       <div class="fish-lake-stat"><div class="fish-stat-val">${wind}</div><div class="fish-stat-lbl">Wind</div></div>
     </div>
   </div>
+  ${renderLakeHistoryChart(lakeHistory || [])}
   <div class="fish-smart-row">
     <button class="fish-smart-btn" type="button" id="fishSmartBtn"><span class="spark">✦</span> AI Smart Plan — Custom for Today</button>
     <div class="fish-smart-sub">Asks Claude to write a tailored plan from today's actual conditions.</div>
@@ -2830,6 +2909,8 @@ ${extras}
 
 // ── AI Smart Plan: POST today's conditions to the worker, show Claude's response ──
 const FISHPLAN_ENDPOINT     = CF_WORKER.replace(/\/$/, "") + "/fishplan";
+const LAKE_READING_ENDPOINT = CF_WORKER.replace(/\/$/, "") + "/lake-reading";
+const LAKE_HISTORY_ENDPOINT = CF_WORKER.replace(/\/$/, "") + "/lake-history";
 const FISHPLAN_CACHE_TTL_MS = 6 * 3600 * 1000; // 6h client-side cache too
 
 function fishPlanCacheKey(lake, weather) {
@@ -2877,12 +2958,12 @@ function renderFishSmartPanel(panel, plan, fromCache, onRefresh) {
   panel.querySelector(".fish-smart-refresh").addEventListener("click", () => onRefresh());
 }
 
-async function fetchAndShowSmartPlan(lake, weather, panel, btn, force) {
+async function fetchAndShowSmartPlan(lake, weather, panel, btn, force, lakeHistory) {
   const cacheKey = fishPlanCacheKey(lake, weather);
   if (!force) {
     const cached = getFishPlanCache(cacheKey);
     if (cached) {
-      renderFishSmartPanel(panel, cached, true, () => fetchAndShowSmartPlan(lake, weather, panel, btn, true));
+      renderFishSmartPanel(panel, cached, true, () => fetchAndShowSmartPlan(lake, weather, panel, btn, true, lakeHistory));
       return;
     }
   }
@@ -2913,7 +2994,8 @@ async function fetchAndShowSmartPlan(lake, weather, panel, btn, force) {
         dir: isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m) : null,
         speed: isFinite(c.wind_speed_10m) ? c.wind_speed_10m : null,
         sustainedHours: sustained
-      }
+      },
+      lakeHistory: Array.isArray(lakeHistory) ? lakeHistory.slice(-30) : []
     };
     const res = await fetch(FISHPLAN_ENDPOINT, {
       method: "POST",
@@ -2929,7 +3011,7 @@ async function fetchAndShowSmartPlan(lake, weather, panel, btn, force) {
     }
     const data = await res.json();
     setFishPlanCache(cacheKey, data);
-    renderFishSmartPanel(panel, data, false, () => fetchAndShowSmartPlan(lake, weather, panel, btn, true));
+    renderFishSmartPanel(panel, data, false, () => fetchAndShowSmartPlan(lake, weather, panel, btn, true, lakeHistory));
   } catch (err) {
     panel.innerHTML =
       '<div class="fish-smart-header"><span class="spark">✦</span> AI SMART PLAN</div>' +
@@ -2939,7 +3021,7 @@ async function fetchAndShowSmartPlan(lake, weather, panel, btn, force) {
   }
 }
 
-function wireFishSmartPlan(lake, weather, advice) {
+function wireFishSmartPlan(lake, weather, advice, lakeHistory) {
   const btn = document.getElementById("fishSmartBtn");
   const panel = document.getElementById("fishSmartPanel");
   if (!btn || !panel) return;
@@ -2951,7 +3033,7 @@ function wireFishSmartPlan(lake, weather, advice) {
       return;
     }
     btn.classList.add("is-open");
-    fetchAndShowSmartPlan(lake, weather, panel, btn, false);
+    fetchAndShowSmartPlan(lake, weather, panel, btn, false, lakeHistory);
   });
 }
 
@@ -2979,17 +3061,29 @@ async function loadOutdoor(force) {
   const cat = CATEGORIES.find(c => c.id==="outdoor");
   if (force) cat.feeds.forEach(f => localStorage.removeItem("news.cache."+f.url));
 
-  const [lakeData, weeklyRecords, newsResults] = await Promise.all([
+  const [lakeData, weeklyRecords, lakeHistoryResult, newsResults] = await Promise.all([
     fetchTrumanLake(),
     fetchWeeklyData(),
+    fetch(LAKE_HISTORY_ENDPOINT).then(r => r.ok ? r.json() : { readings: [] }).catch(() => ({ readings: [] })),
     Promise.all(cat.feeds.map(f => fetchFeed(f).catch(()=>[])))
   ]);
 
+  // Store today's reading in KV (fire-and-forget)
+  if (lakeData && Number.isFinite(lakeData.stage)) {
+    fetch(LAKE_READING_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ elevation: lakeData.stage, inflow: lakeData.inflow ?? null, outflow: lakeData.outflow ?? null })
+    }).catch(() => {});
+  }
+
+  const lakeHistory = lakeHistoryResult?.readings || [];
+
   const weatherData = getCachedWeather();
   const advice = generateFishingAdvice(lakeData, weatherData);
-  advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice, weeklyRecords);
+  advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice, weeklyRecords, lakeHistory);
   // Wire up the AI Smart Plan button now that the advisor markup is in the DOM
-  wireFishSmartPlan(lakeData, weatherData, advice);
+  wireFishSmartPlan(lakeData, weatherData, advice, lakeHistory);
   wireCattleMarket();
   wireWeeklyMarket();
 

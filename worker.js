@@ -52,6 +52,12 @@ export default {
     if (url.pathname === "/weeklydata") {
       return handleWeeklyData(url, env, ctx);
     }
+    if (url.pathname === "/lake-reading") {
+      return handleLakeReading(request, env, ctx);
+    }
+    if (url.pathname === "/lake-history") {
+      return handleLakeHistory(url, env, ctx);
+    }
     return handleRssProxy(url);
   }
 };
@@ -139,6 +145,7 @@ function buildFishPlanPrompt(b) {
   const lake = b.lake || {};
   const wx = b.weather || {};
   const wind = b.wind || {};
+  const history = Array.isArray(b.lakeHistory) ? b.lakeHistory : [];
   const lines = [];
   if (Number.isFinite(lake.stage))       lines.push(`Pool elevation: ${lake.stage.toFixed(1)} ft (normal pool 706.0 ft, flood pool 739.6 ft)`);
   if (Number.isFinite(lake.dailyChange)) lines.push(`24h change: ${lake.dailyChange >= 0 ? "+" : ""}${lake.dailyChange.toFixed(2)} ft (${lake.dailyChange < -0.1 ? "falling" : lake.dailyChange > 0.1 ? "rising" : "stable"})`);
@@ -151,7 +158,50 @@ function buildFishPlanPrompt(b) {
   if (wx.condition)               lines.push(`Sky: ${wx.condition}`);
   if (Number.isFinite(wx.humidity)) lines.push(`Humidity: ${wx.humidity}%`);
 
+  // Multi-week lake trend from KV history
+  const historyLines = [];
+  if (history.length >= 3) {
+    const oldest = history[0];
+    const newest = history[history.length - 1];
+    const msPerDay = 86400000;
+    const daySpan = Math.max(1, Math.round((new Date(newest.date) - new Date(oldest.date)) / msPerDay));
+    const totalChange = newest.elevation - oldest.elevation;
+    const trendWord = totalChange < -0.3 ? "falling" : totalChange > 0.3 ? "rising" : "stable";
+    historyLines.push(`Multi-week trend (${daySpan} days): ${trendWord} ${Math.abs(totalChange).toFixed(1)} ft total — from ${oldest.elevation.toFixed(1)} ft to ${newest.elevation.toFixed(1)} ft`);
+
+    // Count consecutive falling/rising days at the end of the series
+    let fallingStreak = 0, risingStreak = 0;
+    for (let i = history.length - 1; i > 0; i--) {
+      if (history[i].elevation < history[i-1].elevation - 0.02) fallingStreak++;
+      else break;
+    }
+    for (let i = history.length - 1; i > 0; i--) {
+      if (history[i].elevation > history[i-1].elevation + 0.02) risingStreak++;
+      else break;
+    }
+    if (fallingStreak >= 3) historyLines.push(`Consecutive falling days: ${fallingStreak} days in a row — fish have been adjusting to dropping water; look for them to pull away from bank cover and stage on channel edges and main-lake points`);
+    else if (risingStreak >= 3) historyLines.push(`Consecutive rising days: ${risingStreak} days in a row — rising water pulls fish into newly flooded timber and shallow flats`);
+  }
+
+  const monthNum = new Date().getUTCMonth() + 1; // 1-12
   const monthName = new Date().toLocaleDateString("en-US", { month: "long" });
+
+  // Seasonal spawning / baitfish calendar for Truman Lake / central Missouri
+  const spawningNotes = {
+    3:  "Pre-spawn: water warming from 40s→50s°F. Blue cats feeding up before spawn. Crappie moving shallow. Gizzard shad beginning to school near surface.",
+    4:  "Spawn ramp-up: water 55-65°F. Crappie spawning on shallow brush when water hits 60°F+. Blue cats pre-spawn feeding binge — best blue cat bite of the year approaching. Gizzard shad schooling in coves.",
+    5:  "Peak spawn: crappie full spawn in brushy coves 2-6 ft deep. Blue catfish spawn starting when water hits 70-75°F — they move to rocky banks and timber edges. Gizzard shad spawn May-June (65°F+) — fresh shad are concentrated and excellent cutbait. Flatheads becoming active.",
+    6:  "Post-spawn: crappie retreating to deeper structure (8-15 ft). Blue and flathead cats actively guarding nests then recovering — summer pattern establishing. Shad scattered after spawn; surface activity early/late.",
+    7:  "Summer pattern: blues schooled in current below dam and deep channel bends. Crappie suspended 10-20 ft on structure. Night bite excellent for flatheads on live bream.",
+    8:  "Late summer: oxygen stratification pushes fish to thermocline depth or current areas. Blues stack in main channel below Harry S. Truman Dam outflow. Crappie deep and sluggish midday.",
+    9:  "Fall transition: cooling water triggers feed-up. Blues go on fall binge — one of the best times of year. Crappie moving shallower. Shad schooling on surface again.",
+    10: "Peak fall: water 55-65°F, excellent blue cat action. Crappie stacking on brush in 8-15 ft. Shad tightly schooled — perfect for cast-netting.",
+    11: "Late fall: water cooling to 50s°F. Blues and crappie still active but slowing. Focus on sunny-warmed shallows mid-afternoon.",
+    12: "Winter: water 40-50°F. Blues sluggish but catchable on deep channel ledges (20-30 ft). Crappie tight to structure in 15-25 ft. Slow presentations.",
+    1:  "Deep winter: water 38-45°F. Hardest month. Blues alive in deep holes. Crappie barely moving. Best bite is midday warmth near dam outflow.",
+    2:  "Late winter / pre-season: water starting to warm. Blues begin stirring. End of month crappie start staging near spawning structure."
+  };
+  const spawnNote = spawningNotes[monthNum] || "";
 
   return `You are an expert fishing guide for Truman Lake in west-central Missouri. The angler fishes from Sparrowfoot Park on the Grand River arm and has access to BOTH boat and bank.
 
@@ -164,8 +214,10 @@ TARGET SPECIES (these only — do NOT recommend largemouth bass, walleye, or whi
 
 TODAY'S CONDITIONS (${monthName}):
 ${lines.join("\n")}
+${historyLines.length ? "\nLAKE LEVEL HISTORY:\n" + historyLines.join("\n") : ""}
+${spawnNote ? "\nSEASONAL CONTEXT (${monthName}):\n" + spawnNote : ""}
 
-Write a tight, specific fishing plan in 2-3 short paragraphs of plain prose. NO bullet points, NO headers, NO markdown. Lead with the best species for today's conditions and explain WHY given the lake state. Then specify exact technique — bait, rig, depth, retrieve speed. Finally, name where to focus on the Grand River arm near Sparrowfoot — channel bends, flooded timber, mud lines, riprap, creek mouths, points, etc. — and whether tonight or tomorrow morning is a better window. If conditions strongly favor a particular bite (e.g. dam releasing hard = blues stacked in current breaks), say so directly and confidently. Keep it to ~150-200 words total.`;
+Write a tight, specific fishing plan in 2-3 short paragraphs of plain prose. NO bullet points, NO headers, NO markdown. Lead with the best species for today's conditions and explain WHY given the lake state AND the recent lake trend (if the lake has been falling for multiple days, say so and explain how that changes where fish are holding). Then specify exact technique — bait, rig, depth, retrieve speed — accounting for spawn phase if relevant (e.g. crappie on beds, blue cats pre-spawn feeding). Finally, name where to focus on the Grand River arm near Sparrowfoot — channel bends, flooded timber, mud lines, riprap, creek mouths, points, etc. — and whether tonight or tomorrow morning is a better window. Keep it to ~150-200 words total.`;
 }
 
 // ─────────────── FOLLOW-UP Q&A ───────────────
@@ -228,6 +280,78 @@ ${brief}`;
   if (!answer) return jsonResponse({ error: "Empty response from model" }, 502);
 
   return jsonResponse({ answer, model, generated_at: new Date().toISOString() });
+}
+
+// ─────────────── LAKE LEVEL HISTORY ───────────────
+// Stores one lake reading per day in WEEKLY_KV under "lake:history".
+// Keeps the last 365 daily readings. Used by the AI fish plan for multi-week trend context.
+//   POST /lake-reading  body: { elevation, inflow, outflow }
+//   GET  /lake-history  returns: { readings: [{date, ts, elevation, inflow, outflow}], count }
+
+const LAKE_HISTORY_KEY = "lake:history";
+
+async function handleLakeReading(request, env, ctx) {
+  if (request.method !== "POST") return jsonResponse({ error: "POST only" }, 405);
+  if (!env.WEEKLY_KV) return jsonResponse({ error: "WEEKLY_KV not bound" }, 500);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonResponse({ error: "Invalid JSON" }, 400); }
+
+  const { elevation, inflow, outflow } = body;
+  if (!Number.isFinite(elevation)) return jsonResponse({ error: "elevation required" }, 400);
+
+  const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+
+  let history = [];
+  try {
+    const raw = await env.WEEKLY_KV.get(LAKE_HISTORY_KEY);
+    if (raw) history = JSON.parse(raw);
+  } catch {}
+
+  const existing = history.find(r => r.date === today);
+  if (existing) {
+    const ageH = (Date.now() - existing.ts) / 3600000;
+    if (ageH < 1) return jsonResponse({ ok: true, skipped: true, count: history.length });
+    // Update if it's been more than 1 hour (better reading later in the day)
+    existing.elevation = elevation;
+    if (Number.isFinite(inflow))  existing.inflow  = inflow;
+    if (Number.isFinite(outflow)) existing.outflow = outflow;
+    existing.ts = Date.now();
+  } else {
+    history.push({
+      date: today,
+      ts: Date.now(),
+      elevation,
+      inflow:  Number.isFinite(inflow)  ? inflow  : null,
+      outflow: Number.isFinite(outflow) ? outflow : null
+    });
+  }
+
+  // Keep sorted, trim to last 365 days
+  history.sort((a, b) => a.date.localeCompare(b.date));
+  if (history.length > 365) history = history.slice(-365);
+
+  ctx.waitUntil(env.WEEKLY_KV.put(LAKE_HISTORY_KEY, JSON.stringify(history), {
+    expirationTtl: 2 * 365 * 24 * 3600
+  }));
+
+  return jsonResponse({ ok: true, count: history.length });
+}
+
+async function handleLakeHistory(url, env, ctx) {
+  if (!env.WEEKLY_KV) return jsonResponse({ error: "WEEKLY_KV not bound" }, 500);
+
+  const limit = Math.min(parseInt(url.searchParams.get("limit") || "365", 10), 365);
+
+  let history = [];
+  try {
+    const raw = await env.WEEKLY_KV.get(LAKE_HISTORY_KEY);
+    if (raw) history = JSON.parse(raw);
+  } catch {}
+
+  const readings = history.slice(-limit);
+  return jsonResponse({ readings, count: readings.length });
 }
 
 // ─────────────── RSS PROXY ───────────────

@@ -1382,6 +1382,27 @@ async function handleCattlePrice(url, env, ctx) {
   }
   if (parsed.error) return jsonResponse({ ...parsed, image_url: imgUrl, model, fetched_via: fetchedVia }, 200);
 
+  // ── Freshness check ──
+  // Wheeler sells on Tuesdays. If Claude returns a sale_date more than 10 days
+  // before today, the report is stale — most often because a full-page
+  // screenshot strategy (thumio-page, microlink-page, mshots) captured last
+  // week's report before Wheeler posted this week's. We refuse to cache or
+  // return stale data so the user sees a clear error and uploads manually.
+  if (parsed.sale_date && /^\d{4}-\d{2}-\d{2}$/.test(parsed.sale_date)) {
+    const todayMs   = Date.parse(today + "T00:00:00Z");
+    const saleMs    = Date.parse(parsed.sale_date + "T00:00:00Z");
+    const ageDays   = (todayMs - saleMs) / 86400000;
+    if (isFinite(ageDays) && ageDays > 10) {
+      return jsonResponse({
+        error: "Wheeler hasn't posted this week's report yet (auto-fetch returned a stale " + parsed.sale_date + " scan). Tap 📤 Upload Wheeler Image once the new scan is available.",
+        stale_sale_date: parsed.sale_date,
+        age_days: Math.round(ageDays),
+        fetched_via: fetchedVia,
+        image_url: imgUrl
+      }, 200);
+    }
+  }
+
   const result = { ...parsed, model, image_url: imgUrl, fetched_via: fetchedVia, attempts: attempts.length ? attempts : undefined, generated_at: new Date().toISOString() };
   const cacheRes = new Response(JSON.stringify(result), {
     headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=43200" } // 12h
@@ -1457,6 +1478,14 @@ async function handleCattleManual(request, env, ctx) {
     return jsonResponse({ error: "Could not parse Claude response as JSON", raw: text.slice(0, 600) }, 502);
   }
   if (parsed.error) return jsonResponse({ ...parsed, model, fetched_via: "manual-upload" }, 200);
+
+  // Purge today's /cattleprice cache so a subsequent auto-fetch tap can't
+  // overwrite this fresh manual reading with stale screenshot data.
+  const today = new Date().toISOString().slice(0, 10);
+  const cacheKey = "cattleprice:wheeler:" + today;
+  const cacheReq = new Request("https://cattleprice-cache.local/" + encodeURIComponent(cacheKey), { method: "GET" });
+  ctx.waitUntil(caches.default.delete(cacheReq));
+
   return jsonResponse({ ...parsed, model, fetched_via: "manual-upload", generated_at: new Date().toISOString() });
 }
 
@@ -1600,6 +1629,16 @@ Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY 
     index.sort();
     await env.WEEKLY_KV.put("weekly:index", JSON.stringify(index), { expirationTtl: 4 * 365 * 24 * 3600 });
   }
+
+  // Purge the /weeklydata edge cache so the new upload is visible immediately
+  // on every device. KV (the source of truth for the historical chart) is
+  // untouched — we're only invalidating the cached HTTP response.
+  const cache = caches.default;
+  ctx.waitUntil(Promise.all(
+    [50, 100, 200, 300].map(limit =>
+      cache.delete(new Request("https://weeklydata-cache.local/v1/limit=" + limit))
+    )
+  ));
 
   return jsonResponse({ success: true, date: extracted.report_date, data: record });
 }

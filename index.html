@@ -617,11 +617,14 @@ const WEATHER_LOCATION = { name:"Clinton, MO", lat:38.3686, lon:-93.7780, tz:"Am
 const CATEGORY_ICONS = {
   saved:"🔖", stocks:"📈", top:"🌍", local:"📍", ukraine:"🇺🇦", iran:"🕌",
   scs:"⚓", tech:"💻", business:"💼", science:"🔬",
-  philippines:"🇵🇭", cannabis:"🌿", outdoor:"🎣"
+  philippines:"🇵🇭", cannabis:"🌿", outdoor:"🎣", garden:"🌱", market:"🐄"
 };
 
-// Quick-access tab bar — these show as pills at the top
-const QUICK_TAB_IDS = ["top","local","outdoor","tech","stocks","cannabis","saved"];
+// Quick-access tab bar — these show as pills at the top.
+// Outdoor used to be one big scroll (fishing advisor + mushroom + garden + cattle
+// + weekly market + news). Now split: outdoor keeps fishing report + news;
+// `garden` has garden + mushroom + week-by-week planter; `market` has cattle.
+const QUICK_TAB_IDS = ["top","local","outdoor","garden","market","tech","stocks","cannabis","saved"];
 
 const CATEGORIES = [
   { id:"saved", label:"Saved", isSaved:true, feeds:[] },
@@ -651,6 +654,9 @@ const CATEGORIES = [
     { source:"Clinton MO News", url:"https://news.google.com/rss/search?q=%22Clinton%2C+Missouri%22+OR+%22Clinton+MO%22&hl=en-US&gl=US&ceid=US:en" },
     { source:"KDKD Clinton", url:"https://news.google.com/rss/search?q=%22KDKD%22+OR+%22kdkdradio%22+Clinton+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"Truman Lake", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+OR+%22Harry+S+Truman+Reservoir%22+OR+%22Truman+Dam%22&hl=en-US&gl=US&ceid=US:en" },
+    // Direct USACE Kansas City RSS for Truman Lake (.mil source — authoritative)
+    { source:"USACE Truman Lake", url:"https://www.nwk.usace.army.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=426&isdashboardselected=0&max=20&Category=15767" },
+    { source:"USACE Kansas City", url:"https://www.nwk.usace.army.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=426&isdashboardselected=0&max=20&Category=21190" },
 
     // ─── HYPERLOCAL — Adjacent counties ───
     { source:"Benton County MO", url:"https://news.google.com/rss/search?q=%22Benton+County%22+Missouri+OR+%22Warsaw%2C+Missouri%22+OR+%22Cole+Camp%22+OR+%22Lincoln%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en" },
@@ -797,17 +803,31 @@ const CATEGORIES = [
     { source:"Cannabis Now", url:"https://cannabisnow.com/feed/" }
   ]},
   { id:"outdoor", label:"MO Outdoor", isOutdoor:true, maxAgeHours:168, feeds:[
-    // ─── OFFICIAL / AUTHORITATIVE ───
-    { source:"MDC News", url:"https://mdc.mo.gov/newsroom/rss" },
-    { source:"USACE Kansas City", url:"https://news.google.com/rss/search?q=%22Kansas+City+District%22+%22Corps+of+Engineers%22+OR+%22Truman+Dam%22+OR+%22Truman+Lake%22+release&hl=en-US&gl=US&ceid=US:en" },
+    // ─── OFFICIAL — MDC (no public RSS; Google News site: query is reliable) ───
+    { source:"MDC News", url:"https://news.google.com/rss/search?q=site%3Amdc.mo.gov&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MDC Hunting", url:"https://news.google.com/rss/search?q=site%3Amdc.mo.gov+hunting+OR+deer+OR+turkey+OR+waterfowl&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MDC Fishing", url:"https://news.google.com/rss/search?q=site%3Amdc.mo.gov+fishing+OR+trout+OR+crappie+OR+bass&hl=en-US&gl=US&ceid=US:en" },
+    // ─── OFFICIAL — USACE Kansas City District (DIRECT .mil RSS feeds) ───
+    { source:"USACE Truman Lake", url:"https://www.nwk.usace.army.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=426&isdashboardselected=0&max=20&Category=15767" },
+    { source:"USACE District Lakes", url:"https://www.nwk.usace.army.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=426&isdashboardselected=0&max=20&Category=9864" },
+    { source:"USACE Kansas City", url:"https://www.nwk.usace.army.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=426&isdashboardselected=0&max=20&Category=21190" },
+    { source:"USACE Stockton Lake", url:"https://www.nwk.usace.army.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=426&isdashboardselected=0&max=20&Category=15763" },
+    { source:"USACE Pomme de Terre", url:"https://www.nwk.usace.army.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=426&isdashboardselected=0&max=20&Category=15770" },
+    { source:"USACE Recreation", url:"https://www.nwk.usace.army.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=426&isdashboardselected=0&max=20&Category=21212" },
     // ─── MISSOURI-SPECIFIC ───
     { source:"Truman Lake Fishing", url:"https://news.google.com/rss/search?q=%22Truman+Lake%22+fishing+OR+crappie+OR+bass+OR+catfish&hl=en-US&gl=US&ceid=US:en" },
     { source:"Missouri Fishing", url:"https://news.google.com/rss/search?q=Missouri+fishing+crappie+bass+catfish+walleye&hl=en-US&gl=US&ceid=US:en" },
     { source:"MO Hunting", url:"https://news.google.com/rss/search?q=Missouri+hunting+deer+turkey+duck+dove+season&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MO Trout / Stream", url:"https://news.google.com/rss/search?q=Missouri+trout+OR+%22trout+park%22+OR+%22Bennett+Spring%22+OR+%22Roaring+River%22+OR+%22Maramec+Spring%22+OR+%22Montauk%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MO Conservation Areas", url:"https://news.google.com/rss/search?q=%22Missouri+Department+of+Conservation%22+OR+%22conservation+area%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MO Public Lands", url:"https://news.google.com/rss/search?q=%22Mark+Twain+National+Forest%22+OR+%22Ozark+National%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"CWD Missouri", url:"https://news.google.com/rss/search?q=Missouri+%22chronic+wasting+disease%22+OR+CWD+deer&hl=en-US&gl=US&ceid=US:en" },
     { source:"Game & Fish MO", url:"https://news.google.com/rss/search?q=site%3Agameandfishmag.com+Missouri&hl=en-US&gl=US&ceid=US:en" },
+    // ─── LAKE OF THE OZARKS — Ameren / Bagnell, NOT USACE ───
     { source:"Lake of the Ozarks Fishing", url:"https://news.google.com/rss/search?q=%22Lake+of+the+Ozarks%22+fishing+OR+boating&hl=en-US&gl=US&ceid=US:en" },
-    { source:"MO State Parks", url:"https://news.google.com/rss/search?q=Missouri+state+park+OR+%22Corps+of+Engineers%22+campground+lake&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Bagnell Dam / Ameren", url:"https://news.google.com/rss/search?q=%22Bagnell+Dam%22+OR+%22Ameren+Missouri%22+%22Lake+of+the+Ozarks%22+release+OR+level+OR+spillway&hl=en-US&gl=US&ceid=US:en" },
+    { source:"KRMS Lake News", url:"https://news.google.com/rss/search?q=site%3Akrmsradio.com+OR+%22Lake+of+the+Ozarks%22+news&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MO State Parks", url:"https://news.google.com/rss/search?q=Missouri+state+park+OR+%22mostateparks.com%22+OR+%22Department+of+Natural+Resources%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     // ─── REGIONAL / NATIONAL ───
     { source:"Midwest Fishing Report", url:"https://news.google.com/rss/search?q=midwest+fishing+report+bass+crappie+catfish+walleye&hl=en-US&gl=US&ceid=US:en" },
     { source:"Wired2Fish", url:"https://www.wired2fish.com/feed/" },
@@ -822,7 +842,11 @@ const CATEGORIES = [
     { source:"Outdoor Life", url:"https://www.outdoorlife.com/rss/" },
     { source:"Field & Stream", url:"https://www.fieldandstream.com/rss/" },
     { source:"In-Fisherman", url:"https://www.in-fisherman.com/rss/" }
-  ]}
+  ]},
+  // Garden tab — cards-only; no news feed. Cuts the Outdoor scroll length.
+  { id:"garden", label:"Garden", isGarden:true, maxAgeHours:168, feeds:[] },
+  // Market tab — cattle market summary + weekly cattle market PDF data.
+  { id:"market", label:"Market", isMarket:true, maxAgeHours:168, feeds:[] }
 ];
 
 // Map tickers to Google News query terms (ticker + company name aliases for better hits).
@@ -906,10 +930,21 @@ const SOURCE_WEIGHT = {
   "Marijuana Moment":1.6,"MJBizDaily":1.5,"Leafly News":1.4,"Cannabis Now":1.3,
   "Philippine News Agency":1.5,"Manila Times":1.3,
   // ── OUTDOOR / FISHING / HUNTING ──
-  "MDC News":1.7,"USACE Kansas City":1.6,
-  "In-Fisherman":1.5,"Bassmaster":1.5,"Wired2Fish":1.4,"Major League Fishing":1.4,
-  "MeatEater":1.4,"Field & Stream":1.3,"Outdoor Life":1.3,"Game & Fish MO":1.3,
-  "Realtree":1.2,"Bass Pro 1Source":1.1,
+  // Missouri / Truman-area authoritative sources get top billing so they
+  // float above the national feeds (Bassmaster, Outdoor Life, etc.).
+  "MDC News":2.2,"MDC Hunting":2.0,"MDC Fishing":2.0,
+  "USACE Truman Lake":2.4,"USACE District Lakes":1.9,"USACE Kansas City":1.9,
+  "USACE Stockton Lake":1.7,"USACE Pomme de Terre":1.7,"USACE Recreation":1.5,
+  "Truman Lake Fishing":2.0,"Missouri Fishing":1.8,"MO Hunting":1.8,
+  "MO Trout / Stream":1.6,"MO Conservation Areas":1.6,"MO Public Lands":1.4,
+  "CWD Missouri":1.5,"Game & Fish MO":1.5,
+  "Lake of the Ozarks Fishing":1.6,"Bagnell Dam / Ameren":1.6,"KRMS Lake News":1.5,
+  "MO State Parks":1.5,
+  "In-Fisherman":1.4,"Bassmaster":1.4,"Wired2Fish":1.3,"Major League Fishing":1.3,
+  "MeatEater":1.3,"Field & Stream":1.2,"Outdoor Life":1.2,
+  "Realtree":1.1,"Bass Pro 1Source":1.0,
+  "Midwest Fishing Report":1.1,"Crappie Tournaments":1.1,
+  "Ducks Unlimited":1.2,"NWTF Turkey":1.2,
   "default":1.0
 };
 
@@ -1205,26 +1240,59 @@ const BREAKING_RE = /\b(breaking|urgent|alert|developing|just in|emergency|exclu
 function isBreaking(title) { return BREAKING_RE.test(title); }
 
 // ── LOCAL-NEWS RELEVANCE — tiered for Clinton/Henry/Truman first, KC over StL ──
-const ULTRALOCAL_RE = /\b(clinton(,?\s*mo|\s+missouri|\s+daily\s+democrat)?|henry\s+county|truman\s+(lake|reservoir|dam)|kdkd|tightwad|calhoun(,?\s*mo)?|deepwater|montrose|blairstown|urich|leesville|grand\s+river\s+arm|osage\s+arm|sparrowfoot|brownington|hartwell|coal,?\s*mo)\b/i;
+// "clinton" and "calhoun" REQUIRE an MO qualifier — bare "Clinton" would match
+// Hillary/Bill Clinton, Clinton (Ontario), Clinton (BC), etc.
+const ULTRALOCAL_RE = /\b(clinton(,?\s*mo\b|\s+missouri\b|\s+daily\s+democrat\b)|henry\s+county,?\s*(mo|missouri)\b|truman\s+(lake|reservoir|dam)|kdkd|tightwad|calhoun,?\s*mo\b|deepwater,?\s*mo\b|montrose,?\s*mo\b|blairstown,?\s*mo\b|urich|leesville,?\s*mo\b|grand\s+river\s+arm|osage\s+arm|sparrowfoot|brownington|hartwell,?\s*mo\b|coal,?\s*mo\b)\b/i;
+const FOREIGN_CLINTON_RE = /\b((hillary|bill|chelsea|william\s+j\.?|president|secretary)\s+clinton|clinton\s*,?\s*(ontario|on\b|b\.?c\.?|british\s+columbia|canada|iowa|ia\b|illinois|il\b|connecticut|ct\b|new\s+jersey|nj\b|new\s+york|ny\b|tennessee|tn\b|maryland|md\b|mississippi|ms\b|south\s+carolina|sc\b|north\s+carolina|nc\b|oklahoma|ok\b|arkansas|ar\b|kentucky|ky\b|indiana|in\b|utah|ut\b|wisconsin|wi\b|michigan|mi\b|township)|clinton\s+(foundation|administration|global\s+initiative|cards|devon))\b/i;
 const HYPERLOCAL_RE = /\b(warsaw\s+missouri|warsaw,?\s*mo|cole\s+camp|lincoln,?\s*mo|benton\s+county\s+missouri|hickory\s+county|hermitage,?\s*mo|cross\s+timbers|st\.?\s*clair\s+county|osceola,?\s*mo|lowry\s+city|appleton\s+city|bates\s+county|butler,?\s*mo|adrian,?\s*mo|rich\s+hill|windsor\s+missouri|knob\s+noster|whiteman\s+(afb|air\s+force))\b/i;
 const REGIONAL_RE  = /\b(sedalia|warrensburg|pettis\s+county|johnson\s+county\s+missouri|kingsville|holden,?\s*mo|lake\s+of\s+the\s+ozarks|camden\s+county|state\s+fair\s+community|west[\s-]?central\s+missouri|west\s+missouri|missouri\s+ozarks|harrisonville|raymore|peculiar|belton,?\s*mo|nevada,?\s*mo|vernon\s+county|el\s+dorado\s+springs|bolivar,?\s*mo|polk\s+county\s+missouri|cedar\s+county\s+missouri|stockton,?\s*mo|saline\s+county|marshall,?\s*mo|kmos)\b/i;
 const KC_RE        = /\b(kansas\s+city|kcmo|jackson\s+county\s+missouri|kc\s+chiefs|chiefs\s+kingdom|kc\s+royals|sporting\s+kc|kc\s+current|kmbc|kshb|fox\s*4\s*kc)\b/i;
 const STATEWIDE_RE = /\b(missouri\s+(governor|legislature|legislator|senator|state\s+senator|house|representative|attorney\s+general|treasurer|supreme\s+court|department|highway\s+patrol|conservation|state\s+park)|kehoe|mike\s+kehoe|mike\s+parson|mdc|modot|state\s+of\s+missouri|missouri\s+farm|missouri\s+agriculture|farm\s+bureau)\b/i;
 const BIG_CITY_RE  = /\b(st\.?\s*louis|springfield,?\s*mo|cape\s+girardeau|columbia,?\s*mo|jefferson\s+city|chesterfield|o.fallon|wentzville|st\.?\s*charles|joplin|branson)\b/i;
-const ULTRALOCAL_SOURCES = new Set(["Clinton Daily Democrat","Henry County MO","Clinton MO News","KDKD Clinton","Truman Lake"]);
-const HYPERLOCAL_SOURCES = new Set(["Benton County MO","St. Clair County MO","Bates County MO","Hickory County MO","Knob Noster / Whiteman","Lake of the Ozarks","West Central MO"]);
+const ULTRALOCAL_SOURCES = new Set(["Clinton Daily Democrat","KDKD Clinton","USACE Truman Lake"]);
+const HYPERLOCAL_SOURCES = new Set(["Knob Noster / Whiteman","Lake of the Ozarks","West Central MO"]);
+const ULTRALOCAL_GN_SOURCES = new Set(["Henry County MO","Clinton MO News","Truman Lake"]);
+const HYPERLOCAL_GN_SOURCES = new Set(["Benton County MO","St. Clair County MO","Bates County MO","Hickory County MO"]);
+const USACE_DISTRICT_SOURCES = new Set(["USACE Kansas City"]);
+const USACE_TRUMAN_RE = /\b(truman|stockton\s+lake|pomme\s+de\s+terre|osage\s+river|harry\s+s\.?\s+truman)\b/i;
 const KC_SOURCES = new Set(["KCUR","Kansas City Star","KMBC 9 KC","KSHB 41 KC","Fox 4 KC","Kansas City News"]);
 
 function localRelevance(item) {
-  if (ULTRALOCAL_SOURCES.has(item.source)) return 8;   // hyperlocal source — top
-  if (HYPERLOCAL_SOURCES.has(item.source)) return 5;   // adjacent county
   const text = (item.title + " " + (item.description || "")).toLowerCase();
-  if (ULTRALOCAL_RE.test(text))  return 8;  // Clinton/Henry/Truman by name
-  if (HYPERLOCAL_RE.test(text))  return 5;  // adjacent county by name
-  if (REGIONAL_RE.test(text))    return 2;  // wider west-central MO
-  if (STATEWIDE_RE.test(text))   return 2;  // statewide policy / MO gov
-  if (KC_SOURCES.has(item.source) || KC_RE.test(text)) return 1; // KC — modest boost above neutral
-  if (BIG_CITY_RE.test(text))    return -2; // StL/Columbia/Springfield → demoted
+  const isForeignClinton = FOREIGN_CLINTON_RE.test(text);
+  if (ULTRALOCAL_SOURCES.has(item.source) && !isForeignClinton) return 8;
+  if (HYPERLOCAL_SOURCES.has(item.source)) return 5;
+  if (USACE_DISTRICT_SOURCES.has(item.source)) return USACE_TRUMAN_RE.test(text) ? 7 : 1;
+  if (ULTRALOCAL_GN_SOURCES.has(item.source) && ULTRALOCAL_RE.test(text) && !isForeignClinton) return 8;
+  if (HYPERLOCAL_GN_SOURCES.has(item.source) && HYPERLOCAL_RE.test(text)) return 5;
+  if (ULTRALOCAL_RE.test(text) && !isForeignClinton) return 8;
+  if (HYPERLOCAL_RE.test(text))  return 5;
+  if (REGIONAL_RE.test(text))    return 2;
+  if (STATEWIDE_RE.test(text))   return 2;
+  if (KC_SOURCES.has(item.source) || KC_RE.test(text)) return 1;
+  if (BIG_CITY_RE.test(text))    return -2;
+  if (isForeignClinton) return -3;
+  return 0;
+}
+
+// ── OUTDOOR-NEWS RELEVANCE — MO-first, Truman/Henry highest ──
+const MO_HOMETURF_RE = /\b(truman\s+(lake|reservoir|dam)|harry\s+s\.?\s+truman|henry\s+county|clinton(,?\s*mo|\s+missouri)|kdkd|tightwad|osage\s+river|grand\s+river\s+arm|lake\s+of\s+the\s+ozarks|bagnell|stockton\s+lake|pomme\s+de\s+terre|mark\s+twain\s+(national\s+)?(forest|lake)|table\s+rock|lake\s+taneycomo|bull\s+shoals|current\s+river|jacks\s+fork|eleven\s+point|niangua|gasconade|meramec|big\s+piney|whitewater)\b/i;
+const MO_GENERAL_RE = /\b(missouri|mdc|missouri\s+department\s+of\s+conservation|missouri\s+conservation|bennett\s+spring|roaring\s+river|maramec\s+spring|montauk|trout\s+park|missouri\s+ozarks|ozark\s+(highlands|trail)|ozark\s+(national\s+)?(scenic\s+)?(riverway|forest)|whiteman\s+(afb|air\s+force))\b/i;
+const MO_OUTDOOR_AUTH_SOURCES = new Set(["MDC News","MDC Hunting","MDC Fishing","USACE Truman Lake","USACE Stockton Lake","USACE Pomme de Terre"]);
+const MO_OUTDOOR_GN_SOURCES = new Set(["Truman Lake Fishing","Missouri Fishing","MO Hunting","MO Trout / Stream","MO Conservation Areas","MO Public Lands","CWD Missouri","Game & Fish MO","Lake of the Ozarks Fishing","Bagnell Dam / Ameren","KRMS Lake News","MO State Parks"]);
+const USACE_DISTRICT_OUTDOOR = new Set(["USACE Kansas City","USACE District Lakes","USACE Recreation"]);
+
+function outdoorRelevance(item) {
+  const text = (item.title + " " + (item.description || "")).toLowerCase();
+  if (MO_OUTDOOR_AUTH_SOURCES.has(item.source)) return 8;
+  if (USACE_DISTRICT_OUTDOOR.has(item.source)) return USACE_TRUMAN_RE.test(text) ? 7 : 3;
+  if (MO_OUTDOOR_GN_SOURCES.has(item.source)) {
+    if (MO_HOMETURF_RE.test(text)) return 7;
+    if (MO_GENERAL_RE.test(text))  return 5;
+    return 2;
+  }
+  if (MO_HOMETURF_RE.test(text)) return 6;
+  if (MO_GENERAL_RE.test(text))  return 3;
   return 0;
 }
 
@@ -2416,6 +2484,304 @@ function getGardenTips(weather) {
   return { banner, headline, sub, plantNow, chores, warnings };
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ZONE 6b WEEKLY PLANTING CALENDAR — Clinton, MO (USDA Zone 6b)
+//   • Average last spring frost:  ~April 15–20
+//   • Average first fall frost:   ~October 15–20
+//   • Frost-free growing season:  ~180 days
+// Keyed off ISO week so the same week returns the same guidance year-over-year.
+// Each phase covers a band of weeks and returns direct-sow / transplant /
+// indoor-start chips plus tips tailored to four crop focuses: tomatoes & peppers,
+// sweet corn & beans, cool-season greens, and perennials/fruit.
+// ══════════════════════════════════════════════════════════════════════════════
+
+function isoWeekNumber(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayN = (t.getUTCDay() + 6) % 7;
+  t.setUTCDate(t.getUTCDate() - dayN + 3);
+  const week1 = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((t - week1) / 86400000 - 3 + ((week1.getUTCDay() + 6) % 7)) / 7);
+}
+
+const PLANTING_PHASES = [
+  {
+    weeks: [1,2,3,4,5,6],
+    banner: "📋",
+    headline: "Deep Winter — Plan & Prep",
+    sub: "Catalogs open, tools out. Nothing to plant yet — set yourself up.",
+    directSow: [],
+    transplant: [],
+    indoorStart: ["Onions (Wks 5–6)","Leeks (Wks 5–6)","Celery (Wk 6)"],
+    avoid: ["Anything outdoors except mulching/pruning","Working wet soil — you'll compact it for months"],
+    soilTemp: "Soil is frozen or near it (28–40°F). Nothing germinates outside.",
+    frostWatch: "Sub-freezing nights normal. Heavy mulch on garlic, strawberries, perennials is your insulation.",
+    pestWatch: "Voles tunnel under mulch and snow — check fruit-tree trunks for chew rings.",
+    tomatoTip: "Order seed NOW — heirloom varieties (Brandywine, Cherokee Purple, Black Krim) sell out by mid-March. Plan to start indoors in Week 9.",
+    cornBeanTip: "Soil's months away. Order seed corn and bean varieties — locally adapted picks like Silver Queen, Bodacious, Provider beans do well here.",
+    greensTip: "Browse cool-season seed: Winter Density lettuce, Tyee spinach, Red Russian kale all overwinter under row cover here.",
+    perennialTip: "Pick a sunny dry day above 20°F to prune dormant fruit trees — remove crossing limbs and water sprouts. Burn or chip diseased wood (don't compost)."
+  },
+  {
+    weeks: [7,8,9,10],
+    banner: "🌱",
+    headline: "Late Winter — Fire Up the Grow Lights",
+    sub: "Indoor seed-starting season begins. Soil outside is still too cold.",
+    directSow: ["Peas (Wk 10, if soil is workable — pre-soak overnight)"],
+    transplant: [],
+    indoorStart: ["Onions","Leeks","Celery","Parsley","Peppers (Wk 9–10)","Eggplant (Wk 9–10)","Tomatoes (Wk 10 for slow varieties)","Lettuce","Broccoli","Cabbage","Cauliflower","Kohlrabi","Bok choy"],
+    avoid: ["Tomatoes/peppers outside — way too early","Direct-sowing anything that doesn't laugh at frost"],
+    soilTemp: "Soil 35–45°F. Only peas and onion sets germinate this cold.",
+    frostWatch: "Hard freezes (15–25°F) still likely. Don't uncover anything.",
+    pestWatch: "Inspect indoor seedlings daily for fungus gnats and damping-off. Bottom-water and run a fan to prevent both.",
+    tomatoTip: "Start tomato seeds 6–8 weeks before May 5–10 transplant date — that's Week 9–10. Bottom-heat to 75°F until germination, then 65–70°F under lights 14 hr/day. Pot up to 4\" cups when true leaves appear.",
+    cornBeanTip: "Don't bother starting corn or beans indoors — they hate transplanting. Wait for direct-sow weather (Week 19+).",
+    greensTip: "Start lettuce, broccoli, cabbage, cauliflower indoors NOW for early-April transplant — a 4-week head start on direct-sown seed.",
+    perennialTip: "Prune raspberries: remove dead floricanes (brown ones that fruited last year), thin primocanes to 4–6 strongest per linear foot. Last call before bud-break."
+  },
+  {
+    weeks: [11,12,13,14],
+    banner: "🌷",
+    headline: "Early Spring — First Outdoor Plantings",
+    sub: "Soil is workable. Peas, potatoes, onions, brassicas, perennials all want in.",
+    directSow: ["Peas (succession every 10 days)","Spinach","Lettuce","Arugula","Mustard greens","Radish","Turnip","Mâche / corn salad","Cilantro","Dill","Parsley","Chervil"],
+    transplant: ["Onion sets","Shallots","Leek starts","Potato seed pieces (chitted)","Cabbage","Broccoli","Cauliflower","Brussels sprouts","Kohlrabi","Asparagus crowns","Rhubarb crowns","Strawberry crowns","Raspberry/blackberry canes","Blueberry bushes","Horseradish roots","Hardy herbs"],
+    indoorStart: ["Tomatoes (peak window — Wks 11–13)","Peppers (continue if not started)","Eggplant","Tomatillos","Ground cherries","Basil (Wk 14)"],
+    avoid: ["Tomatoes/peppers/cucurbits OUTSIDE — last frost is 3–5 weeks away","Mulching brassicas heavily before soil warms — it keeps them cold"],
+    soilTemp: "Soil 40–55°F. Peas germinate at 40°F, lettuce at 35°F, brassicas at 45°F. Use a $5 soil thermometer at 4\" depth.",
+    frostWatch: "Frosts to 25°F still possible. Brassicas, peas, spinach shrug them off. Cover tender transplants only if a hard freeze (≤28°F) is forecast.",
+    pestWatch: "Cabbage maggot eggs at brassica stems — collar with cardboard or wood ash. Aphids on early lettuce — blast with hose.",
+    tomatoTip: "Pot up tomato seedlings to 4-inch cups when they hit 4–6 true leaves. Bury deep — they'll root along the buried stem. Brush the tops daily with your hand to thicken stems for transplant.",
+    cornBeanTip: "Still too cold for corn or beans. Soil needs 60°F (corn) and 65°F+ (beans). That's Week 19 in a normal year, Week 17 in a warm one.",
+    greensTip: "Direct-sow lettuce, spinach, radish in succession — a short row every 10 days through mid-May. They bolt fast once nights stay above 60°F. Save heat-tolerant varieties (Jericho lettuce, Bloomsdale spinach) for last.",
+    perennialTip: "Plant asparagus crowns in a 6\" trench, fan out the roots, cover with 2\" soil. Backfill as shoots emerge. Don't harvest the first 2 years — let the ferns build the crown. Same patience for rhubarb."
+  },
+  {
+    weeks: [15,16,17],
+    banner: "🥬",
+    headline: "Mid-Spring — Last Cool-Crop Window",
+    sub: "Big planting push, but tomatoes/peppers stay inside one more week.",
+    directSow: ["Carrots","Beets","Parsnips","Swiss chard","Kale","Collards","More lettuce/spinach/radish","Bush peas (last round)","Salad turnips","Fennel","Cilantro","Dill","Borage","Calendula"],
+    transplant: ["Cabbage/broccoli/cauliflower (if not done)","Kohlrabi","Lettuce starts","Onion plants","Strawberry crowns (last call)","Hardy herb plants"],
+    indoorStart: ["Cucumbers (Wk 17 — 3 weeks before transplant)","Summer squash","Melons","Basil"],
+    avoid: ["Tomatoes/peppers outside before April 25 unless you can cover","Bare soil — shallow mulch suppresses spring weeds before they explode"],
+    soilTemp: "Soil 50–62°F. Carrots/beets/chard germinate; cucurbits need 65°F+.",
+    frostWatch: "Last spring frost averages April 15–20 in Henry County. Light frost (32°F) can hit through April 25 — keep row cover handy.",
+    pestWatch: "Flea beetles on radish, brassicas, eggplant — row cover until plants size up. Slugs in mulched beds — beer traps or iron-phosphate bait.",
+    tomatoTip: "Harden off tomato/pepper transplants in Week 17: 2 hours outside in shade Day 1, +2 hours and a bit of sun each day for a week. Skip windy or cold days.",
+    cornBeanTip: "Pre-warm corn/bean beds with black plastic for 2 weeks before planting — helps soil hit 60°F sooner. Pull the plastic the day you direct-sow (Week 18–19).",
+    greensTip: "Sow your LAST big lettuce/spinach succession of spring around Week 17 — anything later will bolt before heading. Switch to heat-tolerant varieties (Jericho, Muir, Nevada).",
+    perennialTip: "Strawberry beds: pinch first flowers on year-1 plants so the crown bulks up. On established beds, side-dress with compost and renew straw mulch to keep berries clean."
+  },
+  {
+    weeks: [18,19],
+    banner: "🍅",
+    headline: "Frost-Free Window — Plant the Warm-Season Crew",
+    sub: "Last frost is behind us (usually). Time for tomatoes, peppers, and corn.",
+    directSow: ["Sweet corn (Wk 19 — block-plant 4×4 minimum)","Bush beans (Wk 19)","Pole beans","Cucumbers (Wk 19)","Summer squash","Zucchini","Winter squash","Pumpkins","Watermelon","Cantaloupe","Sunflowers","Zinnias","Nasturtiums","Cosmos","Marigolds"],
+    transplant: ["Tomatoes (bury deep!)","Tomatillos","Ground cherries","Peppers (soil must be 60°F+)","Eggplant (wait for 65°F nights)","Basil","Hardy herb gaps"],
+    indoorStart: [],
+    avoid: ["Sweet potatoes — wait until Week 20+ for slips","Direct-sowing okra in cool soil — wait for 70°F"],
+    soilTemp: "Soil 60–68°F. Beans, corn, cukes, squash all happy. Peppers/eggplant want 65°F nights — check the 7-day low forecast.",
+    frostWatch: "Late frosts (32–34°F) still possible through May 5–8. Cover tomatoes with sheets or buckets; uncover by 9 AM.",
+    pestWatch: "Cutworms — twist a foil collar around each tomato/pepper stem at planting. Striped cucumber beetles — row cover until flowers open, then remove for pollination.",
+    tomatoTip: "Transplant tomatoes 2/3 buried (roots form along the stem). Tomato-tone or compost in the hole. Cage or stake the same day. Pinch bottom 12\" of leaves once vines start running.",
+    cornBeanTip: "Block-plant sweet corn 4×4 (or larger) — single rows pollinate poorly. Plant pole beans at the base of corn stalks for a 'two sisters' patch (or add squash for three). Stagger plantings 14 days apart for a 4–6 week harvest.",
+    greensTip: "Sow heat-tolerant greens now: Jericho lettuce, Malabar spinach, Swiss chard (Bright Lights), kale (Lacinato/Red Russian — both bolt-resistant). Mulch heavily — they'll appreciate it in July.",
+    perennialTip: "Asparagus harvest in full swing — snap spears at soil level when 6–10\" tall and pencil-thick. STOP harvesting when most spears come up pencil-thin (mid-June) so the crown can refuel."
+  },
+  {
+    weeks: [20,21,22],
+    banner: "☀️",
+    headline: "Late Spring — Full Plant-Out & Succession Sow",
+    sub: "Everything warm-season goes in. Start the succession train for beans & corn.",
+    directSow: ["Bush beans (every 14 days through July 4)","Pole beans","Lima beans","Yard-long beans","Southern peas","Sweet corn (Wks 20, 22)","Cucumbers","Summer squash","Winter squash","Pumpkins (count back 100–110 days from Oct 31 — Wk 21 is the sweet spot)","Melons","Okra","Peanuts","Sunflowers","Zinnias","Marigolds"],
+    transplant: ["Sweet potato slips (soil must be 65°F)","Last tomato/pepper transplants","Eggplant","Cucumber starts","Squash starts","Melon starts","Basil","Tender herbs (mint in pots only!)"],
+    indoorStart: [],
+    avoid: ["Cool-season greens — they'll bolt within 3 weeks","Heavy nitrogen on tomatoes — leafy growth at the expense of fruit"],
+    soilTemp: "Soil 65–72°F. Sweet potatoes, okra, southern peas all happy now.",
+    frostWatch: "Frost risk effectively zero after May 10–12 in Clinton.",
+    pestWatch: "Squash vine borer moths fly mid-May to mid-June. Wrap squash stem bases with foil or row cover until flowers open. Squash bugs lay bronze egg clusters under leaves — crush on sight.",
+    tomatoTip: "Mulch tomato beds with straw or grass clippings once soil hits 65°F. Locks in moisture, prevents soil-splash blight, suppresses weeds. Water at the soil line — never overhead — to avoid blight.",
+    cornBeanTip: "Plant another sweet corn block 14 days after the first for staggered harvest. Pole beans climb 6–8 ft — set sturdy trellises NOW. Bush beans every 14 days through July 4 for fresh beans all summer.",
+    greensTip: "Sow lettuce/spinach in the SHADE of taller crops (north side of tomato cages, under corn) — they'll last 2–3 weeks longer than full-sun beds.",
+    perennialTip: "Strawberries are fruiting — net for birds, water deeply 1–2×/week. Pinch the first runners back to fatten the current year's berries; let runners root after harvest if you want to expand the patch."
+  },
+  {
+    weeks: [23,24,25,26],
+    banner: "🌞",
+    headline: "Early Summer — Mulch, Side-Dress, Succession",
+    sub: "First harvests start. Keep the second wave coming.",
+    directSow: ["Bush beans (every 14 days)","Sweet corn (last Wk-26 round for Aug harvest)","Cucumbers (Wk 23 — last round before borers peak)","Summer squash (last round)","Winter squash (Wk 24 latest practical)","Pumpkins (last call Wk 23)","Okra","Southern peas","Sunflowers","Zinnias","Heat-tolerant lettuce (Jericho, Nevada)"],
+    transplant: ["Sweet potato slip gaps","Basil","Heat-tolerant lettuce starts"],
+    indoorStart: ["Fall brassicas (Wks 25–27: broccoli, cabbage, cauliflower, kohlrabi, brussels sprouts)"],
+    avoid: ["Heavy fertilizer on tomatoes — they want bloom now, not leaves","Letting weeds set seed — pull or hoe before they bloom"],
+    soilTemp: "Soil 72–80°F. Hot crops thrive; cool crops bolt or bake. Mulch is critical.",
+    frostWatch: "None. Worry about heat stress instead — water deeply at dawn.",
+    pestWatch: "Squash vine borer at peak — slit a wilted stem lengthwise, remove the grub, bury the wound. Japanese beetles on raspberries, basil, beans — hand-pick into soapy water at dawn. Tomato hornworms (first gen) — handpick at dawn.",
+    tomatoTip: "Side-dress tomatoes with compost or balanced fertilizer when first fruits hit golf-ball size. Prune the bottom 12\" of leaves. Stake suckers are fine on caged plants; pinch them on single-leader staked plants.",
+    cornBeanTip: "First sweet corn nears harvest — silks brown and ears feel full when ready. Side-dress corn with N when knee-high and again at tassel. Pull spent bush bean plants after 3 picks — they're done.",
+    greensTip: "Spring lettuce and spinach are bolting — pull them. Switch the bed to bush beans or fall brassicas. Heat-tolerant Jericho lettuce can hold through June in part shade.",
+    perennialTip: "Stop cutting asparagus around Week 24 — let it fern out to feed the crown. Strawberries: after final harvest, mow the bed to 1\" with a string trimmer, side-dress with compost, let runners root for next year's bed."
+  },
+  {
+    weeks: [27,28,29,30,31],
+    banner: "🌶️",
+    headline: "Mid-Summer — Water, Harvest, Defend",
+    sub: "Pests at peak. First fall planning starts.",
+    directSow: ["Bush beans (last main-crop round)","Cucumbers (Wks 27–28 for a fall round)","Summer squash (last round)","Carrots (Wk 30–31 for fall harvest — Danvers, Yaya hold well)","Beets (Wk 31)","Daikon radish","Turnips","Rutabaga","Fall bush beans","Sunflowers (cutting garden)"],
+    transplant: ["Fall brassicas (Wk 31 for Oct/Nov harvest: broccoli, cabbage, cauliflower, kohlrabi, brussels sprouts)"],
+    indoorStart: ["Last brassica starts","Lettuce for fall transplant (Wk 30)"],
+    avoid: ["Letting overripe fruit hang — it tells the plant to stop producing","Watering overhead in evening — invites disease"],
+    soilTemp: "Soil 78–88°F. Pollination poor above 90°F day / 75°F night for tomatoes.",
+    frostWatch: "None.",
+    pestWatch: "Hornworms in full force — follow black frass pellets upward. Leave any caterpillar with white parasitic-wasp cocoons attached — they're dying and producing more wasps. Spider mites on dry stressed plants — blast with hose; insecticidal soap if severe.",
+    tomatoTip: "Heat above 90°F sterilizes tomato pollen — expect a fruit-set pause for 2 weeks. Plants resume in August. Use shade cloth (30%) on peppers if 95°F+ for a week.",
+    cornBeanTip: "Last sweet corn matures. Save dry beans by leaving pods on the plant until rattling and brown. Plant a fall round of bush beans by Wk 28 (Provider variety, 50 days, beats frost).",
+    greensTip: "Start fall lettuce indoors under shade cloth (germinates poorly above 80°F). Sprinkle seed on a tray, cover with vermiculite, refrigerate 48 hours to pre-chill, then germinate at 65–70°F. Transplant out in Wk 32.",
+    perennialTip: "Prune everbearing raspberries: cut down tops that fruited this spring, leave lower portions for a fall crop. Order strawberry plants for a Sep planting if you want a new bed."
+  },
+  {
+    weeks: [32,33,34,35],
+    banner: "🥕",
+    headline: "Late Summer — Fall Garden Goes In",
+    sub: "Heat breaks. Cool-crop window reopens.",
+    directSow: ["Spinach","Lettuce (Wks 33+)","Arugula","Mustard greens","Asian greens (bok choy, tatsoi)","Kale (overwinters!)","Collards","Swiss chard","Radish","Daikon radish","Turnips","Salad turnips","Rutabaga","Beets","Carrots (last round Wk 32)","Cilantro","Dill","Cover crop: buckwheat (kills at frost)"],
+    transplant: ["Broccoli","Cabbage","Cauliflower","Kohlrabi","Brussels sprouts (LAST call — Wk 32; they need 100 days to frost)","Lettuce starts","Strawberry crowns (renovate or expand bed)"],
+    indoorStart: ["Garlic prep — break heads into cloves, refrigerate 2 weeks before September planting"],
+    avoid: ["More cucumbers/squash — borers and powdery mildew will eat them","Direct-sowing brassica seed for fall — too risky; use transplants"],
+    soilTemp: "Soil 75–85°F early, dropping to 65–75°F by Wk 35. Germinate seeds in shade or under burlap.",
+    frostWatch: "Still ~8 weeks from first frost.",
+    pestWatch: "Cabbage worms — Bt spray or floating row cover on fall brassicas. Harlequin bugs on brassicas — handpick, crush egg clusters.",
+    tomatoTip: "Stop pinching suckers and top the plants Wk 34 — fruit set after that won't ripen before frost. Side-dress one more time for the August/September push.",
+    cornBeanTip: "Plant a final bush-bean round (Provider, Contender — 50-day varieties) Wk 32 latest. Should make it to frost. Save the best dry beans as seed for next year.",
+    greensTip: "Spinach germinates poorly in hot soil — pre-sprout seed in damp paper towels in the fridge for 5 days, then sow. Kale and collards SOWN now produce all winter under row cover.",
+    perennialTip: "Renovate strawberry beds: keep runners that rooted this summer; pull mother plants 3+ years old; side-dress with compost; renew straw mulch. Order new fruit trees & bramble canes for fall planting."
+  },
+  {
+    weeks: [36,37,38,39],
+    banner: "🍁",
+    headline: "Early Fall — Garlic In, Greens Going",
+    sub: "Plant garlic. Last sowings of cold-tolerant greens. Save seed.",
+    directSow: ["Spinach (last main sowing Wk 37 for fall + spring harvest)","Mâche / corn salad","Lettuce (Wk 36 only — needs 50 days)","Arugula","Radish","Turnips","Mustard greens","Cilantro","Cover crop: cereal rye, crimson clover, hairy vetch, winter wheat"],
+    transplant: ["Strawberry crowns (best window — root in fall, fruit next May)","Garlic — plant Wk 38–40 (Sep 20–Oct 10 sweet spot)","Shallots","Multiplier onions","Fall lettuce starts"],
+    indoorStart: [],
+    avoid: ["Tomatoes/peppers/cucurbits — they're winding down","Heavy pruning of fruit trees — wait for dormancy"],
+    soilTemp: "Soil 60–70°F dropping. Perfect for fall greens, garlic rooting.",
+    frostWatch: "First light frost (32–36°F) possible by Wk 39. Cover tomato/pepper plants with sheets to extend.",
+    pestWatch: "Voles move into garden mulch as weather cools — pull mulch back 6\" from tree trunks and strawberry crowns. Aphids on fall brassicas — blast with hose.",
+    tomatoTip: "Pick all tomatoes (red and green) before first hard freeze. Green ones ripen on the counter in a paper bag with an apple. Save seed from your best heirloom: scoop pulp into water, ferment 3 days, rinse, dry on a paper plate.",
+    cornBeanTip: "Sweet corn is done. Pull stalks and compost (chop first — slow to break down). Cure dry beans on the plant or hanging in the shed for 2 weeks before threshing.",
+    greensTip: "Sow spinach Wk 37 — it'll size up before hard freeze, overwinter under row cover, explode in March. Kale (Red Russian, Lacinato) only gets sweeter after frost — leave it standing.",
+    perennialTip: "Plant garlic Wk 38–40: break heads into cloves (don't peel), plant point-up 2\" deep, 6\" apart in rows 12\" apart. Mulch with 4\" of straw. Hardneck varieties (Music, Chesnok Red, German Extra Hardy) are zone 6 favorites."
+  },
+  {
+    weeks: [40,41,42,43],
+    banner: "🍂",
+    headline: "Mid-Fall — First Frost, Last Plantings",
+    sub: "Garlic deadline. Cover crops in. Beds bedded down.",
+    directSow: ["Garlic (LAST call Wk 41 — must root before hard freeze)","Cover crops: cereal rye (latest practical), winter wheat","Mâche (germinates surprisingly late)"],
+    transplant: ["Last garlic","Asparagus crowns (if soil is workable)","Bare-root fruit trees & berry canes once dormant (Wk 43+)"],
+    indoorStart: ["Microgreens for winter window-sill harvests","Garlic chives, parsley pots for indoor herbs"],
+    avoid: ["Pruning fruit trees yet — wait for full dormancy","Adding fresh manure to beds you'll plant in spring — it burns roots"],
+    soilTemp: "Soil 45–60°F cooling fast. Below 50°F, only cover crops and garlic root.",
+    frostWatch: "First killing frost averages Oct 15–20. Pull all warm-season plants the day BEFORE the frost hits.",
+    pestWatch: "Voles tunneling — pull all mulch back 6\" from tree trunks and strawberry crowns. Tree-trunk guards on young apples/pears prevent winter chewing.",
+    tomatoTip: "Pull tomato plants, cages, and stakes the same day. Burn or trash diseased vines (don't compost — early blight overwinters).",
+    cornBeanTip: "Pull all bean stalks. Compost healthy ones; trash diseased. Cover the bean bed with cereal rye — it'll fix nitrogen all winter and add bulk to till in spring.",
+    greensTip: "Spinach, kale, mâche, and arugula keep producing under a low tunnel of row cover or plastic. They're sweeter after every frost. Cut, don't pull — they'll regrow.",
+    perennialTip: "After the first hard freeze, mulch strawberries with 4\" of straw (NOT before — they need to harden). Tip-prune raspberry/blackberry primocanes to 4 ft to encourage side branching. Plant new bare-root trees once dormant."
+  },
+  {
+    weeks: [44,45,46,47,48],
+    banner: "🛌",
+    headline: "Late Fall — Put the Garden to Bed",
+    sub: "Tool maintenance. Order next year's seeds. Plan rotations.",
+    directSow: ["Cover crops (only Wk 44 — cereal rye latest practical)"],
+    transplant: ["Bare-root fruit trees and brambles (dormant only — best window!)","Asparagus crowns (in unfrozen soil)"],
+    indoorStart: ["Microgreens","Sprouts","Window-sill herbs (basil under lights, parsley, chives)"],
+    avoid: ["Working frozen or saturated soil","Mulching strawberries before they've had multiple hard freezes"],
+    soilTemp: "Soil 35–50°F. Done for the year except cover-crop germination.",
+    frostWatch: "Hard freezes (≤20°F) start. Drain hoses and irrigation lines; bring in clay pots.",
+    pestWatch: "Mice and voles move indoors — set traps in the shed. Check stored garlic, onions, winter squash weekly.",
+    tomatoTip: "Order next year's tomato seed now. Plant garden notebook entries: which varieties produced best, which suffered disease, where they were planted (so you can rotate at least 2 beds away).",
+    cornBeanTip: "Plan rotation: corn and beans should move at least one bed away. Beans fix nitrogen — follow with heavy feeders (corn, brassicas). Corn depletes — follow with legumes.",
+    greensTip: "Kale and spinach under row cover keep harvesting through hard freezes. Mâche shrugs off 0°F. Garlic chives die back but return in March.",
+    perennialTip: "Plant bare-root fruit trees once fully dormant. Soak roots 1–4 hours before planting. Dig the hole as deep as the rootball and twice as wide. No fertilizer in the hole. Water deeply once, mulch with 3\" wood chips (NOT touching the trunk)."
+  },
+  {
+    weeks: [49,50,51,52,53],
+    banner: "❄️",
+    headline: "Winter — Rest, Plan, Prune on Mild Days",
+    sub: "Catalogs arrive. Tools get oiled. Garden dreams ferment.",
+    directSow: [],
+    transplant: ["Bare-root fruit trees (mild days only, unfrozen soil)"],
+    indoorStart: ["Microgreens","Sprouts","Window-sill herbs","Onion seed (Wk 52+ for next year — they need 12+ weeks)"],
+    avoid: ["Anything outdoors except dormant pruning","Walking on saturated beds"],
+    soilTemp: "Soil 28–40°F. Nothing germinates outside.",
+    frostWatch: "Hard freezes routine. Snow is a free insulator for garlic/strawberries — leave it.",
+    pestWatch: "Mice in stored seed and squash — bait or trap. Deer browse fruit-tree bark when food is scarce — wrap trunks with hardware cloth.",
+    tomatoTip: "Browse seed catalogs! Henry County is on the 6b/7a border — anything rated to zone 7 will work. Try one new variety per year (Cherokee Purple, Brandywine, Sungold, San Marzano, Black Krim are zone 6b workhorses).",
+    cornBeanTip: "Order seed early — popular sweet corn varieties (Silver Queen, Bodacious, Ambrosia) and heirloom beans (Cherokee Trail of Tears, Rattlesnake, Provider) sell out by March.",
+    greensTip: "Kale, spinach, and mâche under row cover keep producing — pick on mild days when leaves have thawed. Inside, microgreens (radish, broccoli, sunflower) are ready in 10 days.",
+    perennialTip: "Prune dormant fruit trees on a dry day above 20°F: remove crossing limbs, water sprouts (vertical shoots), suckers from the root crown, and any dead/diseased wood. Open vase shape on stone fruit, central leader on apples/pears."
+  }
+];
+
+function getWeeklyPlanner(weather, dateObj) {
+  const d = dateObj || new Date();
+  const week = isoWeekNumber(d);
+  const phase = PLANTING_PHASES.find(p => p.weeks.includes(week)) || PLANTING_PHASES[PLANTING_PHASES.length - 1];
+  const c = weather && weather.current ? weather.current : {};
+  const tempNow = isFinite(c.temperature_2m) ? c.temperature_2m : null;
+  const month = d.getMonth() + 1;
+  const weatherWarnings = [];
+  if (tempNow !== null) {
+    if (tempNow >= 95) weatherWarnings.push("Extreme heat ("+Math.round(tempNow)+"°F) — water deeply at dawn. Tomato pollen sterilizes above 90°F; expect a fruit-set pause.");
+    else if (tempNow >= 90 && (month >= 6 && month <= 8)) weatherWarnings.push("Heat above 90°F slows fruit set on tomatoes. Mulch deeply, water early, hold off on fertilizer.");
+    else if (tempNow < 33 && (month >= 3 && month <= 5)) weatherWarnings.push("Hard freeze tonight ("+Math.round(tempNow)+"°F). Cover any tender transplants. Uncover by 9 AM.");
+    else if (tempNow < 36 && (month >= 9 && month <= 10)) weatherWarnings.push("Frost likely tonight ("+Math.round(tempNow)+"°F). Pick remaining tomatoes/peppers; cover tender herbs.");
+    else if (tempNow < 40 && month === 5 && d.getDate() < 15) weatherWarnings.push("Cool night ("+Math.round(tempNow)+"°F) — peppers and sweet potatoes sulk below 55°F. Wait a few days to transplant if you can.");
+  }
+  return Object.assign({}, phase, { week, weatherWarnings });
+}
+
+function renderWeeklyPlannerCard(p) {
+  if (!p) return "";
+  const chip = (text, cls) => '<span class="outdoor-chip ' + cls + '">' + escapeHtml(text) + '</span>';
+  const directHtml     = p.directSow.length    ? p.directSow.map(s => chip(s, "plant")).join("")    : '<span style="color:var(--text-muted);font-size:13px">— nothing this week —</span>';
+  const transplantHtml = p.transplant.length   ? p.transplant.map(s => chip(s, "plant")).join("")   : '<span style="color:var(--text-muted);font-size:13px">— nothing this week —</span>';
+  const indoorHtml     = p.indoorStart.length  ? p.indoorStart.map(s => chip(s, "plant")).join("")  : '<span style="color:var(--text-muted);font-size:13px">— nothing this week —</span>';
+  const avoidHtml      = p.avoid.length        ? p.avoid.map(a => '<div class="outdoor-tip hold">🛑 ' + escapeHtml(a) + '</div>').join("") : "";
+  const weatherHtml    = p.weatherWarnings.length ? p.weatherWarnings.map(w => '<div class="outdoor-tip warn">⚠️ ' + escapeHtml(w) + '</div>').join("") : "";
+  const dateStr = new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
+  return '<div class="outdoor-card garden">' +
+    '<div class="outdoor-card-header">' +
+      '<div class="outdoor-card-title">📅 Week ' + p.week + ' Planting Plan</div>' +
+      '<div class="outdoor-card-date">' + dateStr + ' · Zone 6b · Clinton, MO</div>' +
+    '</div>' +
+    '<div class="outdoor-banner">' +
+      '<div class="outdoor-banner-emoji">' + p.banner + '</div>' +
+      '<div class="outdoor-banner-info">' +
+        '<div class="outdoor-banner-label">' + escapeHtml(p.headline) + '</div>' +
+        '<div class="outdoor-banner-sub">' + escapeHtml(p.sub || "") + '</div>' +
+      '</div>' +
+    '</div>' +
+    weatherHtml +
+    '<div class="outdoor-section"><div class="outdoor-section-label">🌱 Direct-Sow Outside</div>' + directHtml + '</div>' +
+    '<div class="outdoor-section"><div class="outdoor-section-label">🪴 Transplant Outside</div>' + transplantHtml + '</div>' +
+    '<div class="outdoor-section"><div class="outdoor-section-label">🏠 Start Indoors</div>' + indoorHtml + '</div>' +
+    (avoidHtml ? '<div class="outdoor-section"><div class="outdoor-section-label">🚫 Skip This Week</div>' + avoidHtml + '</div>' : "") +
+    '<div class="outdoor-section"><div class="outdoor-section-label">🌡️ Soil Temperature</div><div class="outdoor-tip">' + escapeHtml(p.soilTemp) + '</div></div>' +
+    '<div class="outdoor-section"><div class="outdoor-section-label">❄️ Frost Watch</div><div class="outdoor-tip">' + escapeHtml(p.frostWatch) + '</div></div>' +
+    '<div class="outdoor-section"><div class="outdoor-section-label">🐛 Pest &amp; Disease Watch</div><div class="outdoor-tip">' + escapeHtml(p.pestWatch) + '</div></div>' +
+    '<div class="outdoor-section"><div class="outdoor-section-label">🍅 Tomatoes &amp; Peppers</div><div class="outdoor-tip go">' + escapeHtml(p.tomatoTip) + '</div></div>' +
+    '<div class="outdoor-section"><div class="outdoor-section-label">🌽 Sweet Corn &amp; Beans</div><div class="outdoor-tip go">' + escapeHtml(p.cornBeanTip) + '</div></div>' +
+    '<div class="outdoor-section"><div class="outdoor-section-label">🥬 Cool-Season Greens</div><div class="outdoor-tip go">' + escapeHtml(p.greensTip) + '</div></div>' +
+    '<div class="outdoor-section"><div class="outdoor-section-label">🍓 Perennials &amp; Fruit</div><div class="outdoor-tip go">' + escapeHtml(p.perennialTip) + '</div></div>' +
+  '</div>';
+}
+
 function renderMushroomCard(m) {
   if (!m) return "";
   const speciesHtml = m.species.map(s => `<span class="outdoor-chip mush">${escapeHtml(s)}</span>`).join("");
@@ -3257,9 +3623,8 @@ function renderLakeHistoryChart(history) {
 }
 
 function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, waterTempF) {
-  const mush = renderMushroomCard(getMushroomTips(weather));
-  const garden = renderGardenCard(getGardenTips(weather));
-  const extras = mush + garden + renderCattleMarketCard() + renderWeeklyMarketCard(weeklyRecs || []);
+  // Garden/mushroom/cattle/weekly cards moved to dedicated tabs.
+  const extras = "";
   if (!advice) return '<div class="fish-advisor"><div class="fish-loading">Could not generate fishing report.</div></div>' + extras + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
   const BITE_EMOJI  = ["😴","🐢","🎣","🔥","💥"];
   const BITE_LABEL  = ["Dead Slow","Slow — Be Patient","Moderate — Worth Going","Good — Get Out There","On Fire!"];
@@ -3610,13 +3975,9 @@ async function loadOutdoor(force) {
   newPillEl.style.display = "none";
 
   const advisorDiv = document.createElement("div");
-  const initialMush    = renderMushroomCard(getMushroomTips(getCachedWeather()));
-  const initialCattle  = renderCattleMarketCard();
-  const initialGarden  = renderGardenCard(getGardenTips(getCachedWeather()));
-  const initialWeekly  = renderWeeklyMarketCard([]);
-  advisorDiv.innerHTML = '<div class="fish-advisor"><div class="fish-header"><div class="fish-title">🎣 Truman Lake Fishing Report</div></div><div class="fish-loading"><span class="spinner"></span> Loading live conditions…</div></div>' + initialMush + initialGarden + initialCattle + initialWeekly + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
-  wireCattleMarket();
-  wireWeeklyMarket();
+  // Garden/mushroom/cattle/weekly cards moved to the new `garden` and `market` tabs.
+  // Outdoor tab is now Fishing Advisor + News only.
+  advisorDiv.innerHTML = '<div class="fish-advisor"><div class="fish-header"><div class="fish-title">🎣 Truman Lake Fishing Report</div></div><div class="fish-loading"><span class="spinner"></span> Loading live conditions…</div></div>' + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
   listEl.appendChild(advisorDiv);
 
   const newsDiv = document.createElement("div");
@@ -3657,12 +4018,25 @@ async function loadOutdoor(force) {
 
   const all = newsResults.flat();
   const seen = new Set();
-  const deduped = all.filter(item => {
+  let deduped = all.filter(item => {
     const key = item.title.toLowerCase().slice(0,60);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).sort((a,b) => heatScore(b)-heatScore(a));
+  });
+  // MO-first relevance pass. Top-tier MO sources get 240-hour half-life so a
+  // 5-day MDC release still beats a fresh national wire piece.
+  const outdoorScore = ({it, rel}) => {
+    const ageH = (Date.now() - it.pubDate) / 3600000;
+    const halfLife = rel >= 7 ? 240 : rel >= 5 ? 96 : 24;
+    const decay = Math.exp(-ageH / halfLife);
+    const w = SOURCE_WEIGHT[it.source] || SOURCE_WEIGHT["default"];
+    return decay * w * Math.max(0.15, 1 + 0.5 * rel);
+  };
+  deduped = deduped
+    .map(it => ({ it, rel: outdoorRelevance(it) }))
+    .sort((a, b) => outdoorScore(b) - outdoorScore(a))
+    .map(x => x.it);
 
   newsDiv.innerHTML = "";
   if (deduped.length) {
@@ -3673,6 +4047,57 @@ async function loadOutdoor(force) {
   } else {
     newsDiv.innerHTML = '<div class="status">No outdoor news loaded. Tap ↺ to retry.</div>';
   }
+}
+
+
+// ========== GARDEN TAB ==========
+// Cards-only — no news feed. Renders the Smart Garden Tips card, the Smart
+// Mushroom Hunt card, and the Week-by-Week Planting Calendar (zone 6b, Clinton MO).
+async function loadGarden(force) {
+  listEl.innerHTML = "";
+  statusEl.style.display = "none";
+  newPillEl.style.display = "none";
+
+  const wrap = document.createElement("div");
+  const render = (w) => {
+    wrap.innerHTML =
+      renderWeeklyPlannerCard(getWeeklyPlanner(w)) +
+      renderGardenCard(getGardenTips(w)) +
+      renderMushroomCard(getMushroomTips(w));
+  };
+  render(getCachedWeather());
+  listEl.appendChild(wrap);
+
+  if (!getCachedWeather() || force) {
+    try { await loadWeather(force); render(getCachedWeather()); } catch {}
+  }
+}
+
+// ========== MARKET TAB ==========
+// Cattle Market summary card + Weekly Cattle Market PDF data card. No news feed.
+async function loadMarket(force) {
+  listEl.innerHTML = "";
+  statusEl.style.display = "none";
+  newPillEl.style.display = "none";
+
+  const wrap = document.createElement("div");
+  const renderMarket = (records) => {
+    wrap.innerHTML =
+      '<div class="outdoor-news-header" style="margin-top:4px">🐄 Missouri Cattle Markets</div>' +
+      renderCattleMarketCard() +
+      renderWeeklyMarketCard(records || []);
+  };
+  renderMarket([]);
+  listEl.appendChild(wrap);
+  wireCattleMarket();
+  wireWeeklyMarket();
+
+  try {
+    const records = await fetchWeeklyData();
+    renderMarket(records);
+    wireCattleMarket();
+    wireWeeklyMarket();
+  } catch {}
 }
 
 // ========== STOCKS ==========
@@ -4222,6 +4647,8 @@ async function loadCategory(force) {
 
   if (cat.isStocks)  return loadStocks(force);
   if (cat.isOutdoor) return loadOutdoor(force);
+  if (cat.isGarden)  return loadGarden(force);
+  if (cat.isMarket)  return loadMarket(force);
 
   if (cat.isSaved) {
     statusEl.style.display = "none";

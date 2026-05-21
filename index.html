@@ -3385,7 +3385,6 @@ function renderCattleMarketCard() {
       '<button class="cattle-btn primary" id="cattleAutoFetch" type="button">✦ Auto-Fetch Wheeler Top $</button>' +
       '<button class="cattle-btn" id="cattleManualUpload" type="button">📤 Upload Wheeler Image</button>' +
       '<button class="cattle-btn" id="cattleViewWheeler" type="button"><span class="spark">🤝</span> View Latest Report</button>' +
-      '<button class="cattle-btn" id="cattleResetHistory" type="button" style="border-color:var(--border);background:transparent;color:var(--text-muted)">Reset History</button>' +
       '<input type="file" id="cattleManualFile" accept="image/jpeg,image/png" style="display:none">' +
     '</div>' +
     '<div class="cattle-fetch-result" id="cattleAutoResult" style="display:none"></div>' +
@@ -3590,17 +3589,6 @@ function wireCattleMarket() {
       }
       embed.innerHTML = imgs.map(src => '<img src="' + escapeHtml(src) + '" alt="Wheeler Livestock Market Report" loading="lazy">').join("") +
         '<div class="cattle-history-note" style="margin-top:8px">Read off the 500–550 lb steer average and tap <em>+ Log $/cwt</em> on the Wheeler tile above to add it to your history.</div>';
-    });
-  }
-  const resetBtn = card.querySelector("#cattleResetHistory");
-  if (resetBtn) {
-    resetBtn.addEventListener("click", () => {
-      if (!window.confirm("Clear all logged cattle prices? This can't be undone.")) return;
-      saveCattleHistory({});
-      const newHtml = renderCattleMarketCard();
-      const tmp = document.createElement("div"); tmp.innerHTML = newHtml;
-      card.replaceWith(tmp.firstElementChild);
-      wireCattleMarket();
     });
   }
 }

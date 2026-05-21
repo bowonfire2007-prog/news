@@ -1394,8 +1394,10 @@ async function handleCattlePrice(url, env, ctx) {
   const promptDirect     = "This is a livestock auction market report from Wheeler Livestock Auction in Osceola, MO. " + commonPromptBody;
   const promptScreenshot = "This is a screenshot of Wheeler Livestock Auction's website. The page shows their latest scanned market report from their auction in Osceola, MO. Look at the market report image embedded on the page and read it carefully. " + commonPromptBody;
 
-  // Helper: call Claude with a given image content block. Returns parsed JSON or throws.
+  // Helper: call Claude with one or more image content blocks + a text prompt.
+  // imageContent may be a single block object OR an array of blocks.
   async function callClaude(imageContent, useText) {
+    const imgBlocks = Array.isArray(imageContent) ? imageContent : [imageContent];
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -1406,7 +1408,7 @@ async function handleCattlePrice(url, env, ctx) {
       body: JSON.stringify({
         model,
         max_tokens: 1200,
-        messages: [{ role: "user", content: [imageContent, { type: "text", text: useText }] }]
+        messages: [{ role: "user", content: [...imgBlocks, { type: "text", text: useText }] }]
       })
     });
     if (!r.ok) {
@@ -1416,33 +1418,41 @@ async function handleCattlePrice(url, env, ctx) {
     return await r.json();
   }
 
-  // ── PLAN A: Anthropic URL-source ──
-  // Pass the image URL to Claude and let Anthropic's servers fetch it. Anthropic's
-  // IPs and User-Agent aren't on Wix's hotlink blocklist (they're enormous and
-  // look like normal browser traffic). This bypasses our Worker as a middleman
-  // entirely — Wix never sees a Cloudflare Workers IP.
+  // ── PLAN A: Anthropic URL-source (all top pages in one call) ──
+  // Collect every high-scoring portrait image (all MREPORT pages) and send them
+  // together so Claude sees the full report — price table is on whichever page it's on.
+  // Anthropic's fetcher bypasses Wix hotlink protection entirely.
+  const allTopUrls = ranked
+    .filter(r => r.s >= 100)
+    .slice(0, 4)
+    .map(r => {
+      let u = r.u.replace(/enc_avif/gi, "enc_jpg");
+      try { u = decodeURIComponent(u); } catch (_) {}
+      return u;
+    });
+
   let claudeData = null;
   let fetchedVia = null;
   const attempts = [];
-  // Decoded URL: %7E → ~. Wix sometimes 404s %7E literal paths. Anthropic's
-  // server-side fetcher passes URLs verbatim, so we try both forms.
-  let imgUrlDecoded = imgUrl;
-  try { imgUrlDecoded = decodeURIComponent(imgUrl); } catch (_) {}
-  const urlVariants = imgUrl === imgUrlDecoded
-    ? [{ url: imgUrl, label: "anthropic-url" }]
-    : [{ url: imgUrlDecoded, label: "anthropic-url-decoded" }, { url: imgUrl, label: "anthropic-url" }];
-  for (const variant of urlVariants) {
+
+  // Try with all top pages at once, then fall back to just the primary image.
+  const planAVariants = [
+    { urls: allTopUrls,  label: "anthropic-url-multi" },
+    { urls: [allTopUrls[0]], label: "anthropic-url" }
+  ];
+  for (const variant of planAVariants) {
     try {
-      claudeData = await callClaude(
-        { type: "image", source: { type: "url", url: variant.url } },
-        promptDirect
-      );
+      const imgBlocks = variant.urls.map(u => ({ type: "image", source: { type: "url", url: u } }));
+      claudeData = await callClaude(imgBlocks, promptDirect);
       fetchedVia = variant.label;
       break;
     } catch (e) {
       attempts.push(variant.label + ":" + e.message.slice(0, 200));
     }
   }
+
+  let imgUrlDecoded = imgUrl;
+  try { imgUrlDecoded = decodeURIComponent(imgUrl); } catch (_) {}
 
   // ── PLAN B: byte-fetch chain (12 strategies) ──
   // If Anthropic couldn't fetch the URL either, try fetching the bytes ourselves

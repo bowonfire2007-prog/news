@@ -3186,7 +3186,52 @@ function loadCattleHistory() {
   try { const raw = localStorage.getItem(CATTLE_HISTORY_KEY); if (!raw) return {}; return JSON.parse(raw) || {}; } catch { return {}; }
 }
 function saveCattleHistory(h) { try { localStorage.setItem(CATTLE_HISTORY_KEY, JSON.stringify(h)); } catch {} }
-function recordCattlePrice(barnId, dollarsPerCwt, dateStr) {
+
+// Pull cattle history from KV (same backing store as Missouri weekly report) and
+// merge into localStorage so every browser sees every entry — not just the one
+// that tapped "Auto-Fetch".  Called once per page load (non-blocking).
+let _cattleKvSynced = false;
+async function syncCattleHistoryFromKV() {
+  if (_cattleKvSynced) return;
+  _cattleKvSynced = true;
+  try {
+    const res = await fetch(CF_WORKER.replace(/\/$/, "") + "/cattlehistory");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.history) return;
+    const local = loadCattleHistory();
+    let changed = false;
+    for (const [barn, entries] of Object.entries(data.history)) {
+      if (!Array.isArray(entries)) continue;
+      if (!local[barn]) local[barn] = [];
+      for (const e of entries) {
+        const day = e.date, price = parseFloat(e.price);
+        if (!day || !isFinite(price) || price <= 0) continue;
+        if (!local[barn].some(x => x.d === day)) {
+          local[barn].push({ d: day, p: price });
+          changed = true;
+        }
+      }
+      if (changed) {
+        local[barn].sort((a, b) => a.d.localeCompare(b.d));
+        const cutoff = new Date(Date.now() - CATTLE_HISTORY_DAYS * 86400000).toISOString().slice(0, 10);
+        local[barn] = local[barn].filter(e => e.d >= cutoff);
+      }
+    }
+    if (changed) {
+      saveCattleHistory(local);
+      // Re-render the cattle card with the merged data
+      const card = document.querySelector(".outdoor-card.cattle");
+      if (card) {
+        const tmp = document.createElement("div"); tmp.innerHTML = renderCattleMarketCard();
+        card.replaceWith(tmp.firstElementChild);
+        wireCattleMarket();
+      }
+    }
+  } catch (_) {}
+}
+
+function recordCattlePrice(barnId, dollarsPerCwt, dateStr, extraFields) {
   if (!barnId || !isFinite(dollarsPerCwt) || dollarsPerCwt <= 0) return;
   const hist = loadCattleHistory();
   const arr  = hist[barnId] || [];
@@ -3197,6 +3242,13 @@ function recordCattlePrice(barnId, dollarsPerCwt, dateStr) {
   const cutoff = new Date(Date.now() - CATTLE_HISTORY_DAYS*86400000).toISOString().slice(0,10);
   hist[barnId] = arr.filter(e => e.d >= cutoff);
   saveCattleHistory(hist);
+  // Push to KV in background so all browsers see it (best-effort, non-blocking)
+  const kvBody = Object.assign({ barn: barnId, price: dollarsPerCwt, date: day }, extraFields || {});
+  fetch(CF_WORKER.replace(/\/$/, "") + "/cattlerecord", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(kvBody)
+  }).catch(() => {});
   return hist[barnId];
 }
 
@@ -3411,7 +3463,11 @@ function wireCattleMarket() {
         const topPrice = isFinite(data.high_cwt) && data.high_cwt > 0 ? +data.high_cwt
                        : (isFinite(data.avg_cwt) && data.avg_cwt > 0 ? +data.avg_cwt : NaN);
         if (!isFinite(topPrice) || topPrice <= 0) throw new Error("Couldn't read a feeder steer price from this report");
-        recordCattlePrice("wheeler", topPrice, data.sale_date);
+        recordCattlePrice("wheeler", topPrice, data.sale_date, {
+          weight_class: data.weight_class, head_count: data.head_count,
+          avg_cwt: data.avg_cwt, low_cwt: data.low_cwt, high_cwt: data.high_cwt,
+          frame_grade: data.frame_grade, notes: data.notes, fetched_via: data.fetched_via
+        });
         // Build success message before re-render so we can stash it
         const detail = '✓ Logged top dollar <strong>$' + topPrice.toFixed(2) + '/cwt</strong>' +
           ' for sale on <strong>' + escapeHtml(data.sale_date || 'today') + '</strong>' +
@@ -3488,7 +3544,11 @@ function wireCattleMarket() {
         const topPrice = isFinite(data.high_cwt) && data.high_cwt > 0 ? +data.high_cwt
                        : (isFinite(data.avg_cwt) && data.avg_cwt > 0 ? +data.avg_cwt : NaN);
         if (!isFinite(topPrice) || topPrice <= 0) throw new Error("Couldn't read a price from this image");
-        recordCattlePrice("wheeler", topPrice, data.sale_date);
+        recordCattlePrice("wheeler", topPrice, data.sale_date, {
+          weight_class: data.weight_class, head_count: data.head_count,
+          avg_cwt: data.avg_cwt, low_cwt: data.low_cwt, high_cwt: data.high_cwt,
+          frame_grade: data.frame_grade, notes: data.notes, fetched_via: "manual-upload"
+        });
         const detail = '✓ Logged top dollar <strong>$' + topPrice.toFixed(2) + '/cwt</strong>' +
           ' for sale on <strong>' + escapeHtml(data.sale_date || 'today') + '</strong>' +
           (data.weight_class ? ' · ' + escapeHtml(data.weight_class) : '') +
@@ -4091,6 +4151,8 @@ async function loadMarket(force) {
   listEl.appendChild(wrap);
   wireCattleMarket();
   wireWeeklyMarket();
+  // Pull cattle history from KV on first load so all browsers stay in sync
+  syncCattleHistoryFromKV();
 
   try {
     const records = await fetchWeeklyData();

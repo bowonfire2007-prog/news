@@ -22,6 +22,116 @@ const CORS_HEADERS = {
   "Access-Control-Max-Age": "86400"
 };
 
+// ─────────────── CRON RUNNERS ─────────────────────────────────────────────────
+// Called from the scheduled() handler above.  Both are fire-and-forget — errors
+// are swallowed so a bad week doesn't crash the cron entirely.
+
+// Friday ~3pm CST: fetch Wheeler's latest scan, OCR with Claude, save to KV.
+async function runWheelerScheduled(env, ctx) {
+  try {
+    // Bust today's edge cache so we always get a live Claude read, not yesterday's.
+    const today = new Date().toISOString().slice(0, 10);
+    const cacheKey = "cattleprice:wheeler:" + today;
+    await caches.default.delete(
+      new Request("https://cattleprice-cache.local/" + encodeURIComponent(cacheKey))
+    );
+    // Re-use the full handleCattlePrice logic by passing a fake URL object.
+    // addCattlePriceToKV is already wired into handleCattlePrice for fresh results.
+    const fakeUrl = new URL("https://rss-proxy.bowonfire2007.workers.dev/cattleprice?barn=wheeler");
+    const fakeCtx = { waitUntil: (p) => p }; // ctx.waitUntil not needed for cron
+    await handleCattlePrice(fakeUrl, env, fakeCtx);
+  } catch (_) {}
+}
+
+// Monday ~9am CST: download Missouri weekly PDF, extract with Claude, save to KV.
+const MO_WEEKLY_PDF_URL = "https://agriculture.mo.gov/Market/pdf/weeklysummary.pdf";
+
+async function runMissouriScheduled(env, ctx) {
+  try {
+    if (!env.ANTHROPIC_API_KEY || !env.WEEKLY_KV) return;
+
+    // Download the PDF
+    const pdfRes = await fetch(MO_WEEKLY_PDF_URL, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; MoMarketBot/1.0)" }
+    });
+    if (!pdfRes.ok) return;
+    const pdfBase64 = arrayBufferToBase64(await pdfRes.arrayBuffer());
+
+    // Call Claude to extract market data (same prompt as handleWeeklyUpload)
+    const model = env.AI_MODEL || "claude-sonnet-4-5";
+    const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "pdfs-2024-09-25",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1024,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
+            { type: "text", text: `You are extracting data from a Missouri Weekly Market Summary PDF published by the Missouri Department of Agriculture.
+
+Return ONLY valid JSON (no markdown, no explanation) with EXACTLY these fields:
+
+{
+  "report_date": "YYYY-MM-DD",
+  "stocker_formula_cwt": <number: Missouri Stocker Formula weighted average price per cwt for 400-649 lb steers>,
+  "stocker_formula_weight": <number: weighted average weight in lbs for the stocker formula>,
+  "stocker_formula_head": <number: head count in stocker formula>,
+  "feeder_steer_500_600_avg_low": <number: average of the LOW ends of the 500-600 lb feeder steer price ranges across ALL Missouri regions listed>,
+  "feeder_steer_500_600_avg_high": <number: average of the HIGH ends of the 500-600 lb feeder steer price ranges across ALL Missouri regions listed>,
+  "corn_kc_fri": <number: Kansas City Friday corn cash price per bushel, midpoint if a range>,
+  "corn_stl_fri": <number: St. Louis Friday corn cash price per bushel, midpoint if a range>,
+  "corn_central_fri": <number: Central Missouri Friday corn cash price per bushel, midpoint if a range>,
+  "soybean_kc_fri": <number: Kansas City Friday soybean cash price per bushel, midpoint if a range>,
+  "soybean_stl_fri": <number: St. Louis Friday soybean cash price per bushel, midpoint if a range>,
+  "boxed_beef_choice_5day": <number: 5-day simple average for Choice boxed beef cutout>,
+  "boxed_beef_select_5day": <number: 5-day simple average for Select boxed beef cutout>,
+  "total_receipts": <integer: total weekly cattle receipts>,
+  "week_ago_receipts": <integer: week-ago cattle receipts>,
+  "year_ago_receipts": <integer: year-ago cattle receipts>,
+  "market_narrative": "<2-3 sentence plain-English summary of the week's market conditions from the main weekly summary section>"
+}
+
+Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY across regions that explicitly list a 500-600 lb steer line (skip any region that doesn't list it).` }
+          ]
+        }]
+      })
+    });
+    if (!claudeRes.ok) return;
+
+    const claudeData = await claudeRes.json();
+    const rawText = (claudeData.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+    let extracted;
+    try {
+      const cleaned = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+      extracted = JSON.parse(cleaned);
+    } catch { return; }
+    if (!extracted.report_date || !/^\d{4}-\d{2}-\d{2}$/.test(extracted.report_date)) return;
+
+    // Save to KV (same keys as handleWeeklyUpload)
+    const record = { ...extracted, uploaded_at: new Date().toISOString(), model, source: "scheduled" };
+    const kvKey = "weekly:" + extracted.report_date;
+    await env.WEEKLY_KV.put(kvKey, JSON.stringify(record), { expirationTtl: 4 * 365 * 24 * 3600 });
+
+    const indexRaw = await env.WEEKLY_KV.get("weekly:index");
+    const index = indexRaw ? JSON.parse(indexRaw) : [];
+    if (!index.includes(extracted.report_date)) {
+      index.push(extracted.report_date);
+      index.sort();
+      await env.WEEKLY_KV.put("weekly:index", JSON.stringify(index), { expirationTtl: 4 * 365 * 24 * 3600 });
+    }
+    // Bust the /weeklydata edge cache so browsers see the new data immediately
+    await caches.default.delete(new Request("https://weeklydata-cache.local/v1/limit=300"));
+  } catch (_) {}
+}
+
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
@@ -43,6 +153,12 @@ export default {
     if (url.pathname === "/cattlemanual") {
       return handleCattleManual(request, env, ctx);
     }
+    if (url.pathname === "/cattlehistory") {
+      return handleCattleHistory(url, env, ctx);
+    }
+    if (url.pathname === "/cattlerecord") {
+      return handleCattleRecord(request, env, ctx);
+    }
     if (url.pathname === "/followup") {
       return handleFollowUp(request, env);
     }
@@ -62,6 +178,16 @@ export default {
       return handleLakeHistory(url, env, ctx);
     }
     return handleRssProxy(url);
+  },
+
+  // ── Cloudflare Cron Triggers ───────────────────────────────────────────────
+  // Schedules (UTC — Missouri is CST = UTC-6, CDT = UTC-5):
+  //   "0 21 * * 5"  →  Friday   3 pm CST / 4 pm CDT  — Wheeler auto-fetch
+  //   "0 15 * * 1"  →  Monday   9 am CST / 10 am CDT  — Missouri weekly report
+  async scheduled(event, env, ctx) {
+    const cron = event.cron;
+    if (cron === "0 21 * * 5") ctx.waitUntil(runWheelerScheduled(env, ctx));
+    if (cron === "0 15 * * 1") ctx.waitUntil(runMissouriScheduled(env, ctx));
   }
 };
 
@@ -1109,18 +1235,35 @@ async function handleCattlePrice(url, env, ctx) {
 
   // Extract candidate image URLs. Wheeler posts scanned reports as JPEG on Wix
   // CDN. Filename varies (sometimes "market", sometimes a Wix UUID). Collect
-  // ALL Wix images, plus og:image / twitter:image meta tags as extra candidates.
+  // ALL Wix images from the page body first; meta tags are fallback only.
   const allWix = Array.from(new Set(html.match(/https:\/\/static\.wixstatic\.com\/media\/[^"'\s)]+\.(?:jpe?g|png|webp)/ig) || []));
-  // og:image and twitter:image often point to a different CDN path with looser hotlink rules
+  // og:image and twitter:image are typically the site banner — put them LAST
+  // so page-body images (the actual scanned report) take priority.
   const ogImageMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)
                     || html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:image["']/i);
   const twitterImageMatch = html.match(/<meta\s+name=["']twitter:image["']\s+content=["']([^"']+)["']/i)
                          || html.match(/<meta\s+content=["']([^"']+)["']\s+name=["']twitter:image["']/i);
   const metaImages = [ogImageMatch, twitterImageMatch].filter(m => m).map(m => m[1]);
-  // Combine: meta images first (often have looser protection), then page Wix images
-  const allCandidates = Array.from(new Set([...metaImages, ...allWix]));
+  // Page images first, meta banner images as last-resort fallback
+  const allCandidates = Array.from(new Set([...allWix, ...metaImages]));
   if (allCandidates.length === 0) {
     return jsonResponse({ error: "No images found on Wheeler page" }, 404);
+  }
+
+  // Build an alt-text map so we can reward images whose filename hints at
+  // being a market report (Wix stores files by UUID; the alt text keeps
+  // the original upload filename, e.g. "MREPORT 051426_Page_1.jpg").
+  const altMap = {};
+  const imgTagRe = /<img\s[^>]*>/ig;
+  let _imgMatch;
+  while ((_imgMatch = imgTagRe.exec(html)) !== null) {
+    const tag = _imgMatch[0];
+    const srcM = tag.match(/src="([^"]+)"/i);
+    const altM = tag.match(/alt="([^"]+)"/i);
+    if (srcM && altM) {
+      const base = (srcM[1].match(/https:\/\/static\.wixstatic\.com\/media\/[^"'\s)]+\.(?:jpe?g|png|webp)/i) || [])[0];
+      if (base) altMap[base] = altM[1];
+    }
   }
 
   function imgScore(u) {
@@ -1129,8 +1272,18 @@ async function handleCattlePrice(url, env, ctx) {
     if (/report/i.test(u)) s += 60;
     if (/\.jpe?g(\?|$|\/)/i.test(u)) s += 20;
     if (/blur_2/.test(u)) s -= 50;
+    // Reward images whose original filename (in alt text) looks like a market report
+    const alt = altMap[u] || "";
+    if (/mreport|market.?report/i.test(alt)) s += 120;
+    // Wix CDN URLs embed width (w_N) and height (h_N) in the transform path.
+    // Scanned report pages are portrait (h > w); site banners are landscape (w >> h).
     const wMatch = u.match(/w_(\d{2,5})/);
-    if (wMatch) s += Math.min(40, parseInt(wMatch[1], 10) / 30);
+    const hMatch = u.match(/h_(\d{2,5})/);
+    const imgW = wMatch ? parseInt(wMatch[1], 10) : 0;
+    const imgH = hMatch ? parseInt(hMatch[1], 10) : 0;
+    if (imgW > 0) s += Math.min(20, imgW / 50);          // mild size bonus
+    if (imgH > 0 && imgW > 0 && imgH > imgW) s += 65;    // portrait bonus — scanned pages
+    if (imgH > 0 && imgW > 0 && imgW > imgH * 1.4) s -= 45; // landscape penalty — banners
     if (/logo|icon|favicon|avatar/i.test(u)) s -= 80;
     return s;
   }
@@ -1408,6 +1561,11 @@ async function handleCattlePrice(url, env, ctx) {
     headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=43200" } // 12h
   });
   ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+  // Auto-save to KV so every browser and every scheduled run sees this result
+  if (env.WEEKLY_KV && result.sale_date) {
+    const kvPrice = parseFloat(result.high_cwt || result.avg_cwt);
+    if (kvPrice > 0) ctx.waitUntil(addCattlePriceToKV(env, barn, kvPrice, result.sale_date, result));
+  }
   return jsonResponse({ ...result, cached: false });
 }
 
@@ -1497,6 +1655,58 @@ function arrayBufferToBase64(buffer) {
     binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.byteLength)));
   }
   return btoa(binary);
+}
+
+
+// ─────────────── CATTLE PRICE HISTORY — KV SYNC ───────────────────────────
+// Stores Wheeler price history in WEEKLY_KV under "cattle:history" so every
+// browser sees the same 1-year chart, exactly like the Missouri weekly report.
+//
+//   GET  /cattlehistory          → returns { history: { wheeler: [{date,price,...}] } }
+//   POST /cattlerecord           → body { barn, price, date, [weight_class, head_count, avg_cwt, low_cwt, high_cwt, frame_grade, notes, fetched_via] }
+//                                   records an entry and returns updated history
+
+const CATTLE_HISTORY_KV_KEY = "cattle:history";
+
+// Shared helper — write one price entry into WEEKLY_KV cattle history.
+// Used by handleCattleRecord (HTTP endpoint), handleCattlePrice (auto-save),
+// and the cron-triggered runWheelerScheduled.
+async function addCattlePriceToKV(env, barn, priceNum, date, extra) {
+  if (!env.WEEKLY_KV) return;
+  const raw = await env.WEEKLY_KV.get(CATTLE_HISTORY_KV_KEY);
+  const hist = raw ? JSON.parse(raw) : {};
+  if (!Array.isArray(hist[barn])) hist[barn] = [];
+  if (hist[barn].some(e => e.date === date && parseFloat(e.price) === priceNum)) return; // no-op duplicate
+  const entry = { date, price: priceNum, recorded_at: new Date().toISOString() };
+  for (const k of ["weight_class", "head_count", "avg_cwt", "low_cwt", "high_cwt", "frame_grade", "notes", "fetched_via"]) {
+    if (extra && extra[k] != null) entry[k] = extra[k];
+  }
+  hist[barn].push(entry);
+  hist[barn].sort((a, b) => a.date.localeCompare(b.date));
+  if (hist[barn].length > 52) hist[barn] = hist[barn].slice(-52);
+  await env.WEEKLY_KV.put(CATTLE_HISTORY_KV_KEY, JSON.stringify(hist), { expirationTtl: 4 * 365 * 24 * 3600 });
+}
+
+async function handleCattleHistory(url, env, ctx) {
+  if (!env.WEEKLY_KV) return jsonResponse({ error: "WEEKLY_KV not bound" }, 500);
+  const raw = await env.WEEKLY_KV.get(CATTLE_HISTORY_KV_KEY);
+  const hist = raw ? JSON.parse(raw) : {};
+  return jsonResponse({ history: hist }, 200, { "Cache-Control": "no-store" });
+}
+
+async function handleCattleRecord(request, env, ctx) {
+  if (request.method !== "POST") return jsonResponse({ error: "POST only" }, 405);
+  if (!env.WEEKLY_KV) return jsonResponse({ error: "WEEKLY_KV not bound" }, 500);
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonResponse({ error: "Invalid JSON body" }, 400); }
+  const { barn, price, date } = body;
+  if (!barn || price == null || !date) return jsonResponse({ error: "Missing barn, price, or date" }, 400);
+  const priceNum = parseFloat(price);
+  if (!isFinite(priceNum) || priceNum <= 0) return jsonResponse({ error: "Invalid price value" }, 400);
+  await addCattlePriceToKV(env, barn, priceNum, date, body);
+  const updated = await env.WEEKLY_KV.get(CATTLE_HISTORY_KV_KEY);
+  return jsonResponse({ ok: true, history: updated ? JSON.parse(updated) : {} });
 }
 
 

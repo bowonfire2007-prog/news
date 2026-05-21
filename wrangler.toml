@@ -12,6 +12,18 @@ compatibility_date = "2026-05-01"
 binding = "WEEKLY_KV"
 id = "0f86e3f7503f41279b0af5e8f132cacd"
 
+# ── Cron Triggers (auto-fetch market reports) ─────────────────────────────────
+# Times are UTC. Missouri is CST (UTC-6) / CDT (UTC-5) depending on DST.
+#
+#   "0 21 * * 5"  →  every Friday   at 21:00 UTC  =  3 pm CST / 4 pm CDT
+#                    Wheeler Livestock sells on Tuesdays; report is usually up by Friday.
+#
+#   "0 15 * * 1"  →  every Monday   at 15:00 UTC  =  9 am CST / 10 am CDT
+#                    Missouri Dept of Agriculture posts the new weekly summary PDF Monday morning.
+#
+[triggers]
+crons = ["0 21 * * 5", "0 15 * * 1"]
+
 # ── Secrets (set in Cloudflare dashboard or via wrangler secret put) ──────────
 # ANTHROPIC_API_KEY  — Claude API key for PDF parsing and cattle price OCR
 # UPLOAD_PIN         — PIN to protect the weekly PDF upload endpoint (set any value you like)

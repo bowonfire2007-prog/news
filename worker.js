@@ -1371,9 +1371,14 @@ async function handleCattlePrice(url, env, ctx) {
     "2. Only fall back to 'Medium and Large 1-2' (M&L 1-2, mixed-grade range) if NO M&L 1 feeder steer line exists on the report.\n" +
     "3. NEVER pick 'Medium and Large 2', 'Medium 2', or any grade 3 line.\n\n" +
     "WEIGHT SELECTION (within the chosen grade):\n" +
-    "- Wheeler reports vary week to week. Some weeks they show a SINGLE AVERAGE weight (e.g. '583 lbs', '538 lbs', '612 lbs') — usually because all the steers in that pen averaged that weight. Other weeks they show a RANGE (e.g. '500-549 lbs', '450-499 lbs').\n" +
-    "- Pick the entry whose weight is CLOSEST TO 500 LB. For ranges, use the midpoint. For single averages, use that number.\n" +
-    "- IMPORTANT: A single-weight entry like '583 lb M&L 1' is preferred over a range like '500-549 M&L 1-2' even though 524 (midpoint) is mathematically closer to 500 — because the M&L 1 grade priority outranks tiny weight differences.\n\n" +
+    "- READ ALL weight lines in the chosen grade section carefully before picking.\n" +
+    "- CLOSEST TO 500 LB means the SMALLEST absolute difference: |weight - 500|.\n" +
+    "  Example: |509 - 500| = 9 lb  vs  |443 - 500| = 57 lb  →  509 wins.\n" +
+    "  Example: |320 - 500| = 180 lb  vs  |650 - 500| = 150 lb  →  650 wins.\n" +
+    "- For a weight RANGE (e.g. '500-549'), use the midpoint (524) for the distance calc.\n" +
+    "- Grade priority overrides weight proximity ONLY when comparing across grade tiers\n" +
+    "  (e.g. M&L 1 at 583 lb beats M&L 1-2 at 509 lb). Within the same grade, always\n" +
+    "  pick the line closest to 500 lb by the calculation above.\n\n" +
     "PRICE READING:\n" +
     "- Prices are in $/cwt (dollars per hundredweight), typically $200-$400 in current market.\n" +
     "- high_cwt is the TOP DOLLAR price (the highest number on that line) — this is the headline number the user tracks. Read it carefully, double-check the digits.\n" +
@@ -1419,17 +1424,28 @@ async function handleCattlePrice(url, env, ctx) {
   }
 
   // ── PLAN A: Anthropic URL-source (all top pages in one call) ──
-  // Collect every high-scoring portrait image (all MREPORT pages) and send them
-  // together so Claude sees the full report — price table is on whichever page it's on.
-  // Anthropic's fetcher bypasses Wix hotlink protection entirely.
-  const allTopUrls = ranked
-    .filter(r => r.s >= 100)
-    .slice(0, 4)
-    .map(r => {
-      let u = r.u.replace(/enc_avif/gi, "enc_jpg");
-      try { u = decodeURIComponent(u); } catch (_) {}
-      return u;
+  // For each unique Wix image UUID (i.e. each distinct report page), pick the
+  // HIGHEST-RESOLUTION version available — better OCR means fewer misread weights.
+  // Then send all pages to Claude at once so it sees the full report.
+  function wixUUID(u) { const m = u.match(/media\/([^/~%]+)/); return m ? m[1] : null; }
+  const seenUUIDs = new Set();
+  const allTopUrls = [];
+  for (const { u: candidateUrl } of ranked.filter(r => r.s >= 50)) {
+    const uuid = wixUUID(candidateUrl);
+    if (!uuid || seenUUIDs.has(uuid)) continue;
+    seenUUIDs.add(uuid);
+    // Among all versions of this UUID, pick the tallest (highest h_) for best resolution
+    const allVersions = ranked.filter(r => wixUUID(r.u) === uuid);
+    const best = allVersions.reduce((a, b) => {
+      const hA = parseInt((a.u.match(/h_(\d+)/) || [0, 0])[1], 10) || 0;
+      const hB = parseInt((b.u.match(/h_(\d+)/) || [0, 0])[1], 10) || 0;
+      return hB > hA ? b : a;
     });
+    let resolved = best.u.replace(/enc_avif/gi, "enc_jpg");
+    try { resolved = decodeURIComponent(resolved); } catch (_) {}
+    allTopUrls.push(resolved);
+    if (allTopUrls.length >= 4) break;
+  }
 
   let claudeData = null;
   let fetchedVia = null;

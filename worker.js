@@ -1288,7 +1288,9 @@ async function handleCattlePrice(url, env, ctx) {
     return s;
   }
   const ranked = allCandidates.map(u => ({ u, s: imgScore(u) })).sort((a, b) => b.s - a.s);
-  const imgUrl = ranked[0].u;
+  // Wix encodes images as AVIF by default (enc_avif in the transform URL).
+  // Claude vision can't read AVIF, so force JPEG by replacing the encoder directive.
+  const imgUrl = ranked[0].u.replace(/enc_avif/gi, "enc_jpg");
 
   // Debug mode: dump everything we found on the page so we can iterate
   if (url.searchParams.get("debug") === "1") {
@@ -1321,7 +1323,7 @@ async function handleCattlePrice(url, env, ctx) {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       "Referer": "https://www.wheelerlivestock.com/",
       "Origin": "https://www.wheelerlivestock.com",
-      "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+      "Accept": "image/jpeg,image/png,image/webp,image/*;q=0.9,*/*;q=0.5",
       "Accept-Language": "en-US,en;q=0.9",
       "Sec-Fetch-Dest": "image",
       "Sec-Fetch-Mode": "no-cors",

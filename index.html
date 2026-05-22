@@ -1806,27 +1806,34 @@ function computeSustainedWindHours(hourly, currentDir) {
   return hours;
 }
 
-// Translate current wind direction + sustained duration + speed into a Grand-arm-specific
-// shad bank recommendation. The Grand River arm runs roughly NW–SE; Sparrowfoot Park sits
-// on the south shore near the upper (NW) end. So a north wind pushes shad onto Sparrowfoot's
-// shore, a south wind pushes them across to the opposite bank, and so on.
+// Translate current wind direction + sustained duration + speed into a Bucksaw-centric
+// shad bank recommendation. Bucksaw Marina sits on a peninsula at the SE end of the
+// Osage / Grand arm confluence — the marina cove opens roughly NE, with Bucksaw Point
+// to the N and the bulk of the Grand arm running W/NW. For bank fishing, fish are most
+// reachable on the bank where wind is BLOWING INTO the shore — that's where bait piles.
 function shadBankAdvice(windDir, windMph, sustainedHours) {
   if (!isFinite(windDir) || !isFinite(windMph) || windMph < 5) return null;
   const fromDir = compassFromDegrees(windDir);
 
-  let bankSide, sparrowfootNote;
+  let bankSide, bucksawNote;
   if (windDir >= 315 || windDir < 45) {
-    bankSide = "south-facing banks of the Grand arm";
-    sparrowfootNote = "that's Sparrowfoot's side — walk the south shoreline and look for shad piled tight against the bank.";
+    // Wind out of the N — blows straight into the south-facing shorelines.
+    bankSide = "south-facing banks (wind in your face from shore)";
+    bucksawNote = "from Bucksaw on foot — walk the rip-rap south of the boat ramp and Bucksaw Point's south side; bait will be piled tight to the bank. From a boat, run W into the Grand arm and fish the south shoreline.";
   } else if (windDir >= 45 && windDir < 135) {
-    bankSide = "west-facing banks (upper Grand arm)";
-    sparrowfootNote = "Sparrowfoot's west coves are getting fetch — bait piles up in the back of those coves.";
+    // Wind out of the E — blows up the Osage arm and into the west-facing banks.
+    bankSide = "west-facing banks and west-side coves";
+    bucksawNote = "the cove west of the marina is getting fetch — walk the west shoreline of the Bucksaw peninsula. Boat: run up the Grand arm to any west-facing point or pocket.";
   } else if (windDir >= 135 && windDir < 225) {
-    bankSide = "north-facing banks of the Grand arm";
-    sparrowfootNote = "Sparrowfoot's south shore will be slack — by boat, run across to the north bank; from shore, drive around to the opposite shoreline.";
+    // Wind out of the S — blows from behind the marina, marina cove is calm but the
+    // open lake side is loaded. Bucksaw Point's NORTH face takes the fetch.
+    bankSide = "north-facing banks and the open lake side of Bucksaw Point";
+    bucksawNote = "marina cove will be slack — walk over to the north side of Bucksaw Point (open lake side). Boat: run N across the channel and work the Grand-arm north shorelines.";
   } else {
-    bankSide = "east-facing banks (lower Grand arm)";
-    sparrowfootNote = "wind is pushing bait DOWN the arm — head east toward the lower cuts and points by boat.";
+    // Wind out of the W — blows down the Grand arm toward Bucksaw. East-facing banks
+    // (including the marina cove's east shore) load up.
+    bankSide = "east-facing banks (marina cove east shore + east-side points)";
+    bucksawNote = "wind is pushing bait DOWN the Grand arm right at you — the east shoreline of the marina cove and the 7B causeway side are stacked. Boat: anchor on east-facing points and let the wind work.";
   }
 
   let strength;
@@ -1840,7 +1847,7 @@ function shadBankAdvice(windDir, windMph, sustainedHours) {
     strength = "just starting to push — give it another hour or two to fully concentrate";
   }
 
-  return "Wind from "+fromDir+" at "+Math.round(windMph)+" mph for "+sustainedHours+"h — shad "+strength+" on "+bankSide+". "+sparrowfootNote;
+  return "Wind from "+fromDir+" at "+Math.round(windMph)+" mph for "+sustainedHours+"h — shad "+strength+" on "+bankSide+". "+bucksawNote;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2089,8 +2096,222 @@ function renderTripLogPanel(panel, lake, waterTempF) {
   }
 }
 
-function generateFishingAdvice(lake, weather) {
-  // Tailored to Matt's targets at Sparrowfoot / Grand River arm:
+// ── SUB-SEASON helpers — water-temp driven with calendar fallback ──
+// Truman crappie / catfish sub-seasons:
+//   cold            <50F     — winter, very slow
+//   pre-spawn       50-58F   — staging on deep brush
+//   pre-spawn-warm  58-62F   — black crappie moving up, blues stacking
+//   spawn           62-68F   — crappie on the bank (peak shallow window)
+//   post-spawn      68-73F   — fish pulled off, first deep brush off flats
+//   blue-lockdown   73-78F   — big blue females locked in spawning cavities
+//   pre-summer      78-82F   — flathead peak pre-spawn feed
+//   summer          >82F     — full summer pattern
+function getSubSeason(month, waterTempF) {
+  if (isFinite(waterTempF)) {
+    if (waterTempF < 50) return "cold";
+    if (waterTempF < 58) return "pre-spawn";
+    if (waterTempF < 62) return "pre-spawn-warm";
+    if (waterTempF < 68) return "spawn";
+    if (waterTempF < 73) return "post-spawn";
+    if (waterTempF < 78) return "blue-lockdown";
+    if (waterTempF < 82) return "pre-summer";
+    return "summer";
+  }
+  // Calendar fallback tuned for Henry County, MO.
+  if (month <= 1 || month === 11) return "cold";
+  if (month === 2) return "pre-spawn";
+  if (month === 3) return "pre-spawn-warm";
+  if (month === 4) return "spawn";
+  if (month === 5) {
+    const day = new Date().getDate();
+    if (day < 10) return "spawn";
+    if (day < 26) return "post-spawn";
+    return "blue-lockdown";
+  }
+  if (month === 6) {
+    const day = new Date().getDate();
+    if (day < 15) return "blue-lockdown";
+    return "pre-summer";
+  }
+  if (month === 7 || month === 8) return "summer";
+  if (month === 9 || month === 10) return "fall";
+  return "cold";
+}
+
+// Crappie holding depth keyed off water temp (replaces static numbers).
+function getCrappieDepthForTemp(tempF) {
+  if (!isFinite(tempF)) return null;
+  if (tempF < 50) return "20-30 ft (deep brush, dead-slow vertical)";
+  if (tempF < 58) return "12-18 ft (deep brush staging)";
+  if (tempF < 62) return "8-14 ft (transitioning shallow)";
+  if (tempF < 68) return "2-6 ft (spawning shallow on cover)";
+  if (tempF < 73) return "8-14 ft (post-spawn, first deep brush off flats)";
+  if (tempF < 78) return "12-20 ft (deep brush, summer pattern setting in)";
+  if (tempF < 82) return "15-22 ft (deep brush, slow vertical)";
+  return "18-25 ft (shaded brush, often need a slow drop)";
+}
+
+// Recent rainfall total in inches over the last N hours (uses cached hourly precip).
+function getRecentRainfallInches(weather, hours) {
+  if (!weather?.hourly?.time || !weather?.hourly?.precipitation) return 0;
+  const times = weather.hourly.time, precip = weather.hourly.precipitation;
+  const cutoff = Date.now() - hours * 3600000;
+  const nowMs = Date.now();
+  let totalMm = 0;
+  for (let i = 0; i < times.length; i++) {
+    const t = new Date(times[i]).getTime();
+    if (!isFinite(t) || t < cutoff || t > nowMs) continue;
+    const p = precip[i];
+    if (isFinite(p)) totalMm += p; // open-meteo precip values are mm
+  }
+  return totalMm / 25.4;
+}
+
+// Water clarity proxy: combine 5-day rainfall, pool trend, and inflow into clear / stained / muddy.
+function estimateWaterClarity(weather, lake) {
+  const rainIn = getRecentRainfallInches(weather, 120);
+  const reasons = [];
+  let score = 0;
+  if (rainIn >= 2)        { score += 2; reasons.push(`${rainIn.toFixed(1)}" rain past 5 days`); }
+  else if (rainIn >= 0.75) { score += 1; reasons.push(`${rainIn.toFixed(1)}" rain past 5 days`); }
+  if (lake?.trend === "rising")                          { score += 1; reasons.push("rising pool"); }
+  if (Number.isFinite(lake?.inflow) && lake.inflow > 8000) { score += 1; reasons.push(`heavy inflow ${lake.inflow.toLocaleString()} cfs`); }
+  let clarity;
+  if (score >= 3)      clarity = "muddy";
+  else if (score >= 1) clarity = "stained";
+  else                  clarity = "clear";
+  return { clarity, reasons, rainIn };
+}
+
+// Look at the next 72h of forecast pressure for an incoming front.
+function getPressureForecast(weather) {
+  if (!weather?.hourly?.time || !weather?.hourly?.surface_pressure) return null;
+  const times = weather.hourly.time, pressures = weather.hourly.surface_pressure;
+  const now = Date.now();
+  let nowIdx = -1;
+  for (let i = 0; i < times.length; i++) {
+    if (new Date(times[i]).getTime() <= now) nowIdx = i; else break;
+  }
+  if (nowIdx < 0 || nowIdx + 6 >= times.length) return null;
+  const nowP = pressures[nowIdx];
+  if (!isFinite(nowP)) return null;
+  let minP = nowP, minIdx = nowIdx;
+  const endIdx = Math.min(times.length - 1, nowIdx + 72);
+  for (let i = nowIdx + 1; i <= endIdx; i++) {
+    if (isFinite(pressures[i]) && pressures[i] < minP) { minP = pressures[i]; minIdx = i; }
+  }
+  const drop = nowP - minP;
+  const hoursOut = minIdx - nowIdx;
+  if (drop >= 4 && hoursOut <= 60) return { kind: "strong-front", hoursOut, dropHpa: drop.toFixed(1) };
+  if (drop >= 2.5 && hoursOut <= 60) return { kind: "weak-front", hoursOut, dropHpa: drop.toFixed(1) };
+  return null;
+}
+
+// Major boating/fishing holidays that crowd Truman.
+function getMajorHolidayContext(date) {
+  const y = date.getFullYear();
+  // Memorial Day = last Monday in May
+  const memDay = (() => { const d = new Date(y, 5, 0); while (d.getDay() !== 1) d.setDate(d.getDate() - 1); return d; })();
+  // Labor Day = first Monday in September
+  const laborDay = (() => { const d = new Date(y, 8, 1); while (d.getDay() !== 1) d.setDate(d.getDate() + 1); return d; })();
+  const jul4 = new Date(y, 6, 4);
+  const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const daysTo = h => Math.round((h - today) / 86400000);
+  const checks = [
+    { name: "Memorial Day weekend", d: memDay,   range: [-3, 0] },
+    { name: "Independence Day",      d: jul4,     range: [-2, 1] },
+    { name: "Labor Day weekend",     d: laborDay, range: [-3, 0] }
+  ];
+  for (const ch of checks) {
+    const diff = daysTo(ch.d);
+    if (diff >= ch.range[0] && diff <= ch.range[1]) return { name: ch.name, daysAway: diff };
+  }
+  return null;
+}
+
+// Pull the most recent Truman-related MDC bulletin from an item list.
+function findMDCTrumanBulletin(items) {
+  if (!Array.isArray(items)) return null;
+  const trumanRe = /\btruman\b/i;
+  const mdcSourceRe = /^MDC\b/i;
+  const candidates = items.filter(it =>
+    it && it.source && mdcSourceRe.test(it.source) &&
+    trumanRe.test((it.title || "") + " " + (it.description || ""))
+  );
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => (b.pubDate || 0) - (a.pubDate || 0));
+  const best = candidates[0];
+  const desc = (best.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const snippet = desc.length > 220 ? desc.slice(0, 217) + "…" : desc;
+  return {
+    title: best.title || "",
+    snippet,
+    link: best.link || "",
+    ageDays: best.pubDate ? Math.floor((Date.now() - best.pubDate) / 86400000) : null
+  };
+}
+
+// Compare current conditions against trip log entries with similar water temp and pool.
+function getSimilarTripStats(waterTempF, lakeStage) {
+  let log = [];
+  try { log = JSON.parse(localStorage.getItem("news.fishing.log.v1") || "[]"); } catch { return null; }
+  if (!log.length) return null;
+  const similar = log.filter(e => {
+    if (waterTempF != null && e.waterTempF != null && Math.abs(e.waterTempF - waterTempF) > 5) return false;
+    if (lakeStage != null && e.lakeElev   != null && Math.abs(e.lakeElev   - lakeStage)   > 2) return false;
+    return true;
+  });
+  if (similar.length < 2) return null;
+  const recent = similar.slice(-5);
+  const counts = recent.map(e => parseInt(e.count) || 0).filter(n => n > 0);
+  const avg = counts.length ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length) : null;
+  const speciesCount = {};
+  recent.forEach(e => (e.species || []).forEach(s => { speciesCount[s] = (speciesCount[s] || 0) + 1; }));
+  const topSpecies = Object.entries(speciesCount).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  const topSpots = {};
+  recent.forEach(e => { if (e.spot) topSpots[e.spot] = (topSpots[e.spot] || 0) + 1; });
+  const topSpot = Object.entries(topSpots).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  return { tripCount: recent.length, avgCount: avg, topSpecies, topSpot };
+}
+
+// Sub-season → preferred Grand-arm zone hint (used by boat anglers running from Bucksaw).
+function getGrandArmZone(subSeason) {
+  if (subSeason === "pre-spawn")        return { zone: "upper Grand arm (Tightwad → Osceola)", why: "warms and clears first, fish stage here ahead of the rest of the arm" };
+  if (subSeason === "pre-spawn-warm")   return { zone: "upper / middle Grand (Berry Bend ↔ Tightwad)", why: "fish moving up — flooded brush on protected north-facing coves first" };
+  if (subSeason === "spawn")            return { zone: "middle Grand arm (Berry Bend → Tightwad)", why: "main spawn zone — flooded brush and timber in 2-6 ft" };
+  if (subSeason === "post-spawn")       return { zone: "middle-to-lower Grand (Berry Bend area)", why: "fish pull from upper flats to mid-arm brush in 8-14 ft" };
+  if (subSeason === "blue-lockdown")    return { zone: "lower Grand main channel (Sparrowfoot down)", why: "deeper, cooler water — schoolie blues and crappie on channel structure" };
+  if (subSeason === "pre-summer")       return { zone: "lower Grand and tailwater area", why: "main-channel ledges and current breaks; flatheads in deep timber after dark" };
+  if (subSeason === "summer")           return { zone: "lower Grand main channel + tailwater", why: "deepest, coolest, most oxygenated water" };
+  if (subSeason === "fall")             return { zone: "creek arms throughout the Grand", why: "shad push into creek backs, blues follow" };
+  return { zone: "main Grand channel", why: "winter holds fish in deep wintering holes" };
+}
+
+// Optional USGS South Grand River near Brownington (06921070) — headwater flow into Grand arm.
+async function fetchSouthGrandFlow() {
+  try {
+    const url = "https://waterservices.usgs.gov/nwis/iv/?sites=06921070&parameterCd=00060,00065&format=json&siteStatus=all&period=P1D";
+    const viaProxy = (typeof CF_WORKER !== "undefined" && CF_WORKER) ? (CF_WORKER + "?url=" + encodeURIComponent(url)) : url;
+    const res = await fetchWithTimeout(viaProxy, 6000);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const series = data?.value?.timeSeries || [];
+    let flow = null, stage = null;
+    for (const ts of series) {
+      const code = ts.variable?.variableCode?.[0]?.value || "";
+      const vals = ts.values?.[0]?.value || [];
+      const last = vals[vals.length - 1];
+      if (!last || !isFinite(parseFloat(last.value))) continue;
+      if (code === "00060") flow = parseFloat(last.value);
+      else if (code === "00065") stage = parseFloat(last.value);
+    }
+    if (flow === null && stage === null) return null;
+    return { flow, stage, source: "USGS 06921070 South Grand at Brownington" };
+  } catch { return null; }
+}
+
+function generateFishingAdvice(lake, weather, waterTempF, mdcBulletin, southGrandFlow) {
+  // Tailored to Matt's targets, fishing 9/10 from Bucksaw Marina or the bank:
   //   Blue Catfish, Flathead Catfish, Crappie, Shad (cast netting), Farm Pond Bluegill
   const now = new Date();
   const month = now.getMonth(); // 0-11
@@ -2103,7 +2324,13 @@ function generateFishingAdvice(lake, weather) {
   const windBankAdvice = shadBankAdvice(windDir, windMph, sustainedHours);
   const weatherCode = c.weather_code ?? 0;
 
-  const season = (month<=1||month===11)?"winter":(month<=4)?"spring":(month<=7)?"summer":"fall";
+  const subSeason = getSubSeason(month, waterTempF);
+  // Back-compat label so any external callers still get a sane "season" value.
+  const season = (subSeason === "cold") ? "winter"
+               : (["pre-spawn","pre-spawn-warm","spawn","post-spawn"].includes(subSeason)) ? "spring"
+               : (["blue-lockdown","pre-summer","summer"].includes(subSeason)) ? "summer"
+               : "fall";
+
   const isRaining = weatherCode >= 51 && weatherCode < 95;
   const isStormy  = weatherCode >= 95;
   const isDawn    = hour>=5 && hour<8;
@@ -2113,47 +2340,98 @@ function generateFishingAdvice(lake, weather) {
 
   let bite = 3;
   let tips = [], topSpecies = [], baits = [], hotspots = [];
-  let shadTip = "", pondTip = "";
+  let shadTip = "", pondTip = "", bankTip = "";
 
-  // ── SEASON BASE ──
-  if (season === "spring") {
+  const crappieDepth = getCrappieDepthForTemp(waterTempF);
+
+  // ── SUB-SEASON BASE — Bucksaw-and-bank-first hotspots ──
+  if (subSeason === "pre-spawn") {
+    bite = 3;
+    topSpecies = ["Crappie","Blue Catfish","Shad (bait)"];
+    tips.push("Pre-spawn — water still cold. Crappie are tight on deep brush at " + (crappieDepth || "12-18 ft") + " near future spawning flats. Slow vertical presentation wins; don't expect a fast reaction bite. Blue cats are starting to feed harder; cut shad on channel edges produces.");
+    baits = ["1/16 oz hair jig shad colors (slow vertical)","Live minnow on a slip float (12-15 ft)","Fresh-cut shad on Santee Cooper rig 5/0 (blues)","Blade bait fluttered slowly"];
+    hotspots = ["Deep brush piles off the Bucksaw cove mouth","Channel edges 20-30 ft off Bucksaw Point (blues)","Old roadbed at the 7B causeway","First creek bend in from the main Osage channel"];
+    shadTip = "No shad spawn yet — they're tightly schooled deep. Cast netting tough unless you find them piled at warm-water inflows or marina lights.";
+    pondTip = "Bluegill still off the bank. Drop a tiny ice jig or worm under a slip bobber over 8-15 ft cover.";
+    bankTip = "From shore at Bucksaw: rip-rap south of the boat ramp can hold staging crappie on sunny afternoons. Fish a slip bobber straight down off the deepest rocks. Cat fishing — set bait on the bottom off the 7B causeway and be patient.";
+  } else if (subSeason === "pre-spawn-warm") {
     bite = 4;
     topSpecies = ["Crappie","Blue Catfish","Flathead Catfish","Shad (bait)"];
-    tips.push("Spring on the Grand River arm: crappie are pushing up shallow into flooded timber and brush (3–8 ft) to spawn. Blue cats are running up the Grand chasing shad — drift cut shad through the channel from Sparrowfoot up. Flatheads are waking from winter and staging near deep current breaks; live bluegill is the move.");
-    baits = ["1/16 oz chartreuse/white jig (crappie)","Live minnow on a slip float (crappie)","Fresh-cut shad on circle hooks 5/0 (blue cats)","Live bluegill 6–10 in (flatheads)"];
-    hotspots = ["Sparrowfoot brushy coves — flooded timber for crappie","Grand River channel below Sparrowfoot (blues drifting cut shad)","Tebo Creek inlet at the mouth","Big laydowns 12–20 ft for staging flatheads"];
-    shadTip = "Shad spawn April–May. At dawn watch shorelines for surface splashes that look like raindrops — that's spawning shad on gravel. Throw the cast net on those rings. Creek mouths and runoff points after a warm rain are also stacked.";
-    pondTip = "Bluegill aren't bedding yet but are moving shallow as water hits 60°F. Hit any cover (docks, brush, fallen wood) in 3–6 ft. Small piece of worm under a tiny bobber is all you need.";
-  } else if (season === "summer") {
+    tips.push("Crappie pushing up — black crappie show on the north-facing banks first (they warm fastest). 1/16 oz jig in " + (crappieDepth || "8-14 ft") + " on the upcurrent side of brush. Blue cats are stacking on staging holes — pre-spawn trophy window is wide open.");
+    baits = ["1/16 oz jig chartreuse/white","Live minnow on a slip float","Fresh-cut shad on circle hooks 5/0 (blues)","Live bluegill 6-10 in (staging flatheads)"];
+    hotspots = ["North-facing pockets in the Bucksaw cove","Bucksaw Point's deeper coves (staging blues 18-25 ft)","7B causeway rip-rap (bank crappie + blues)","Boat run W into the upper Grand arm — first warm pockets up there"];
+    shadTip = "First wave of gizzard shad spawn often hits around 65°F surface. Watch creek-mouth gravel banks at dawn for splashes that look like raindrops.";
+    pondTip = "Bluegill moving shallow on warm days but not bedding yet. Hit cover (docks, fallen wood) in 4-8 ft on sunny afternoons.";
+    bankTip = "Bank from Bucksaw: walk the rip-rap south of the ramp and around Bucksaw Point. Pitch a jig under a slip float right next to any brush or rocky cover. The 7B causeway is loaded right now — crappie, white bass, and channel cats stack on the rocks.";
+  } else if (subSeason === "spawn") {
+    bite = 5;
+    topSpecies = ["Crappie","Blue Catfish","Flathead Catfish","Shad (bait)"];
+    tips.push("CRAPPIE SPAWN — fish are shallow on the bank in flooded timber and brush at " + (crappieDepth || "2-6 ft") + ". Males aggressive on anything landing near a nest. Females drop eggs and slide back to deeper cover. Take a few males and move on — don't beat up the beds.");
+    baits = ["1/16 oz chartreuse/white jig pitched to cover","Live minnow on a slip float (set 2-4 ft deep)","Fresh-cut shad on circle hooks 5/0 (blues)","Live bluegill 6-10 in (flatheads)"];
+    hotspots = ["Bucksaw cove brushy banks (2-6 ft, walk the shoreline pitching)","Spawning flats off Bucksaw Point's protected coves","Boat run W into the Grand arm — Berry Bend area brushy pockets","Grand channel 18-25 ft for staging females (boat)"];
+    shadTip = "Shad spawn is on — gizzard wave at 65°F, threadfin around 70°F. Dawn cast-net the gravel banks; surface looks like rain when shad are spawning.";
+    pondTip = "Bluegill starting to bed in warm pond corners. Sandy/gravel bottoms in 2-4 ft — drop a worm right on a bed for instant takes.";
+    bankTip = "This is your week from the bank — fish are right against the shoreline. Walk the Bucksaw cove and the inlets to the W slowly, pitching a 1/16 oz jig into every laydown, brush pile, and stick-up. A slip float set 2-4 ft deep with a live minnow under it is hard to beat. Don't wade — you'll spook a school. Stay on shore and cast in.";
+  } else if (subSeason === "post-spawn") {
+    bite = 4;
+    topSpecies = ["Crappie","Blue Catfish","Flathead Catfish","Shad (bait)"];
+    tips.push("Post-spawn — crappie pulled off the bank to the first deep brush at " + (crappieDepth || "8-14 ft") + " off spawning flats. Males still guard fry shallow; females recovering deep. Suspended fish — slow vertical wins. Blues are gorging pre-spawn; this is one of the year's best windows for a trophy blue.");
+    baits = ["1/16 oz hair jig (vertical, deep brush)","Drop shot with minnow","Live minnow under slip float 8-14 ft","Fresh-cut shad on Santee Cooper rig (blues)","Live bluegill 6-10 in (flatheads)"];
+    hotspots = ["First deep brush off Bucksaw cove (8-14 ft)","Secondary creek-arm points off Bucksaw Point","Channel ledges 25-35 ft off the marina cove mouth (pre-spawn trophy blues)","Boat run W: Berry Bend brush in the Grand"];
+    shadTip = "Threadfin wave still possible if surface hasn't passed 72°F. Otherwise shad are scattered — best chance is dock lights overnight at the marina.";
+    pondTip = "Peak bluegill spawn — sandy/gravel pockets in 2-4 ft. Male gills will hammer a worm or a small popper defending nests.";
+    bankTip = "From the bank, fish have moved off the bank but not far. Cast a slip float with a minnow as far as you can off any point or brushy bank — let it sit over 8-12 ft water. The 7B causeway and Bucksaw Point's deeper-water sides hold post-spawn schools. For cats: bottom rig with cut shad off the point or causeway after dark.";
+  } else if (subSeason === "blue-lockdown") {
+    bite = 3;
+    topSpecies = ["Flathead Catfish","Blue Catfish (schoolies)","Crappie","Shad (bait)"];
+    tips.push("Big blue cat females are locking into spawning cavities (under rocks, in holes in the bank, in stumps) for ~7-10 days and won't feed. Trophy blue window is shut. Schoolie blues and males still eat on channel edges. Flatheads in PEAK pre-spawn — best flathead window of the year, live bluegill near big laydowns after dark.");
+    baits = ["Live bluegill 6-10 in on circle hook 8/0 (flatheads)","Fresh-cut shad on Santee rig (schoolie blues)","1/8 oz hair jig in " + (crappieDepth || "12-20 ft"),"Drop shot with minnow on deep brush"];
+    hotspots = ["Big laydowns and timber 15-25 ft (flathead pre-spawn, after dark)","Channel ledges 25-40 ft off Bucksaw cove (active blues)","Brush piles 12-20 ft (crappie)","7B causeway after dark — channel cats and the occasional flathead"];
+    shadTip = "Shad spawn winding down. Best cast netting now is at night under marina/dock lights — they pile under any light source. Throw the net 5-10 ft to the side, not directly under.";
+    pondTip = "Bluegill post-spawn — males still on beds, females sliding to 6-10 ft cover. Topwater popper at dawn over docks is dynamite.";
+    bankTip = "Bank fishing shifts to evening / after dark. Bucksaw Point's deeper sides and the 7B causeway are the best bets — cut shad or cut bluegill on a slip-sinker rig, 30-40 yards out, sit and wait. For flatheads: live bluegill on a 8/0 circle, set near any visible cover, and stay until midnight or later. Sunset to about 11 PM is the prime window.";
+  } else if (subSeason === "pre-summer") {
+    bite = 4;
+    topSpecies = ["Flathead Catfish","Blue Catfish","Crappie","Shad (bait)"];
+    tips.push("Flatheads in peak pre-spawn feed — live bluegill near big laydowns after dark is the trophy move. Blues recovering from spawn, feeding on channel edges. Crappie on deep brush at " + (crappieDepth || "15-22 ft") + ".");
+    baits = ["Live bluegill 6-10 in on circle hook (flatheads)","Fresh-cut shad on Santee rig (blues)","1/8 oz hair jig deep brush","Drop shot with minnow (crappie)"];
+    hotspots = ["Big timber and laydowns 15-25 ft (flatheads, after dark)","Channel ledges 25-40 ft off Bucksaw cove (blues)","Deep brush 15-22 ft (crappie)","Tailwater current breaks below the dam — trophy blues stack here"];
+    shadTip = "Cast-net under marina/dock lights at night — shad pile up tight. Throw 5-10 ft to the side, not directly under.";
+    pondTip = "Bluegill post-spawn. Cover in 4-8 ft midday; shallow at dawn and dusk.";
+    bankTip = "From the bank, switch fully to dawn / dusk / after-dark. Daytime midday from shore is largely wasted in this window. The 7B causeway after dark is your best cat spot — cut shad on the bottom. For crappie, the deepest accessible rocks off Bucksaw Point with a slip float set 15+ ft deep.";
+  } else if (subSeason === "summer") {
     bite = airTempF > 88 ? 2 : 3;
     topSpecies = ["Blue Catfish","Flathead Catfish","Crappie","Shad (bait)"];
     if (airTempF > 86) {
-      tips.push("Heat is on. Blue cats and flatheads are the smart play — they thrive in deep, oxygenated water on the Grand channel edges (25–40 ft). Crappie are deep on brush piles in 18–25 ft, requiring a slow vertical presentation. Best windows: 5–9 AM and 7 PM through the night.");
+      tips.push("Heat is on. Blues and flatheads thrive in deep oxygenated water on Grand channel edges (25-40 ft). Crappie deep on brush at " + (crappieDepth || "18-25 ft") + ". Best windows: 5-9 AM and 7 PM through the night.");
     } else {
-      tips.push("Pre-bake summer: blues are stacked on the old riverbed channel — drift fresh-cut shad on a Santee Cooper rig through 25–35 ft. Flatheads are nocturnal — set live bluegill on slip-sinker rigs near big timber and laydowns after dark. Crappie holding deep on brush piles, 1/8 oz hair jig is hard to beat.");
+      tips.push("Summer pattern set. Blues stacked on the old riverbed channel — drift fresh-cut shad on Santee through 25-35 ft. Flatheads nocturnal — set live bluegill near big timber after dark. Crappie deep on brush at " + (crappieDepth || "18-25 ft") + ".");
     }
-    baits = ["Cut shad or skipjack on Santee rig (blues)","Live bluegill 6–10 in on circle hook (flatheads)","1/8 oz hair jig in 18–25 ft (crappie)","Drop shot with minnow (deep crappie)"];
-    hotspots = ["Grand River channel ledges 25–40 ft (blues)","Big standing timber and laydowns 15–25 ft (flatheads, after dark)","Submerged brush piles 18–25 ft (crappie)","Tailwater current breaks below the dam — trophy blues"];
-    shadTip = "Best cast netting is at night under marina/dock lights — shad pile up tight under any light source. Throw the net 5–10 ft to the side, not directly under, so they don't spook. At dawn, hit creek mouths before the sun pushes them deep.";
-    pondTip = "Bluegill are bedding (June) or post-spawn (July). Bedding gills concentrate in 2–4 ft on sandy or gravel bottoms — accuracy matters, drop a small piece of worm right on the bed. Post-spawn, fish under shaded cover in 4–8 ft midday.";
-  } else if (season === "fall") {
+    baits = ["Cut shad or skipjack on Santee rig (blues)","Live bluegill 6-10 in on circle hook (flatheads)","1/8 oz hair jig deep brush","Drop shot with minnow (deep crappie)"];
+    hotspots = ["Grand channel ledges 25-40 ft (blues)","Big timber and laydowns 15-25 ft (flatheads, after dark)","Submerged brush piles 18-25 ft (crappie)","Tailwater current breaks below the dam — trophy blues"];
+    shadTip = "Best cast netting at night under marina/dock lights — shad pile up tight. At dawn, hit creek mouths before the sun pushes them deep.";
+    pondTip = "Bluegill in shaded cover 4-8 ft midday. Topwater dawn/dusk.";
+    bankTip = "Brutal from the bank in midday — switch to dawn and after dark. Bucksaw Point and the 7B causeway after sunset is your highest-percentage spot. Cut shad on a slip-sinker rig, cast as far out as you can manage, set rod holders, and wait. For crappie from shore, slip float set 18-20 ft deep over rocky cover after sunset.";
+  } else if (subSeason === "fall") {
     bite = 4;
     topSpecies = ["Blue Catfish","Crappie","Flathead Catfish","Shad (bait)"];
-    tips.push("Fall is gold on Truman. Cold fronts push shad into the back of creek arms and blue cats follow in numbers — drift cut shad through 15–25 ft over creek channels. Crappie are gorging before winter, stacked on transitional brush in 12–20 ft. Flatheads feeding heavily before dormancy — last big window for a trophy fish on live bluegill.");
+    tips.push("Fall is gold on Truman. Cold fronts push shad into the back of creek arms and blues follow — drift cut shad through 15-25 ft over creek channels. Crappie gorging before winter at " + (crappieDepth || "12-20 ft") + " on transitional brush. Flatheads feeding heavy before dormancy — last big trophy window on live bluegill.");
     baits = ["Fresh-cut shad on Santee Cooper rig (drift, blues)","Live skipjack or large shad (trophy blues)","Live bluegill on slip rig (flatheads)","Shad-colored 1/16 oz jig (crappie)"];
-    hotspots = ["Creek channel mouths in the Grand River arm","Wind-blown shad-loaded points","Brush on transition banks 12–20 ft (crappie)","Big laydowns deep in creek arms after dark (flatheads)"];
-    shadTip = "Cold fronts push shad into creek arms — follow them. Cast net the back third of any creek arm, especially on cloudy windy days when they're less spooky. Watch for surface dimples at dawn.";
-    pondTip = "Bluegill move shallow chasing bugs again as water cools through the 60s. Hit any wood or weed cover in 3–6 ft — fly rod, ultralight jig, or a worm under a slip bobber all work.";
+    hotspots = ["Creek channel mouths in the Grand arm (boat)","Wind-blown shad-loaded points","Brush on transition banks 12-20 ft (crappie)","Big laydowns deep in creek arms after dark (flatheads)"];
+    shadTip = "Cold fronts push shad into creek arms — follow them. Cast net the back third of any creek arm on cloudy windy days.";
+    pondTip = "Bluegill move shallow chasing bugs as water cools through the 60s. Any wood or weed cover in 3-6 ft works.";
+    bankTip = "Fall is great from the bank. Walk the Bucksaw cove and the 7B causeway on a wind-blown day — bait gets piled tight and crappie + white bass + small blues pile in. Pitch a small jig or fish a slip float with a minnow right against the bank.";
   } else {
-    // winter
+    // cold / winter
     bite = 2;
     topSpecies = ["Blue Catfish","Crappie"];
-    tips.push("Winter Truman: blues are the best bite if you slow way down. They stack in deep wintering holes on the main lake (35–55 ft) — fresh cut shad on a tight-line, virtually no movement. Crappie are deep on brush piles and treetops in 25–40 ft, requiring patience and a soft touch. A bite often takes 30 seconds of no movement.");
-    tips.push("Flatheads are mostly dormant — they'll bite occasionally on warm stable days but it's a low-percentage hunt this time of year.");
+    tips.push("Winter Truman: blues are the best bite if you slow way down. They stack in deep wintering holes on the main lake (35-55 ft) — fresh cut shad on a tight-line, virtually no movement. Crappie deep on brush at " + (crappieDepth || "25-40 ft") + ".");
+    tips.push("Flatheads are mostly dormant — they'll bite on warm stable days but it's a low-percentage hunt this time of year.");
     baits = ["Fresh-cut shad on tight-line rig (blues)","1/32 oz tube jig pink/white (deep crappie)","Live minnow on long-line slip rig","Blade bait worked very slowly"];
-    hotspots = ["Deep main-lake wintering holes 35–55 ft","Standing timber tops in 25–40 ft (crappie)","Channel bends in the Grand near Sparrowfoot","Heat-discharge or warm-water inflow areas"];
-    shadTip = "Shad are deep and tightly schooled — cast netting is tough. Best chance: warm-water discharge or deep creek channel ledges where shad concentrate. Most folks fish frozen shad bought from a bait shop in winter.";
-    pondTip = "Bluegill go deep and slow. Tiny ice jig tipped with a wax worm or red worm, very slow vertical presentation in 8–15 ft. Best on warming sunny afternoons when surface temp climbs a few degrees.";
+    hotspots = ["Deep main-lake wintering holes 35-55 ft (boat)","Standing timber tops " + (crappieDepth || "25-40 ft") + " (crappie)","Channel bends in the Grand near Sparrowfoot","Heat-discharge or warm-water inflow areas"];
+    shadTip = "Shad deep and tightly schooled — cast netting tough. Best chance: warm-water discharge. Most folks use frozen shad in winter.";
+    pondTip = "Bluegill deep and slow. Tiny ice jig with wax worm, very slow vertical, 8-15 ft.";
+    bankTip = "Bank fishing in winter is tough. The 7B causeway over deep water on a warming sunny afternoon is your best shot — cut shad on a tight-line, give every bite 30 seconds of no movement before setting. Crappie possible on the deepest accessible rocks with a slow drop and a slow soft bite.";
   }
 
   // ── LAKE LEVEL MODIFIER ──
@@ -2307,8 +2585,89 @@ function generateFishingAdvice(lake, weather) {
     }
   }
 
+  // ── WATER CLARITY → BAIT COLOR GUIDANCE ──
+  const clarityInfo = estimateWaterClarity(weather, lake);
+  let clarityNote = null;
+  if (clarityInfo.clarity === "muddy") {
+    tips.push(`🟤 Water muddy (${clarityInfo.reasons.join(", ")}) — fish are using vibration and silhouette more than sight. Bait color: chartreuse, orange, or black/blue. Crappie jig: chartreuse / orange / pink. Cat bait: stink baits and fresh-cut shad with extra blood. Stay closer to cover; visibility is feet not yards.`);
+    clarityNote = "muddy";
+  } else if (clarityInfo.clarity === "stained") {
+    tips.push(`🟫 Water stained (${clarityInfo.reasons.join(", ")}) — middle-of-road clarity. Chartreuse/white and shad-pattern jigs both work for crappie. Cut shad still moves blues fine.`);
+    clarityNote = "stained";
+  } else {
+    clarityNote = "clear";
+  }
+
+  // ── 24-72h PRESSURE FORECAST (incoming-front detection) ──
+  const pressFc = getPressureForecast(weather);
+  if (pressFc) {
+    const hOut = pressFc.hoursOut;
+    const when = hOut < 24 ? `in ${hOut}h` : hOut < 48 ? `in ${Math.round(hOut/24)} day(s)` : "in 2-3 days";
+    if (pressFc.kind === "strong-front") {
+      tips.push(`⛈️ Strong front incoming ${when} (pressure drop ${pressFc.dropHpa} hPa) — fish HARD today and tomorrow morning. Expect a 24-36 hour bite-down once the front lands. Plan your big trip around the pre-front window now, not after.`);
+    } else {
+      tips.push(`⚠️ Weak front incoming ${when} (pressure drop ${pressFc.dropHpa} hPa) — bite should stay decent until then, with a slowdown after. Worth getting out now.`);
+    }
+  }
+
+  // ── HOLIDAY / WEEKEND TRAFFIC FLAG ──
+  const holiday = getMajorHolidayContext(now);
+  const dow = now.getDay(); // 0=Sun 6=Sat
+  if (holiday) {
+    if (holiday.daysAway === 0) {
+      tips.push(`🚤 ${holiday.name} today — expect heavy boat and PWC traffic on the main lake all day. From shore at Bucksaw you're fine; if you're on the water, stay up the Grand arm or up in Tebo Creek where traffic thins.`);
+    } else if (holiday.daysAway < 0) {
+      tips.push(`🚤 In the middle of ${holiday.name} — main lake will be busy. Bank fishing is unaffected; boaters: push up the Grand or into Tebo Creek to escape traffic.`);
+    } else {
+      tips.push(`🚤 ${holiday.name} starts in ${holiday.daysAway} day(s) — main lake gets busy by Friday afternoon. Plan accordingly.`);
+    }
+  } else if (dow === 0 || dow === 6) {
+    tips.push(`🚤 Weekend — expect normal weekend boat traffic on the main lake. Bank fishing is unaffected; if running by boat, the Grand arm above Berry Bend usually stays calm.`);
+  }
+
+  // ── GRAND ARM ZONE (boat-from-Bucksaw guidance) ──
+  const zone = getGrandArmZone(subSeason);
+  let zoneTip = null;
+  if (zone) {
+    zoneTip = `🎯 If running by boat, target the ${zone.zone} — ${zone.why}.`;
+  }
+
+  // ── SOUTH GRAND HEADWATER FLOW (if available) ──
+  if (southGrandFlow && Number.isFinite(southGrandFlow.flow)) {
+    if (southGrandFlow.flow > 2500) {
+      tips.push(`🌊 South Grand at Brownington running hard (${Math.round(southGrandFlow.flow).toLocaleString()} cfs in) — fresh muddy water entering the upper Grand arm. Upper-arm clarity will be reduced and the bite often spikes at the inflow line where dirty meets cleaner. Worth a boat run W.`);
+    } else if (southGrandFlow.flow > 800) {
+      tips.push(`💧 South Grand at Brownington (${Math.round(southGrandFlow.flow).toLocaleString()} cfs in) — moderate headwater inflow keeping the upper Grand arm fresh. Good baitfish movement up there.`);
+    }
+  }
+
+  // ── MDC TRUMAN BULLETIN (boots-on-the-ground confirmation) ──
+  let mdcLine = null;
+  if (mdcBulletin && mdcBulletin.snippet) {
+    const ageTxt = mdcBulletin.ageDays === 0 ? "today" : mdcBulletin.ageDays === 1 ? "yesterday" : `${mdcBulletin.ageDays} days ago`;
+    mdcLine = `MDC ${ageTxt}: ${mdcBulletin.snippet}`;
+  }
+
+  // ── TRIP-LOG FEEDBACK (your historical performance) ──
+  const tripStats = getSimilarTripStats(waterTempF, lake?.stage);
+  let tripLogLine = null;
+  if (tripStats) {
+    const bits = [];
+    if (tripStats.avgCount) bits.push(`avg ${tripStats.avgCount} fish`);
+    if (tripStats.topSpecies) bits.push(`mostly ${tripStats.topSpecies}`);
+    if (tripStats.topSpot) bits.push(`best spot was ${tripStats.topSpot}`);
+    if (bits.length) tripLogLine = `📓 Your last ${tripStats.tripCount} trips in similar conditions: ${bits.join(", ")}.`;
+  }
+
   bite = Math.round(Math.max(1, Math.min(5, bite)));
-  return { bite, tips, topSpecies, baits, hotspots, season, shadTip, pondTip, windBankAdvice };
+  return {
+    bite, tips, topSpecies, baits, hotspots, season, subSeason,
+    shadTip, pondTip, bankTip, windBankAdvice,
+    clarity: clarityNote, clarityReasons: clarityInfo.reasons,
+    zoneTip, mdcLine, tripLogLine,
+    waterTempF: isFinite(waterTempF) ? waterTempF : null,
+    pressureForecast: pressFc, holiday
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -3670,7 +4029,7 @@ function renderLakeHistoryChart(history) {
 </div>`;
 }
 
-function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, waterTempF) {
+function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, waterTempF, southGrandFlow) {
   // Garden/mushroom/cattle/weekly cards moved to dedicated tabs.
   const extras = "";
   if (!advice) return '<div class="fish-advisor"><div class="fish-loading">Could not generate fishing report.</div></div>' + extras + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
@@ -3711,11 +4070,49 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, wa
   const windBankHtml = advice.windBankAdvice
     ? `<div class="fish-tip" style="border-left:3px solid var(--mustard);padding-left:10px;margin-top:6px"><strong>📍 Right now:</strong> ${escapeHtml(advice.windBankAdvice)}</div>`
     : "";
+  const bankHtml     = advice.bankTip
+    ? `<div class="fish-section"><div class="fish-section-label">🏖️ From the Bank (Bucksaw)</div><div class="fish-tip" style="border-left:3px solid #c2410c;padding-left:10px">${escapeHtml(advice.bankTip)}</div></div>`
+    : "";
   const shadHtml     = advice.shadTip
     ? `<div class="fish-section"><div class="fish-section-label">🐟 Shad / Cast Netting</div><div class="fish-tip" style="border-left:3px solid #2563eb;padding-left:10px">${escapeHtml(advice.shadTip)}</div>${windBankHtml}</div>`
     : "";
   const pondHtml     = advice.pondTip
     ? `<div class="fish-section"><div class="fish-section-label">🪣 Farm Pond Bluegill</div><div class="fish-tip" style="border-left:3px solid var(--sage);padding-left:10px">${escapeHtml(advice.pondTip)}</div></div>`
+    : "";
+
+  // Sub-season label (water-temp driven), clarity badge, boat-zone hint, MDC line, trip-log feedback
+  const subSeasonLabels = {
+    "cold":"Winter / Cold Water","pre-spawn":"Pre-Spawn","pre-spawn-warm":"Pre-Spawn (Warming)",
+    "spawn":"SPAWN — Shallow Bite","post-spawn":"Post-Spawn","blue-lockdown":"Blue Cat Lockdown",
+    "pre-summer":"Pre-Summer (Flathead Peak)","summer":"Summer","fall":"Fall Feed-Up"
+  };
+  const subSeasonLabel = subSeasonLabels[advice.subSeason] || "";
+  const subSeasonHtml = subSeasonLabel
+    ? `<div class="fish-subseason" style="display:inline-block;font-size:11px;font-weight:700;color:var(--sage,#6a9);background:rgba(106,153,153,0.10);padding:3px 8px;border-radius:10px;margin-left:6px">${escapeHtml(subSeasonLabel)}${advice.waterTempF != null ? ` · ${advice.waterTempF}°F water` : ""}</div>`
+    : "";
+
+  const clarityBadge = advice.clarity
+    ? `<div class="fish-clarity" style="display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;margin-left:6px;${
+        advice.clarity === "muddy" ? "color:#fff;background:#8b5a2b" :
+        advice.clarity === "stained" ? "color:#fff;background:#b58955" :
+        "color:#fff;background:#2563eb"
+      }">${advice.clarity.toUpperCase()}${advice.clarityReasons?.length ? ` · ${advice.clarityReasons[0]}` : ""}</div>`
+    : "";
+
+  const zoneHtml = advice.zoneTip
+    ? `<div class="fish-tip" style="border-left:3px solid #7c3aed;padding-left:10px;margin-top:6px">${escapeHtml(advice.zoneTip)}</div>`
+    : "";
+
+  const mdcHtml = advice.mdcLine
+    ? `<div class="fish-section"><div class="fish-section-label">📰 MDC Recent Truman Bulletin</div><div class="fish-tip" style="border-left:3px solid #16a34a;padding-left:10px">${escapeHtml(advice.mdcLine)}</div></div>`
+    : "";
+
+  const tripLogHtml = advice.tripLogLine
+    ? `<div class="fish-tip" style="border-left:3px solid #db2777;padding-left:10px;margin-top:6px">${escapeHtml(advice.tripLogLine)}</div>`
+    : "";
+
+  const southGrandHtml = (southGrandFlow && Number.isFinite(southGrandFlow.flow))
+    ? `<div class="fish-lake-stat"><div class="fish-stat-val">${Math.round(southGrandFlow.flow).toLocaleString()}</div><div class="fish-stat-lbl">S. Grand cfs</div></div>`
     : "";
   const stars = "★".repeat(advice.bite)+"☆".repeat(5-advice.bite);
   const dateStr = new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
@@ -3727,7 +4124,7 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, wa
 
   return `<div class="fish-advisor">
   <div class="fish-header">
-    <div class="fish-title">🎣 Truman Lake Fishing Report</div>
+    <div class="fish-title">🎣 Truman Lake Fishing Report${subSeasonHtml}${clarityBadge}</div>
     <div class="fish-date">${dateStr}</div>
   </div>
   <div class="fish-bite-meter">
@@ -3742,6 +4139,7 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, wa
       ${(lake && Number.isFinite(lake.outflow)) ? `<div class="fish-lake-stat"><div class="fish-stat-val">${lake.outflow.toLocaleString()}</div><div class="fish-stat-lbl">Outflow cfs</div></div>` : ""}
       <div class="fish-lake-stat"><div class="fish-stat-val">${temp}</div><div class="fish-stat-lbl">Air Temp</div></div>
       ${waterTempF != null ? `<div class="fish-lake-stat"><div class="fish-stat-val">${waterTempF}°F</div><div class="fish-stat-lbl">Water Temp</div></div>` : ""}
+      ${southGrandHtml}
       <div class="fish-lake-stat"><div class="fish-stat-val">${wind}</div><div class="fish-stat-lbl">Wind</div></div>
     </div>
   </div>
@@ -3796,8 +4194,12 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, wa
   <div class="fish-log-panel" id="fishLogPanel"></div>
   <div class="fish-section"><div class="fish-section-label">🎯 Target Species</div>${speciesHtml}</div>
   ${tipsHtml}
+  ${zoneHtml}
+  ${tripLogHtml}
+  ${bankHtml}
   ${shadHtml}
   ${pondHtml}
+  ${mdcHtml}
   <div class="fish-section"><div class="fish-section-label">🪝 Recommended Baits &amp; Rigs</div>${baitsHtml}</div>
   <div class="fish-section"><div class="fish-section-label">📍 Hot Spots Right Now</div>${hotspotsHtml}</div>
 </div>
@@ -4037,12 +4439,13 @@ async function loadOutdoor(force) {
   const cat = CATEGORIES.find(c => c.id==="outdoor");
   if (force) cat.feeds.forEach(f => localStorage.removeItem("news.cache."+f.url));
 
-  const [lakeData, weeklyRecords, lakeHistoryResult, waterTempF, newsResults] = await Promise.all([
+  const [lakeData, weeklyRecords, lakeHistoryResult, waterTempF, newsResults, southGrandFlow] = await Promise.all([
     fetchTrumanLake(),
     fetchWeeklyData(),
     fetch(LAKE_HISTORY_ENDPOINT).then(r => r.ok ? r.json() : { readings: [] }).catch(() => ({ readings: [] })),
     fetchWaterTemp(),
-    Promise.all(cat.feeds.map(f => fetchFeed(f).catch(()=>[])))
+    Promise.all(cat.feeds.map(f => fetchFeed(f).catch(()=>[]))),
+    fetchSouthGrandFlow().catch(() => null)
   ]);
 
   // Store today's reading in KV (fire-and-forget)
@@ -4057,8 +4460,10 @@ async function loadOutdoor(force) {
   const lakeHistory = lakeHistoryResult?.readings || [];
 
   const weatherData = getCachedWeather();
-  const advice = generateFishingAdvice(lakeData, weatherData);
-  advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice, weeklyRecords, lakeHistory, waterTempF);
+  // Find a recent Truman-specific MDC bulletin from the outdoor news feeds
+  const mdcBulletin = findMDCTrumanBulletin(newsResults.flat());
+  const advice = generateFishingAdvice(lakeData, weatherData, waterTempF, mdcBulletin, southGrandFlow);
+  advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice, weeklyRecords, lakeHistory, waterTempF, southGrandFlow);
   // Wire up the AI Smart Plan button now that the advisor markup is in the DOM
   wireFishSmartPlan(lakeData, weatherData, advice, lakeHistory, waterTempF);
   wireCattleMarket();

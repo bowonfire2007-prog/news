@@ -1806,34 +1806,33 @@ function computeSustainedWindHours(hourly, currentDir) {
   return hours;
 }
 
-// Translate current wind direction + sustained duration + speed into a Bucksaw-centric
-// shad bank recommendation. Bucksaw Marina sits on a peninsula at the SE end of the
-// Osage / Grand arm confluence — the marina cove opens roughly NE, with Bucksaw Point
-// to the N and the bulk of the Grand arm running W/NW. For bank fishing, fish are most
-// reachable on the bank where wind is BLOWING INTO the shore — that's where bait piles.
+// Translate current wind direction + sustained duration + speed into a bank-fishing
+// recommendation oriented around Matt's home water. He lives ~1 mile (crow-flies) north
+// of Sparrowfoot Recreation Area, on the north shore of the Grand River arm. The Grand
+// arm runs roughly E-W here, so his home bank faces SOUTH (S wind = bait piled at his
+// feet). Sparrowfoot is on the south shore — drive 5 minutes when wind is from the N.
+// Highway 18 bridge is the upper-Grand reference point; Bucksaw rip-rap is the lower end.
 function shadBankAdvice(windDir, windMph, sustainedHours) {
   if (!isFinite(windDir) || !isFinite(windMph) || windMph < 5) return null;
   const fromDir = compassFromDegrees(windDir);
 
-  let bankSide, bucksawNote;
+  let bankSide, homeNote;
   if (windDir >= 315 || windDir < 45) {
-    // Wind out of the N — blows straight into the south-facing shorelines.
-    bankSide = "south-facing banks (wind in your face from shore)";
-    bucksawNote = "from Bucksaw on foot — walk the rip-rap south of the boat ramp and Bucksaw Point's south side; bait will be piled tight to the bank. From a boat, run W into the Grand arm and fish the south shoreline.";
+    // Wind from N — pushes bait OFF user's home bank, ACROSS to Sparrowfoot's south shore
+    bankSide = "south-facing banks (Sparrowfoot side)";
+    homeNote = "wind is pushing bait OFF your home bank across to Sparrowfoot. Drive the 5 min to Sparrowfoot Park and walk the shoreline — bait piles tight against the south-shore coves. Don't waste time on your own bank with N wind.";
   } else if (windDir >= 45 && windDir < 135) {
-    // Wind out of the E — blows up the Osage arm and into the west-facing banks.
-    bankSide = "west-facing banks and west-side coves";
-    bucksawNote = "the cove west of the marina is getting fetch — walk the west shoreline of the Bucksaw peninsula. Boat: run up the Grand arm to any west-facing point or pocket.";
+    // Wind from E — blows UP the Grand arm (westward), piling on west-facing structures
+    bankSide = "west-facing banks (upper Grand, Hwy 18 area)";
+    homeNote = "wind is pushing bait UP the Grand arm toward Hwy 18. Drive to the Hwy 18 bridge/causeway and fish the west-facing rip-rap; bait stacks against it. Knisley's area on the Deepwater arm also takes E-wind fetch on its west-facing points.";
   } else if (windDir >= 135 && windDir < 225) {
-    // Wind out of the S — blows from behind the marina, marina cove is calm but the
-    // open lake side is loaded. Bucksaw Point's NORTH face takes the fetch.
-    bankSide = "north-facing banks and the open lake side of Bucksaw Point";
-    bucksawNote = "marina cove will be slack — walk over to the north side of Bucksaw Point (open lake side). Boat: run N across the channel and work the Grand-arm north shorelines.";
+    // Wind from S — pushes bait FROM Sparrowfoot AT user's home bank. PRIME.
+    bankSide = "north-facing banks (YOUR home bank + Hwy 18 north shore)";
+    homeNote = "PRIME — wind from S piles shad and feeding fish tight against your home north shore. Walk out the back door and fish. If you've worked your own bank, drive up to Hwy 18 and fish the north-shore rip-rap.";
   } else {
-    // Wind out of the W — blows down the Grand arm toward Bucksaw. East-facing banks
-    // (including the marina cove's east shore) load up.
-    bankSide = "east-facing banks (marina cove east shore + east-side points)";
-    bucksawNote = "wind is pushing bait DOWN the Grand arm right at you — the east shoreline of the marina cove and the 7B causeway side are stacked. Boat: anchor on east-facing points and let the wind work.";
+    // Wind from W — blows DOWN the Grand arm (eastward) toward Bucksaw, piles on east-facing
+    bankSide = "east-facing banks (lower Grand toward Bucksaw)";
+    homeNote = "wind is pushing bait DOWN the Grand arm toward Bucksaw. Drive south to the Bucksaw rip-rap, or fish any east-facing point along the mid-Grand bank access between Hwy 18 and Bucksaw. East-facing pockets near Sparrowfoot also take W-wind fetch.";
   }
 
   let strength;
@@ -1847,7 +1846,7 @@ function shadBankAdvice(windDir, windMph, sustainedHours) {
     strength = "just starting to push — give it another hour or two to fully concentrate";
   }
 
-  return "Wind from "+fromDir+" at "+Math.round(windMph)+" mph for "+sustainedHours+"h — shad "+strength+" on "+bankSide+". "+bucksawNote;
+  return "Wind from "+fromDir+" at "+Math.round(windMph)+" mph for "+sustainedHours+"h — shad "+strength+" on "+bankSide+". "+homeNote;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2287,6 +2286,92 @@ function getGrandArmZone(subSeason) {
   return { zone: "main Grand channel", why: "winter holds fish in deep wintering holes" };
 }
 
+// Pick the best NW-Truman bank spot for current conditions. Scoring blends wind fit,
+// sub-season fit, and proximity from home (~1 mi N of Sparrowfoot, north shore Grand arm).
+function pickClosestBankSpot(subSeason, windDir, windMph, clarity, holiday) {
+  // Each spot lists its facing direction(s) — which compass headings the bank looks toward.
+  // "bestWindFrom" lists wind-FROM directions where bait piles into THIS bank.
+  // distanceMi is rough drive distance from home.
+  const spots = [
+    {
+      name: "Home bank (north shore, 1 mi from Sparrowfoot)",
+      shortName: "Home bank",
+      faces: "S",
+      bestWindFrom: [[135, 225]],   // S winds → blow INTO south-facing bank? wait — wind FROM S blows north, hitting S-facing bank → yes
+      goodSeasons: ["pre-spawn-warm","spawn","post-spawn","fall"],
+      distanceMi: 0,
+      notes: "Walk out the back door. Best on S winds; calmest, closest option."
+    },
+    {
+      name: "Sparrowfoot Recreation Area (south shore)",
+      shortName: "Sparrowfoot",
+      faces: "N",
+      bestWindFrom: [[315, 360],[0, 45]],
+      goodSeasons: ["pre-spawn","pre-spawn-warm","spawn","post-spawn","blue-lockdown","fall","cold"],
+      distanceMi: 2,
+      notes: "5-min drive. N-wind spot. Multiple coves and bank access points; good year-round."
+    },
+    {
+      name: "Hwy 18 bridge / causeway (upper Grand arm)",
+      shortName: "Hwy 18",
+      faces: "mixed",
+      bestWindFrom: [[45, 135]],
+      goodSeasons: ["pre-spawn","pre-spawn-warm","spawn","post-spawn","fall","cold"],
+      distanceMi: 8,
+      notes: "Upper-arm classic. Bridge rip-rap holds suspended fish year-round; spawn-time the brushy coves nearby pop."
+    },
+    {
+      name: "Mid-Grand bank access (Hwy 18 → Bucksaw)",
+      shortName: "Mid-Grand",
+      faces: "mixed",
+      bestWindFrom: [[0, 360]],
+      goodSeasons: ["spawn","post-spawn","pre-summer","fall"],
+      distanceMi: 12,
+      notes: "Several bank pull-offs along the road south. Pick one facing into the wind."
+    },
+    {
+      name: "Bucksaw rip-rap",
+      shortName: "Bucksaw",
+      faces: "E",
+      bestWindFrom: [[225, 315]],
+      goodSeasons: ["post-spawn","blue-lockdown","pre-summer","summer"],
+      distanceMi: 18,
+      notes: "20-min drive. Prime after-dark cat spot; rip-rap holds crappie + whites in spring/fall."
+    },
+    {
+      name: "Knisley's Landing / Deepwater arm",
+      shortName: "Knisley's",
+      faces: "varies",
+      bestWindFrom: [[0, 360]],
+      goodSeasons: ["spawn","post-spawn","pre-spawn-warm"],
+      distanceMi: 22,
+      notes: "25-30 min drive. Deepwater arm is famously crappie-heavy in spring — worth the trip in the spawn window."
+    }
+  ];
+
+  let best = null, bestScore = -Infinity;
+  for (const spot of spots) {
+    let score = 0;
+    // Wind fit
+    if (isFinite(windDir) && windMph >= 5) {
+      const hits = spot.bestWindFrom.some(([lo, hi]) => (lo > hi) ? (windDir >= lo || windDir < hi) : (windDir >= lo && windDir < hi));
+      if (spot.bestWindFrom.length === 1 && spot.bestWindFrom[0][0] === 0 && spot.bestWindFrom[0][1] === 360) {
+        score += 0; // omnidirectional — no bonus, no penalty
+      } else if (hits) {
+        score += 3 + Math.min(2, windMph / 8); // bonus for stronger wind on a fit
+      } else {
+        score -= 0.5;
+      }
+    }
+    // Sub-season fit
+    if (spot.goodSeasons.includes(subSeason)) score += 2;
+    // Proximity bias — closer is slightly preferred as a tiebreaker
+    score -= spot.distanceMi * 0.08;
+    if (score > bestScore) { bestScore = score; best = spot; }
+  }
+  return best;
+}
+
 // Optional USGS South Grand River near Brownington (06921070) — headwater flow into Grand arm.
 async function fetchSouthGrandFlow() {
   try {
@@ -2344,61 +2429,61 @@ function generateFishingAdvice(lake, weather, waterTempF, mdcBulletin, southGran
 
   const crappieDepth = getCrappieDepthForTemp(waterTempF);
 
-  // ── SUB-SEASON BASE — Bucksaw-and-bank-first hotspots ──
+  // ── SUB-SEASON BASE — NW Truman bank-first (home bank ↔ Sparrowfoot ↔ Hwy 18 ↔ Bucksaw ↔ Knisley's) ──
   if (subSeason === "pre-spawn") {
     bite = 3;
     topSpecies = ["Crappie","Blue Catfish","Shad (bait)"];
     tips.push("Pre-spawn — water still cold. Crappie are tight on deep brush at " + (crappieDepth || "12-18 ft") + " near future spawning flats. Slow vertical presentation wins; don't expect a fast reaction bite. Blue cats are starting to feed harder; cut shad on channel edges produces.");
     baits = ["1/16 oz hair jig shad colors (slow vertical)","Live minnow on a slip float (12-15 ft)","Fresh-cut shad on Santee Cooper rig 5/0 (blues)","Blade bait fluttered slowly"];
-    hotspots = ["Deep brush piles off the Bucksaw cove mouth","Channel edges 20-30 ft off Bucksaw Point (blues)","Old roadbed at the 7B causeway","First creek bend in from the main Osage channel"];
+    hotspots = ["Hwy 18 bridge rip-rap over deep water (suspended pre-spawn fish)","Sparrowfoot's deeper south-shore coves","Channel ledges 20-30 ft off your home bank (long-cast from shore)","Knisley's Landing area deep brush (Deepwater arm crappie staging)"];
     shadTip = "No shad spawn yet — they're tightly schooled deep. Cast netting tough unless you find them piled at warm-water inflows or marina lights.";
     pondTip = "Bluegill still off the bank. Drop a tiny ice jig or worm under a slip bobber over 8-15 ft cover.";
-    bankTip = "From shore at Bucksaw: rip-rap south of the boat ramp can hold staging crappie on sunny afternoons. Fish a slip bobber straight down off the deepest rocks. Cat fishing — set bait on the bottom off the 7B causeway and be patient.";
+    bankTip = "Pre-spawn from the bank is slow. Best bet is the Hwy 18 bridge / causeway rip-rap on a sunny afternoon — vertical-drop a slip float with a minnow over 12-18 ft. From Sparrowfoot, walk the deepest accessible coves on the south shore. Your own home bank is too shallow for pre-spawn fish unless they're cruising on a warm afternoon — if you see surface activity, give it a try.";
   } else if (subSeason === "pre-spawn-warm") {
     bite = 4;
     topSpecies = ["Crappie","Blue Catfish","Flathead Catfish","Shad (bait)"];
-    tips.push("Crappie pushing up — black crappie show on the north-facing banks first (they warm fastest). 1/16 oz jig in " + (crappieDepth || "8-14 ft") + " on the upcurrent side of brush. Blue cats are stacking on staging holes — pre-spawn trophy window is wide open.");
+    tips.push("Crappie pushing up — black crappie show on north-facing banks first (they warm fastest). 1/16 oz jig in " + (crappieDepth || "8-14 ft") + " on the upcurrent side of brush. Blue cats are stacking on staging holes — pre-spawn trophy window is wide open.");
     baits = ["1/16 oz jig chartreuse/white","Live minnow on a slip float","Fresh-cut shad on circle hooks 5/0 (blues)","Live bluegill 6-10 in (staging flatheads)"];
-    hotspots = ["North-facing pockets in the Bucksaw cove","Bucksaw Point's deeper coves (staging blues 18-25 ft)","7B causeway rip-rap (bank crappie + blues)","Boat run W into the upper Grand arm — first warm pockets up there"];
+    hotspots = ["YOUR home bank — north-facing shoreline warms fastest, black crappie show here first","Sparrowfoot's brushy north-side coves","Hwy 18 bridge rip-rap (suspended fish + staging blues)","Knisley's Landing area on the Deepwater arm (crappie staging in 8-14 ft)"];
     shadTip = "First wave of gizzard shad spawn often hits around 65°F surface. Watch creek-mouth gravel banks at dawn for splashes that look like raindrops.";
     pondTip = "Bluegill moving shallow on warm days but not bedding yet. Hit cover (docks, fallen wood) in 4-8 ft on sunny afternoons.";
-    bankTip = "Bank from Bucksaw: walk the rip-rap south of the ramp and around Bucksaw Point. Pitch a jig under a slip float right next to any brush or rocky cover. The 7B causeway is loaded right now — crappie, white bass, and channel cats stack on the rocks.";
+    bankTip = "Your home bank starts paying off this week — north-facing banks warm first, and black crappie push up here ahead of the rest of the lake. Walk out and pitch a 1/16 oz jig into every laydown and brushy pocket. If wind is from N pushing bait OFF your bank, drive 5 min to Sparrowfoot's south-shore coves instead. Hwy 18 bridge rip-rap is also lit up for crappie, whites, and channel cats right now.";
   } else if (subSeason === "spawn") {
     bite = 5;
     topSpecies = ["Crappie","Blue Catfish","Flathead Catfish","Shad (bait)"];
     tips.push("CRAPPIE SPAWN — fish are shallow on the bank in flooded timber and brush at " + (crappieDepth || "2-6 ft") + ". Males aggressive on anything landing near a nest. Females drop eggs and slide back to deeper cover. Take a few males and move on — don't beat up the beds.");
     baits = ["1/16 oz chartreuse/white jig pitched to cover","Live minnow on a slip float (set 2-4 ft deep)","Fresh-cut shad on circle hooks 5/0 (blues)","Live bluegill 6-10 in (flatheads)"];
-    hotspots = ["Bucksaw cove brushy banks (2-6 ft, walk the shoreline pitching)","Spawning flats off Bucksaw Point's protected coves","Boat run W into the Grand arm — Berry Bend area brushy pockets","Grand channel 18-25 ft for staging females (boat)"];
+    hotspots = ["YOUR home bank's brushy pockets (north shore — spawn happens here first)","Sparrowfoot's flooded brush 2-6 ft (south shore coves)","Hwy 18 area brushy coves (upper Grand)","Knisley's Landing / Deepwater arm — classic spawn destination, worth the 25-30 min drive"];
     shadTip = "Shad spawn is on — gizzard wave at 65°F, threadfin around 70°F. Dawn cast-net the gravel banks; surface looks like rain when shad are spawning.";
     pondTip = "Bluegill starting to bed in warm pond corners. Sandy/gravel bottoms in 2-4 ft — drop a worm right on a bed for instant takes.";
-    bankTip = "This is your week from the bank — fish are right against the shoreline. Walk the Bucksaw cove and the inlets to the W slowly, pitching a 1/16 oz jig into every laydown, brush pile, and stick-up. A slip float set 2-4 ft deep with a live minnow under it is hard to beat. Don't wade — you'll spook a school. Stay on shore and cast in.";
+    bankTip = "This is your week. Walk your home shoreline at first light — fish are 2-6 ft off the bank in flooded brush. When you've worked your bank, drive to Sparrowfoot's south-facing coves (sun on them all day). Hwy 18 is producing in the upper-arm brushy pockets. If you've got a Saturday free, the 25-min drive to Knisley's Landing on the Deepwater arm is worth it — that whole arm is famously stacked for spawning crappie. Pitch a 1/16 oz jig or slip-float a live minnow set 2-4 ft deep; don't wade, you'll spook the school.";
   } else if (subSeason === "post-spawn") {
     bite = 4;
     topSpecies = ["Crappie","Blue Catfish","Flathead Catfish","Shad (bait)"];
     tips.push("Post-spawn — crappie pulled off the bank to the first deep brush at " + (crappieDepth || "8-14 ft") + " off spawning flats. Males still guard fry shallow; females recovering deep. Suspended fish — slow vertical wins. Blues are gorging pre-spawn; this is one of the year's best windows for a trophy blue.");
     baits = ["1/16 oz hair jig (vertical, deep brush)","Drop shot with minnow","Live minnow under slip float 8-14 ft","Fresh-cut shad on Santee Cooper rig (blues)","Live bluegill 6-10 in (flatheads)"];
-    hotspots = ["First deep brush off Bucksaw cove (8-14 ft)","Secondary creek-arm points off Bucksaw Point","Channel ledges 25-35 ft off the marina cove mouth (pre-spawn trophy blues)","Boat run W: Berry Bend brush in the Grand"];
+    hotspots = ["First deep brush 8-14 ft off your home bank (long-cast from shore)","Hwy 18 causeway over deep water (suspended post-spawn schools)","Sparrowfoot's deeper south-end points","Bucksaw rip-rap (evening cats + post-spawn crappie)"];
     shadTip = "Threadfin wave still possible if surface hasn't passed 72°F. Otherwise shad are scattered — best chance is dock lights overnight at the marina.";
     pondTip = "Peak bluegill spawn — sandy/gravel pockets in 2-4 ft. Male gills will hammer a worm or a small popper defending nests.";
-    bankTip = "From the bank, fish have moved off the bank but not far. Cast a slip float with a minnow as far as you can off any point or brushy bank — let it sit over 8-12 ft water. The 7B causeway and Bucksaw Point's deeper-water sides hold post-spawn schools. For cats: bottom rig with cut shad off the point or causeway after dark.";
+    bankTip = "Fish have pulled off the bank but not far. Cast a slip float with a minnow as far as you can off your home bank — set 8-12 ft deep, let it sit. Hwy 18 causeway is gold for suspended post-spawn schools — bait stacks against the rip-rap over deep water. Sparrowfoot's south-end deeper points hold fish all day. For evening / after-dark cats, the drive to Bucksaw rip-rap pays off — cut shad on a slip-sinker rig, 30-40 yards out.";
   } else if (subSeason === "blue-lockdown") {
     bite = 3;
     topSpecies = ["Flathead Catfish","Blue Catfish (schoolies)","Crappie","Shad (bait)"];
     tips.push("Big blue cat females are locking into spawning cavities (under rocks, in holes in the bank, in stumps) for ~7-10 days and won't feed. Trophy blue window is shut. Schoolie blues and males still eat on channel edges. Flatheads in PEAK pre-spawn — best flathead window of the year, live bluegill near big laydowns after dark.");
     baits = ["Live bluegill 6-10 in on circle hook 8/0 (flatheads)","Fresh-cut shad on Santee rig (schoolie blues)","1/8 oz hair jig in " + (crappieDepth || "12-20 ft"),"Drop shot with minnow on deep brush"];
-    hotspots = ["Big laydowns and timber 15-25 ft (flathead pre-spawn, after dark)","Channel ledges 25-40 ft off Bucksaw cove (active blues)","Brush piles 12-20 ft (crappie)","7B causeway after dark — channel cats and the occasional flathead"];
+    hotspots = ["Bucksaw rip-rap after dark (cut shad / live bluegill)","Hwy 18 bridge after dark (channel cats + the occasional flathead)","Big laydowns 15-25 ft off Sparrowfoot's points (flatheads after dark)","Your home bank after dark — cut shad on the bottom for channel cats"];
     shadTip = "Shad spawn winding down. Best cast netting now is at night under marina/dock lights — they pile under any light source. Throw the net 5-10 ft to the side, not directly under.";
     pondTip = "Bluegill post-spawn — males still on beds, females sliding to 6-10 ft cover. Topwater popper at dawn over docks is dynamite.";
-    bankTip = "Bank fishing shifts to evening / after dark. Bucksaw Point's deeper sides and the 7B causeway are the best bets — cut shad or cut bluegill on a slip-sinker rig, 30-40 yards out, sit and wait. For flatheads: live bluegill on a 8/0 circle, set near any visible cover, and stay until midnight or later. Sunset to about 11 PM is the prime window.";
+    bankTip = "Switch to evening / after dark. Bucksaw rip-rap (20 min drive) and the Hwy 18 bridge are your two best cat spots — cut shad or cut bluegill on a slip-sinker rig, 30-40 yards out, sit and wait. For flatheads: live bluegill on an 8/0 circle near any visible cover, sunset to midnight. Your own home bank works after dark too for channel cats — convenient, no drive needed, just set up and wait.";
   } else if (subSeason === "pre-summer") {
     bite = 4;
     topSpecies = ["Flathead Catfish","Blue Catfish","Crappie","Shad (bait)"];
     tips.push("Flatheads in peak pre-spawn feed — live bluegill near big laydowns after dark is the trophy move. Blues recovering from spawn, feeding on channel edges. Crappie on deep brush at " + (crappieDepth || "15-22 ft") + ".");
     baits = ["Live bluegill 6-10 in on circle hook (flatheads)","Fresh-cut shad on Santee rig (blues)","1/8 oz hair jig deep brush","Drop shot with minnow (crappie)"];
-    hotspots = ["Big timber and laydowns 15-25 ft (flatheads, after dark)","Channel ledges 25-40 ft off Bucksaw cove (blues)","Deep brush 15-22 ft (crappie)","Tailwater current breaks below the dam — trophy blues stack here"];
+    hotspots = ["Bucksaw rip-rap after dark","Hwy 18 bridge after dark (channel cats + flatheads)","Big timber 15-25 ft off Sparrowfoot (flatheads after dark)","Tailwater current breaks below the dam — trophy blues stack here"];
     shadTip = "Cast-net under marina/dock lights at night — shad pile up tight. Throw 5-10 ft to the side, not directly under.";
     pondTip = "Bluegill post-spawn. Cover in 4-8 ft midday; shallow at dawn and dusk.";
-    bankTip = "From the bank, switch fully to dawn / dusk / after-dark. Daytime midday from shore is largely wasted in this window. The 7B causeway after dark is your best cat spot — cut shad on the bottom. For crappie, the deepest accessible rocks off Bucksaw Point with a slip float set 15+ ft deep.";
+    bankTip = "Daytime bank fishing is mostly wasted in this window — switch fully to dawn / dusk / after dark. Bucksaw rip-rap and Hwy 18 bridge after sunset are your highest-percentage cat spots. Your home bank works for catfish with cut shad on the bottom after dark — no drive, just walk out. Skip midday from shore unless it's overcast and raining.";
   } else if (subSeason === "summer") {
     bite = airTempF > 88 ? 2 : 3;
     topSpecies = ["Blue Catfish","Flathead Catfish","Crappie","Shad (bait)"];
@@ -2408,19 +2493,19 @@ function generateFishingAdvice(lake, weather, waterTempF, mdcBulletin, southGran
       tips.push("Summer pattern set. Blues stacked on the old riverbed channel — drift fresh-cut shad on Santee through 25-35 ft. Flatheads nocturnal — set live bluegill near big timber after dark. Crappie deep on brush at " + (crappieDepth || "18-25 ft") + ".");
     }
     baits = ["Cut shad or skipjack on Santee rig (blues)","Live bluegill 6-10 in on circle hook (flatheads)","1/8 oz hair jig deep brush","Drop shot with minnow (deep crappie)"];
-    hotspots = ["Grand channel ledges 25-40 ft (blues)","Big timber and laydowns 15-25 ft (flatheads, after dark)","Submerged brush piles 18-25 ft (crappie)","Tailwater current breaks below the dam — trophy blues"];
+    hotspots = ["Bucksaw rip-rap and Hwy 18 bridge after dark","Grand channel ledges 25-40 ft (boat — blues)","Big timber 15-25 ft (flatheads, after dark)","Tailwater current breaks below the dam — trophy blues"];
     shadTip = "Best cast netting at night under marina/dock lights — shad pile up tight. At dawn, hit creek mouths before the sun pushes them deep.";
     pondTip = "Bluegill in shaded cover 4-8 ft midday. Topwater dawn/dusk.";
-    bankTip = "Brutal from the bank in midday — switch to dawn and after dark. Bucksaw Point and the 7B causeway after sunset is your highest-percentage spot. Cut shad on a slip-sinker rig, cast as far out as you can manage, set rod holders, and wait. For crappie from shore, slip float set 18-20 ft deep over rocky cover after sunset.";
+    bankTip = "Brutal midday — switch to dawn and after dark. Bucksaw rip-rap and Hwy 18 causeway after sunset are your highest-percentage spots. Cut shad on a slip-sinker rig, cast as far out as you can, set rod holders, and wait. Your home bank works after dark for channel cats — closest, easiest. For crappie from shore, slip float set 18-20 ft deep over rocky cover after sunset.";
   } else if (subSeason === "fall") {
     bite = 4;
     topSpecies = ["Blue Catfish","Crappie","Flathead Catfish","Shad (bait)"];
     tips.push("Fall is gold on Truman. Cold fronts push shad into the back of creek arms and blues follow — drift cut shad through 15-25 ft over creek channels. Crappie gorging before winter at " + (crappieDepth || "12-20 ft") + " on transitional brush. Flatheads feeding heavy before dormancy — last big trophy window on live bluegill.");
     baits = ["Fresh-cut shad on Santee Cooper rig (drift, blues)","Live skipjack or large shad (trophy blues)","Live bluegill on slip rig (flatheads)","Shad-colored 1/16 oz jig (crappie)"];
-    hotspots = ["Creek channel mouths in the Grand arm (boat)","Wind-blown shad-loaded points","Brush on transition banks 12-20 ft (crappie)","Big laydowns deep in creek arms after dark (flatheads)"];
+    hotspots = ["Wind-blown banks throughout the NW corner (read the wind, drive to where it's loading)","Sparrowfoot's wind-loaded points and coves","Hwy 18 causeway on cold-front days","Knisley's / Deepwater arm creek backs (cold-front shad concentrations)"];
     shadTip = "Cold fronts push shad into creek arms — follow them. Cast net the back third of any creek arm on cloudy windy days.";
     pondTip = "Bluegill move shallow chasing bugs as water cools through the 60s. Any wood or weed cover in 3-6 ft works.";
-    bankTip = "Fall is great from the bank. Walk the Bucksaw cove and the 7B causeway on a wind-blown day — bait gets piled tight and crappie + white bass + small blues pile in. Pitch a small jig or fish a slip float with a minnow right against the bank.";
+    bankTip = "Fall from the bank is great — wind-blown days pile baitfish tight. Walk your home shoreline when wind is from S; drive to Sparrowfoot's wind-loaded coves when wind is from N. Hwy 18 causeway and Knisley's both produce on cold-front days when shad get pushed to creek backs. Pitch a small jig or slip-float a minnow right against the bank.";
   } else {
     // cold / winter
     bite = 2;
@@ -2428,10 +2513,10 @@ function generateFishingAdvice(lake, weather, waterTempF, mdcBulletin, southGran
     tips.push("Winter Truman: blues are the best bite if you slow way down. They stack in deep wintering holes on the main lake (35-55 ft) — fresh cut shad on a tight-line, virtually no movement. Crappie deep on brush at " + (crappieDepth || "25-40 ft") + ".");
     tips.push("Flatheads are mostly dormant — they'll bite on warm stable days but it's a low-percentage hunt this time of year.");
     baits = ["Fresh-cut shad on tight-line rig (blues)","1/32 oz tube jig pink/white (deep crappie)","Live minnow on long-line slip rig","Blade bait worked very slowly"];
-    hotspots = ["Deep main-lake wintering holes 35-55 ft (boat)","Standing timber tops " + (crappieDepth || "25-40 ft") + " (crappie)","Channel bends in the Grand near Sparrowfoot","Heat-discharge or warm-water inflow areas"];
+    hotspots = ["Hwy 18 bridge / causeway over deep water (sunny warm afternoons)","Bucksaw rip-rap on a warming day","Deep main-lake wintering holes 35-55 ft (boat)","Heat-discharge or warm-water inflow areas"];
     shadTip = "Shad deep and tightly schooled — cast netting tough. Best chance: warm-water discharge. Most folks use frozen shad in winter.";
     pondTip = "Bluegill deep and slow. Tiny ice jig with wax worm, very slow vertical, 8-15 ft.";
-    bankTip = "Bank fishing in winter is tough. The 7B causeway over deep water on a warming sunny afternoon is your best shot — cut shad on a tight-line, give every bite 30 seconds of no movement before setting. Crappie possible on the deepest accessible rocks with a slow drop and a slow soft bite.";
+    bankTip = "Tough season from the bank. Hwy 18 causeway over deep water on a sunny warming afternoon is your best shot — cut shad on a tight-line, give every bite 30 seconds of no movement before setting. Bucksaw rip-rap on the same kind of warming day can also produce. Your own home bank is too shallow for active winter fish — skip it unless you get a string of warm days.";
   }
 
   // ── LAKE LEVEL MODIFIER ──
@@ -2659,10 +2744,13 @@ function generateFishingAdvice(lake, weather, waterTempF, mdcBulletin, southGran
     if (bits.length) tripLogLine = `📓 Your last ${tripStats.tripCount} trips in similar conditions: ${bits.join(", ")}.`;
   }
 
+  // ── CLOSEST BANK SPOT FOR THESE CONDITIONS ──
+  const closestBankSpot = pickClosestBankSpot(subSeason, windDir, windMph, clarityNote, holiday);
+
   bite = Math.round(Math.max(1, Math.min(5, bite)));
   return {
     bite, tips, topSpecies, baits, hotspots, season, subSeason,
-    shadTip, pondTip, bankTip, windBankAdvice,
+    shadTip, pondTip, bankTip, windBankAdvice, closestBankSpot,
     clarity: clarityNote, clarityReasons: clarityInfo.reasons,
     zoneTip, mdcLine, tripLogLine,
     waterTempF: isFinite(waterTempF) ? waterTempF : null,
@@ -4070,8 +4158,11 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, wa
   const windBankHtml = advice.windBankAdvice
     ? `<div class="fish-tip" style="border-left:3px solid var(--mustard);padding-left:10px;margin-top:6px"><strong>📍 Right now:</strong> ${escapeHtml(advice.windBankAdvice)}</div>`
     : "";
+  const closestBankHtml = advice.closestBankSpot
+    ? `<div class="fish-tip" style="border-left:3px solid #16a34a;padding-left:10px;margin-bottom:6px;background:rgba(22,163,74,0.06);font-weight:600"><strong>🎯 Closest spot for these conditions:</strong> ${escapeHtml(advice.closestBankSpot.name)}<div style="font-weight:400;color:var(--text-soft);margin-top:3px;font-size:12px">${escapeHtml(advice.closestBankSpot.notes)}</div></div>`
+    : "";
   const bankHtml     = advice.bankTip
-    ? `<div class="fish-section"><div class="fish-section-label">🏖️ From the Bank (Bucksaw)</div><div class="fish-tip" style="border-left:3px solid #c2410c;padding-left:10px">${escapeHtml(advice.bankTip)}</div></div>`
+    ? `<div class="fish-section"><div class="fish-section-label">🏖️ From the Bank (NW Truman)</div>${closestBankHtml}<div class="fish-tip" style="border-left:3px solid #c2410c;padding-left:10px">${escapeHtml(advice.bankTip)}</div></div>`
     : "";
   const shadHtml     = advice.shadTip
     ? `<div class="fish-section"><div class="fish-section-label">🐟 Shad / Cast Netting</div><div class="fish-tip" style="border-left:3px solid #2563eb;padding-left:10px">${escapeHtml(advice.shadTip)}</div>${windBankHtml}</div>`

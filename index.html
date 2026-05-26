@@ -534,6 +534,156 @@
     .weekly-stat-val { font-size:17px; }
     .weekly-stat-row { grid-template-columns:1fr 1fr; }
   }
+
+  /* ── WoW delta chip ── */
+  .weekly-delta { font-size:11.5px; font-weight:700; margin-left:5px; font-variant-numeric:tabular-nums; }
+  .weekly-takeaway { border-left-color:#c49b3f; background:color-mix(in srgb,#c49b3f 6%,var(--card-hover)); }
+  [data-theme="dark"] .weekly-takeaway { border-left-color:#d4af5c; background:color-mix(in srgb,#d4af5c 8%,var(--card-hover)); }
+
+  /* ── 6-month history list ── */
+  .hist-list { display:flex; flex-direction:column; gap:6px; }
+  .hist-row { background:var(--card-hover); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .hist-row[open] { border-color:color-mix(in srgb,#2d5a1b 35%,var(--border)); }
+  .hist-summary { display:grid; grid-template-columns:auto 1fr 1fr 1fr auto; gap:10px; align-items:center; padding:10px 12px; cursor:pointer; font-size:12.5px; list-style:none; }
+  .hist-summary::-webkit-details-marker { display:none; }
+  .hist-date { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-weight:700; color:var(--text); font-size:12px; }
+  .hist-stat { display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .hist-stat-label { font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); }
+  .hist-stat-val { font-size:12.5px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+  .hist-stat-val .weekly-delta { font-size:10.5px; margin-left:3px; }
+  .hist-chev { color:var(--text-muted); font-size:11px; transition:transform .15s; }
+  .hist-row[open] .hist-chev { transform:rotate(180deg); }
+  .hist-body { padding:0 14px 14px; font-size:12.5px; line-height:1.55; }
+  .hist-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px 12px; padding:10px 12px; background:var(--bg); border-radius:6px; margin-bottom:8px; border:1px solid var(--border); }
+  .hist-mini-lbl { display:block; font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); }
+  .hist-mini-val { display:block; font-size:13px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+  .hist-narr { color:var(--text); padding:2px 2px 0; }
+  @media (max-width:520px) {
+    .hist-summary { grid-template-columns:1fr 1fr; gap:8px; }
+    .hist-date { grid-column:1/-1; }
+    .hist-stat-receipts { display:none; }
+    .hist-chev { position:absolute; right:14px; top:14px; }
+    .hist-row { position:relative; }
+  }
+
+  /* ── Futures card ── */
+  .futures-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; }
+  .futures-tile { background:var(--card-hover); border:1px solid var(--border); border-radius:10px; padding:14px; text-align:center; }
+  .futures-emoji { font-size:24px; margin-bottom:3px; }
+  .futures-label { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); }
+  .futures-price { font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--text); margin:4px 0 2px; }
+  .futures-price .futures-unit { font-size:10.5px; font-weight:500; color:var(--text-muted); margin-left:2px; }
+  .futures-change { font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .futures-spark { margin:6px auto 2px; min-height:30px; }
+  .futures-spark svg { width:80px; height:30px; }
+  .futures-note { font-size:10.5px; color:var(--text-muted); line-height:1.35; margin-top:4px; }
+  .futures-foot { font-size:11.5px; color:var(--text-muted); margin-top:10px; line-height:1.4; text-align:center; font-style:italic; }
+
+  /* ── Hay & Drought card ── */
+  .hay-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:520px) { .hay-grid { grid-template-columns:1fr; } }
+  .hay-tile { background:var(--card-hover); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .hay-tile-label { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; }
+  .hay-tile-status { font-size:13px; color:var(--text); margin-bottom:8px; line-height:1.45; }
+  .hay-bar-wrap { background:var(--bg); border-radius:5px; height:14px; overflow:hidden; display:flex; border:1px solid var(--border); }
+  .hay-bar { display:flex; width:100%; height:100%; }
+  .hay-bar-seg { display:block; height:100%; }
+  .hay-tile-foot { font-size:10.5px; color:var(--text-muted); margin-top:6px; line-height:1.4; }
+  .hay-prices-body { font-size:12.5px; color:var(--text); line-height:1.5; margin-bottom:8px; }
+  .hay-links { display:flex; flex-direction:column; gap:5px; }
+  .hay-link { display:inline-block; font-size:12.5px; color:#2d5a1b; text-decoration:none; font-weight:600; padding:5px 0; }
+  [data-theme="dark"] .hay-link { color:#7ec850; }
+  .hay-link:hover { text-decoration:underline; }
+
+  /* ── Sale barns + cull cow ── */
+  .sale-section-label { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; }
+  .sale-barn-list { display:flex; flex-direction:column; gap:6px; }
+  .sale-barn-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--card-hover); border:1px solid var(--border); border-radius:8px; text-decoration:none; color:var(--text); transition:border-color .15s,background .15s; }
+  .sale-barn-row:hover { border-color:color-mix(in srgb,#2d5a1b 35%,var(--border)); background:color-mix(in srgb,#2d5a1b 4%,var(--card-hover)); }
+  .sale-barn-main { flex:1; min-width:0; }
+  .sale-barn-name { font-size:13px; font-weight:700; color:var(--text); margin-bottom:2px; }
+  .sale-barn-tag { display:inline-block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:1px 6px; border-radius:999px; background:color-mix(in srgb,#c49b3f 20%,var(--bg)); color:#8a5a00; margin-left:4px; }
+  [data-theme="dark"] .sale-barn-tag { background:color-mix(in srgb,#d4af5c 25%,var(--bg)); color:#d4af5c; }
+  .sale-barn-city { font-size:11.5px; color:var(--text-muted); }
+  .sale-barn-city strong { color:var(--text); font-weight:700; }
+  .sale-barn-note { font-size:11px; color:var(--text-muted); margin-top:2px; font-style:italic; }
+  .sale-barn-arrow { color:var(--text-muted); font-size:14px; flex-shrink:0; }
+  .cull-class-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px; }
+  .cull-class { padding:10px 12px; background:var(--card-hover); border:1px solid var(--border); border-radius:8px; }
+  .cull-class-name { font-size:13px; font-weight:700; color:var(--text); margin-bottom:2px; }
+  .cull-class-desc { font-size:11.5px; color:var(--text-muted); line-height:1.4; }
+  .sale-foot { font-size:12px; color:var(--text-muted); margin-top:12px; padding:10px 12px; background:var(--card-hover); border-radius:8px; line-height:1.5; border-left:3px solid color-mix(in srgb,#c49b3f 60%,var(--border)); }
+
+  /* ── Break-even calculator ── */
+  .be-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:8px; margin-bottom:12px; }
+  .be-field { display:flex; flex-direction:column; gap:3px; }
+  .be-field span { font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text-muted); }
+  .be-field input { padding:7px 10px; border-radius:7px; border:1px solid var(--border); background:var(--card-hover); color:var(--text); font-size:13.5px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-weight:700; outline:none; }
+  .be-field input:focus { border-color:#2d5a1b; }
+  .be-results { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px; margin-bottom:10px; }
+  .be-result { padding:12px 14px; border-radius:8px; background:var(--card-hover); border:1px solid var(--border); text-align:center; }
+  .be-result-lbl { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; }
+  .be-result-val { font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--text); line-height:1.1; margin-bottom:3px; }
+  .be-result-sub { font-size:10.5px; color:var(--text-muted); line-height:1.4; }
+  .be-result-hero { background:color-mix(in srgb,#2d5a1b 8%,var(--card-hover)); border-color:color-mix(in srgb,#2d5a1b 28%,var(--border)); }
+  [data-theme="dark"] .be-result-hero { background:color-mix(in srgb,#4a8c2a 12%,var(--card-hover)); }
+  .be-foot { font-size:11.5px; color:var(--text-muted); line-height:1.45; padding:8px 0 0; }
+  .be-foot strong { color:var(--text); }
+
+  /* ── Sticky sub-nav for the Market tab ── */
+  .market-subnav { position:sticky; top:0; z-index:30; margin:0 -2px 8px; background:color-mix(in srgb,var(--bg) 92%,transparent); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid var(--border); }
+  .market-subnav-inner { display:flex; gap:6px; overflow-x:auto; padding:8px 2px; scrollbar-width:none; }
+  .market-subnav-inner::-webkit-scrollbar { display:none; }
+  .market-nav-chip { flex-shrink:0; padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--card-hover); color:var(--text); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s,border-color .15s,color .15s; white-space:nowrap; }
+  .market-nav-chip:hover { background:color-mix(in srgb,#2d5a1b 8%,var(--card-hover)); border-color:color-mix(in srgb,#2d5a1b 30%,var(--border)); color:#2d5a1b; }
+  [data-theme="dark"] .market-nav-chip:hover { background:color-mix(in srgb,#7ec850 10%,var(--card-hover)); border-color:color-mix(in srgb,#7ec850 30%,var(--border)); color:#7ec850; }
+
+  /* ── Herd calendar ── */
+  .hc-chips { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:14px; }
+  .hc-chip { padding:5px 11px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .12s; }
+  .hc-chip:hover { background:var(--card-hover); color:var(--text); }
+  .hc-chip.active { background:#2d5a1b; color:#fff; border-color:#2d5a1b; }
+  [data-theme="dark"] .hc-chip.active { background:#4a8c2a; border-color:#4a8c2a; }
+  .hc-tasks { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
+  .hc-task { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; background:var(--card-hover); border:1px solid var(--border); border-radius:8px; }
+  .hc-tag { flex-shrink:0; display:inline-block; padding:2px 7px; border-radius:5px; font-size:9.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; line-height:1.4; min-width:60px; text-align:center; }
+  .hc-task-text { font-size:13px; line-height:1.5; color:var(--text); }
+  /* Tag colors keyed to subject */
+  .hc-tag-feed,.hc-tag-mineral,.hc-tag-hay,.hc-tag-graze,.hc-tag-stockpile { background:#dcfce7; color:#15803d; }
+  .hc-tag-calving,.hc-tag-process,.hc-tag-vaccine,.hc-tag-pinkeye,.hc-tag-parasite { background:#dbeafe; color:#1d4ed8; }
+  .hc-tag-breeding,.hc-tag-bull,.hc-tag-preg { background:#fce7f3; color:#be185d; }
+  .hc-tag-fly,.hc-tag-heat,.hc-tag-anaplas { background:#fef3c7; color:#a16207; }
+  .hc-tag-pasture,.hc-tag-water,.hc-tag-soil,.hc-tag-repairs { background:#e0e7ff; color:#4338ca; }
+  .hc-tag-weaning,.hc-tag-market,.hc-tag-cull,.hc-tag-sort { background:#ffedd5; color:#c2410c; }
+  .hc-tag-bcs,.hc-tag-plan,.hc-tag-taxes { background:#f3e8ff; color:#7e22ce; }
+  [data-theme="dark"] .hc-tag-feed,[data-theme="dark"] .hc-tag-mineral,[data-theme="dark"] .hc-tag-hay,[data-theme="dark"] .hc-tag-graze,[data-theme="dark"] .hc-tag-stockpile { background:color-mix(in srgb,#15803d 25%,var(--bg)); color:#7ec850; }
+  [data-theme="dark"] .hc-tag-calving,[data-theme="dark"] .hc-tag-process,[data-theme="dark"] .hc-tag-vaccine,[data-theme="dark"] .hc-tag-pinkeye,[data-theme="dark"] .hc-tag-parasite { background:color-mix(in srgb,#1d4ed8 25%,var(--bg)); color:#93c5fd; }
+  [data-theme="dark"] .hc-tag-breeding,[data-theme="dark"] .hc-tag-bull,[data-theme="dark"] .hc-tag-preg { background:color-mix(in srgb,#be185d 25%,var(--bg)); color:#f9a8d4; }
+  [data-theme="dark"] .hc-tag-fly,[data-theme="dark"] .hc-tag-heat,[data-theme="dark"] .hc-tag-anaplas { background:color-mix(in srgb,#a16207 25%,var(--bg)); color:#fde68a; }
+  [data-theme="dark"] .hc-tag-pasture,[data-theme="dark"] .hc-tag-water,[data-theme="dark"] .hc-tag-soil,[data-theme="dark"] .hc-tag-repairs { background:color-mix(in srgb,#4338ca 25%,var(--bg)); color:#c7d2fe; }
+  [data-theme="dark"] .hc-tag-weaning,[data-theme="dark"] .hc-tag-market,[data-theme="dark"] .hc-tag-cull,[data-theme="dark"] .hc-tag-sort { background:color-mix(in srgb,#c2410c 25%,var(--bg)); color:#fdba74; }
+  [data-theme="dark"] .hc-tag-bcs,[data-theme="dark"] .hc-tag-plan,[data-theme="dark"] .hc-tag-taxes { background:color-mix(in srgb,#7e22ce 25%,var(--bg)); color:#d8b4fe; }
+  .hc-foot { font-size:11.5px; color:var(--text-muted); line-height:1.45; padding:4px 2px 0; font-style:italic; }
+
+  /* ── USDA report calendar ── */
+  .rpt-list { display:flex; flex-direction:column; gap:6px; }
+  .rpt-row { display:flex; gap:12px; align-items:flex-start; padding:11px 13px; background:var(--card-hover); border:1px solid var(--border); border-radius:8px; text-decoration:none; color:var(--text); transition:border-color .15s,background .15s; }
+  .rpt-row:hover { border-color:color-mix(in srgb,#2d5a1b 35%,var(--border)); background:color-mix(in srgb,#2d5a1b 4%,var(--card-hover)); }
+  .rpt-ico { font-size:22px; line-height:1; flex-shrink:0; }
+  .rpt-main { flex:1; min-width:0; }
+  .rpt-name { font-size:13.5px; font-weight:700; color:var(--text); margin-bottom:2px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .rpt-date { font-size:11.5px; color:var(--text-muted); margin-bottom:3px; font-variant-numeric:tabular-nums; }
+  .rpt-note { font-size:11.5px; color:var(--text-muted); line-height:1.45; }
+  .rpt-arrow { color:var(--text-muted); font-size:14px; flex-shrink:0; align-self:center; }
+  .rpt-chip { display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
+  .rpt-chip-hot   { background:#fee2e2; color:#b91c1c; }
+  .rpt-chip-warm  { background:#fef3c7; color:#a16207; }
+  .rpt-chip-cool  { background:#dcfce7; color:#15803d; }
+  .rpt-chip-grey  { background:var(--bg); color:var(--text-muted); border:1px solid var(--border); }
+  [data-theme="dark"] .rpt-chip-hot  { background:color-mix(in srgb,#b91c1c 25%,var(--bg)); color:#fca5a5; }
+  [data-theme="dark"] .rpt-chip-warm { background:color-mix(in srgb,#a16207 25%,var(--bg)); color:#fde68a; }
+  [data-theme="dark"] .rpt-chip-cool { background:color-mix(in srgb,#15803d 25%,var(--bg)); color:#86efac; }
+  .rpt-foot { font-size:12px; color:var(--text-muted); margin-top:10px; padding:10px 12px; background:var(--card-hover); border-radius:8px; line-height:1.5; border-left:3px solid color-mix(in srgb,#c49b3f 60%,var(--border)); }
 </style>
 </head>
 <body>
@@ -3309,6 +3459,99 @@ function weeklyFmt(v, dec) {
   return Number(v).toFixed(dec !== undefined ? dec : 2);
 }
 
+// Build a small "+1.42" / "-0.85" delta chip vs the previous week.
+// asPct=true renders the delta as a percent. dec controls decimal places.
+function weeklyDelta(curr, prev, opts) {
+  opts = opts || {};
+  if (!isFinite(curr) || !isFinite(prev) || prev === 0) return "";
+  const diff = curr - prev;
+  if (Math.abs(diff) < (opts.minShow || 0.005)) return "";
+  const sign = diff >= 0 ? "+" : "";
+  const cls  = diff >= 0 ? "color:#15803d" : "color:#b91c1c";
+  const dec  = opts.dec !== undefined ? opts.dec : 2;
+  let text;
+  if (opts.asPct) {
+    text = sign + (diff / prev * 100).toFixed(opts.pctDec !== undefined ? opts.pctDec : 1) + "%";
+  } else {
+    text = sign + diff.toFixed(dec);
+  }
+  return `<span class="weekly-delta" style="${cls}">${text}</span>`;
+}
+
+// Generate a plain-English "what this week means for you" readout based on the
+// latest record and (when available) the prior week's record. Returns null if
+// there isn't enough data.
+function weeklyBuildTakeaway(records) {
+  if (!records || !records.length) return null;
+  const cur = records[records.length - 1];
+  const prev = records.length >= 2 ? records[records.length - 2] : null;
+  const yearAgoIdx = records.length - 1 - 52;
+  const yearAgo = yearAgoIdx >= 0 ? records[yearAgoIdx] : null;
+
+  const lines = [];
+
+  // Stocker formula direction
+  if (prev && isFinite(cur.stocker_formula_cwt) && isFinite(prev.stocker_formula_cwt)) {
+    const d = cur.stocker_formula_cwt - prev.stocker_formula_cwt;
+    const pct = (d / prev.stocker_formula_cwt) * 100;
+    if (Math.abs(d) < 0.5) {
+      lines.push(`Feeder calf prices held roughly steady at $${cur.stocker_formula_cwt.toFixed(2)}/cwt on the MO Stocker Formula.`);
+    } else if (d > 0) {
+      lines.push(`Feeder calf prices firmed up ${d >= 2 ? "sharply " : ""}— Stocker Formula at $${cur.stocker_formula_cwt.toFixed(2)}/cwt, up $${d.toFixed(2)} (${pct.toFixed(1)}%) from last week.`);
+    } else {
+      lines.push(`Feeder calves softened — Stocker Formula at $${cur.stocker_formula_cwt.toFixed(2)}/cwt, down $${Math.abs(d).toFixed(2)} (${pct.toFixed(1)}%) from last week.`);
+    }
+  } else if (isFinite(cur.stocker_formula_cwt)) {
+    lines.push(`The MO Stocker Formula sits at $${cur.stocker_formula_cwt.toFixed(2)}/cwt this week.`);
+  }
+
+  // Corn impact (cost of gain proxy)
+  if (prev && isFinite(cur.corn_kc_fri) && isFinite(prev.corn_kc_fri)) {
+    const d = cur.corn_kc_fri - prev.corn_kc_fri;
+    if (Math.abs(d) < 0.05) {
+      // skip — no meaningful move
+    } else if (d > 0) {
+      lines.push(`Corn nudged up to $${cur.corn_kc_fri.toFixed(2)}/bu at KC (+$${d.toFixed(2)}), which lifts cost of gain on backgrounded calves.`);
+    } else {
+      lines.push(`Corn eased to $${cur.corn_kc_fri.toFixed(2)}/bu at KC (-$${Math.abs(d).toFixed(2)}), giving a small break on feed cost.`);
+    }
+  }
+
+  // Receipts vs year ago — supply signal
+  if (isFinite(cur.total_receipts) && isFinite(cur.year_ago_receipts) && cur.year_ago_receipts > 0) {
+    const d = cur.total_receipts - cur.year_ago_receipts;
+    const pct = (d / cur.year_ago_receipts) * 100;
+    if (Math.abs(pct) >= 10) {
+      if (d > 0) lines.push(`Sale volume is heavy — receipts ${Math.abs(pct).toFixed(0)}% above year-ago, which can pressure prices short-term.`);
+      else lines.push(`Sale volume is light — receipts ${Math.abs(pct).toFixed(0)}% below year-ago, which is generally supportive of prices.`);
+    }
+  }
+
+  // Boxed beef — packer demand proxy
+  if (prev && isFinite(cur.boxed_beef_choice_5day) && isFinite(prev.boxed_beef_choice_5day)) {
+    const d = cur.boxed_beef_choice_5day - prev.boxed_beef_choice_5day;
+    if (Math.abs(d) >= 2) {
+      if (d > 0) lines.push(`Boxed beef cutout (Choice) climbed $${d.toFixed(2)} — packers are paying more for finished beef, which usually pulls live cattle higher.`);
+      else lines.push(`Boxed beef cutout (Choice) slipped $${Math.abs(d).toFixed(2)}, a soft signal for packer demand into next week.`);
+    }
+  }
+
+  // Action suggestion — based on stocker direction + corn + year-ago receipts
+  let action = "";
+  if (prev && isFinite(cur.stocker_formula_cwt) && isFinite(prev.stocker_formula_cwt)) {
+    const calfUp   = cur.stocker_formula_cwt > prev.stocker_formula_cwt + 0.5;
+    const calfDown = cur.stocker_formula_cwt < prev.stocker_formula_cwt - 0.5;
+    const cornUp   = isFinite(cur.corn_kc_fri) && isFinite(prev.corn_kc_fri) && cur.corn_kc_fri > prev.corn_kc_fri + 0.05;
+    if (calfUp && !cornUp) action = "Suggested: if calves are sale-ready, this is a friendly week to market them. Watch next week's MDA report to confirm the trend.";
+    else if (calfDown && cornUp) action = "Suggested: cost of gain is rising and calves are softer — consider whether short-term holding is worth it, or if marketing sooner protects margin.";
+    else if (calfDown) action = "Suggested: prices dipped — if you can hold without adding cost, wait a week. If calves are at target weight, don't chase the market.";
+    else action = "Suggested: hold the line — no urgent signal to change marketing plans this week.";
+  }
+  if (action) lines.push(action);
+
+  return lines.length ? lines.join(" ") : null;
+}
+
 function weeklyBuildChart(records, seriesConfig, chartH) {
   // seriesConfig = [{ key, color, label }]
   // Returns SVG string for a multi-line chart with date x-axis ticks
@@ -3393,6 +3636,7 @@ function weeklyBuildChart(records, seriesConfig, chartH) {
 
 function renderWeeklyMarketCard(records) {
   const latest = records && records.length ? records[records.length - 1] : null;
+  const prev   = records && records.length >= 2 ? records[records.length - 2] : null;
 
   // ── Stat values from latest record ──
   const stockerVal  = latest ? weeklyFmt(latest.stocker_formula_cwt) : "—";
@@ -3405,18 +3649,33 @@ function renderWeeklyMarketCard(records) {
   const reportDate  = latest ? latest.report_date : null;
   const narrative   = latest ? (latest.market_narrative || "") : "";
 
-  // Week-over-week change for stocker formula
-  let stockerDelta = "";
-  if (records && records.length >= 2) {
-    const prev = records[records.length - 2].stocker_formula_cwt;
-    const curr = records[records.length - 1].stocker_formula_cwt;
-    if (isFinite(prev) && isFinite(curr)) {
-      const diff = curr - prev;
-      const sign = diff >= 0 ? "+" : "";
-      const cls  = diff >= 0 ? "color:#15803d" : "color:#b91c1c";
-      stockerDelta = `<span style="${cls};font-size:12px;font-weight:700;margin-left:5px">${sign}${diff.toFixed(2)}</span>`;
+  // Week-over-week deltas for every stat — small chip next to the number.
+  const stockerDelta = (latest && prev) ? weeklyDelta(latest.stocker_formula_cwt, prev.stocker_formula_cwt, { dec:2 }) : "";
+  const steerLoDelta = (latest && prev) ? weeklyDelta(latest.feeder_steer_500_600_avg_low,  prev.feeder_steer_500_600_avg_low,  { dec:2 }) : "";
+  const steerHiDelta = (latest && prev) ? weeklyDelta(latest.feeder_steer_500_600_avg_high, prev.feeder_steer_500_600_avg_high, { dec:2 }) : "";
+  const cornDelta    = (latest && prev) ? weeklyDelta(latest.corn_kc_fri,    prev.corn_kc_fri,    { dec:2 }) : "";
+  const soyDelta     = (latest && prev) ? weeklyDelta(latest.soybean_kc_fri, prev.soybean_kc_fri, { dec:2 }) : "";
+  const boxedDelta   = (latest && prev) ? weeklyDelta(latest.boxed_beef_choice_5day, prev.boxed_beef_choice_5day, { dec:2 }) : "";
+
+  // Receipts — show vs week-ago and year-ago when the MDA report gives us those.
+  let receiptsSub = "MO total head";
+  if (latest && isFinite(latest.week_ago_receipts) && latest.week_ago_receipts > 0 && isFinite(latest.total_receipts)) {
+    const d = latest.total_receipts - latest.week_ago_receipts;
+    const pct = (d / latest.week_ago_receipts) * 100;
+    const sign = d >= 0 ? "+" : "−";
+    const cls  = d >= 0 ? "color:#15803d" : "color:#b91c1c";
+    receiptsSub = `<span style="${cls};font-weight:700">${sign}${Math.abs(pct).toFixed(0)}% wk</span>`;
+    if (isFinite(latest.year_ago_receipts) && latest.year_ago_receipts > 0) {
+      const dy = latest.total_receipts - latest.year_ago_receipts;
+      const pcty = (dy / latest.year_ago_receipts) * 100;
+      const signy = dy >= 0 ? "+" : "−";
+      const clsy  = dy >= 0 ? "color:#15803d" : "color:#b91c1c";
+      receiptsSub += ` · <span style="${clsy};font-weight:700">${signy}${Math.abs(pcty).toFixed(0)}% yr</span>`;
     }
   }
+
+  // Plain-English takeaway — replaces the bare narrative when we have enough history.
+  const takeaway = weeklyBuildTakeaway(records);
 
   // ── Main feeder steer chart (stocker formula avg over time) ──
   const feederSeries = [
@@ -3455,27 +3714,27 @@ function renderWeeklyMarketCard(records) {
     <div class="weekly-stat">
       <div class="weekly-stat-label">500-600 lb Steers</div>
       <div class="weekly-stat-val" style="font-size:15px">${steerLo}–${steerHi}<span class="unit">$/cwt</span></div>
-      <div class="weekly-stat-sub">MO regional avg range</div>
+      <div class="weekly-stat-sub">${steerLoDelta || steerHiDelta ? `lo ${steerLoDelta || "—"} · hi ${steerHiDelta || "—"}` : "MO regional avg range"}</div>
     </div>
     <div class="weekly-stat">
       <div class="weekly-stat-label">Corn (KC)</div>
-      <div class="weekly-stat-val">${cornKC}<span class="unit">$/bu</span></div>
+      <div class="weekly-stat-val">${cornKC}${cornDelta}<span class="unit">$/bu</span></div>
       <div class="weekly-stat-sub">Kansas City Friday cash</div>
     </div>
     <div class="weekly-stat">
       <div class="weekly-stat-label">Soybeans (KC)</div>
-      <div class="weekly-stat-val">${soyKC}<span class="unit">$/bu</span></div>
+      <div class="weekly-stat-val">${soyKC}${soyDelta}<span class="unit">$/bu</span></div>
       <div class="weekly-stat-sub">Kansas City Friday cash</div>
     </div>
     <div class="weekly-stat">
       <div class="weekly-stat-label">Boxed Beef Choice</div>
-      <div class="weekly-stat-val">${boxedChoice}<span class="unit">$/cwt</span></div>
+      <div class="weekly-stat-val">${boxedChoice}${boxedDelta}<span class="unit">$/cwt</span></div>
       <div class="weekly-stat-sub">5-day avg cutout</div>
     </div>
     <div class="weekly-stat">
       <div class="weekly-stat-label">Weekly Receipts</div>
       <div class="weekly-stat-val" style="font-size:16px">${receipts}</div>
-      <div class="weekly-stat-sub">MO total head</div>
+      <div class="weekly-stat-sub">${receiptsSub}</div>
     </div>
   </div>
 
@@ -3502,7 +3761,8 @@ function renderWeeklyMarketCard(records) {
     ${grainChart}
   </div>
 
-  ${narrative ? `<div class="weekly-narrative"><div class="weekly-narrative-lbl">Market Summary</div>${escapeHtml(narrative)}</div>` : ""}
+  ${takeaway ? `<div class="weekly-narrative weekly-takeaway"><div class="weekly-narrative-lbl">📌 What this week means for you</div>${escapeHtml(takeaway)}</div>` : ""}
+  ${narrative ? `<div class="weekly-narrative"><div class="weekly-narrative-lbl">MDA Market Summary</div>${escapeHtml(narrative)}</div>` : ""}
 </div>`;
 }
 
@@ -3611,6 +3871,689 @@ function wireWeeklyMarket() {
         resultEl.innerHTML = "⚠ Upload failed: " + escapeHtml(String(err.message || err));
         submitBtn.disabled = false;
         submitBtn.textContent = "Upload & Parse";
+      }
+    });
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// WEEKLY MARKET HISTORY — last 6 months (26 weeks) of MDA reports
+// Renders a tap-to-expand list of past summaries so Matt can scroll back and
+// see how prices, receipts, and narratives have moved over the season.
+// ──────────────────────────────────────────────────────────────────────────────
+const WEEKLY_HISTORY_WEEKS = 26; // ~6 months
+
+function renderWeeklyHistoryCard(records) {
+  if (!records || records.length === 0) {
+    return ""; // nothing to show — the upload card already covers the empty state
+  }
+  // Newest first, capped at WEEKLY_HISTORY_WEEKS
+  const slice = records.slice(-WEEKLY_HISTORY_WEEKS).slice().reverse();
+  const oldestDate = slice[slice.length - 1].report_date;
+  const newestDate = slice[0].report_date;
+
+  const rows = slice.map((r, i) => {
+    // Find previous-week record for delta display
+    const idxInAll = records.indexOf(r);
+    const prev = idxInAll > 0 ? records[idxInAll - 1] : null;
+    const stockerD = prev ? weeklyDelta(r.stocker_formula_cwt, prev.stocker_formula_cwt, { dec:2 }) : "";
+    const cornD    = prev ? weeklyDelta(r.corn_kc_fri,         prev.corn_kc_fri,         { dec:2 }) : "";
+    const stocker  = isFinite(r.stocker_formula_cwt) ? "$" + r.stocker_formula_cwt.toFixed(2) : "—";
+    const corn     = isFinite(r.corn_kc_fri) ? "$" + r.corn_kc_fri.toFixed(2) : "—";
+    const receipts = isFinite(r.total_receipts) ? Number(r.total_receipts).toLocaleString() : "—";
+    const narr     = r.market_narrative ? escapeHtml(r.market_narrative) : "<em style='opacity:.6'>No narrative on this week's report.</em>";
+    const steerLo  = isFinite(r.feeder_steer_500_600_avg_low)  ? "$" + r.feeder_steer_500_600_avg_low.toFixed(2)  : "—";
+    const steerHi  = isFinite(r.feeder_steer_500_600_avg_high) ? "$" + r.feeder_steer_500_600_avg_high.toFixed(2) : "—";
+    const soy      = isFinite(r.soybean_kc_fri) ? "$" + r.soybean_kc_fri.toFixed(2) : "—";
+    const choice   = isFinite(r.boxed_beef_choice_5day) ? "$" + r.boxed_beef_choice_5day.toFixed(2) : "—";
+    return `<details class="hist-row" ${i === 0 ? "open" : ""}>
+      <summary class="hist-summary">
+        <div class="hist-date">${escapeHtml(r.report_date || "—")}</div>
+        <div class="hist-stat"><span class="hist-stat-label">Stocker</span><span class="hist-stat-val">${stocker}${stockerD}</span></div>
+        <div class="hist-stat"><span class="hist-stat-label">Corn KC</span><span class="hist-stat-val">${corn}${cornD}</span></div>
+        <div class="hist-stat hist-stat-receipts"><span class="hist-stat-label">Head</span><span class="hist-stat-val">${receipts}</span></div>
+        <span class="hist-chev">▾</span>
+      </summary>
+      <div class="hist-body">
+        <div class="hist-grid">
+          <div><span class="hist-mini-lbl">500–600 lb steers</span><span class="hist-mini-val">${steerLo}–${steerHi}/cwt</span></div>
+          <div><span class="hist-mini-lbl">Soybeans (KC)</span><span class="hist-mini-val">${soy}/bu</span></div>
+          <div><span class="hist-mini-lbl">Boxed beef Choice</span><span class="hist-mini-val">${choice}/cwt</span></div>
+          <div><span class="hist-mini-lbl">Total receipts</span><span class="hist-mini-val">${receipts} hd</span></div>
+        </div>
+        <div class="hist-narr">${narr}</div>
+      </div>
+    </details>`;
+  }).join("");
+
+  return `<div class="weekly-card" id="weeklyHistoryCard">
+    <div class="weekly-card-header">
+      <div>
+        <div class="weekly-card-title">🗓️ Weekly Report History</div>
+        <div class="weekly-card-meta">${slice.length} week${slice.length !== 1 ? "s" : ""} · ${escapeHtml(oldestDate || "")} → ${escapeHtml(newestDate || "")}</div>
+      </div>
+    </div>
+    <div class="hist-list">${rows}</div>
+  </div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// CME FUTURES CARD — Live cattle (LE=F), Feeder cattle (GF=F), Corn (ZC=F).
+// Forward-looking prices: what the market thinks calves & feed will be worth
+// in the coming months. Re-uses the stocks-tab fetchQuote() infrastructure.
+// ──────────────────────────────────────────────────────────────────────────────
+const FUTURES_TILES = [
+  { ticker:"LE=F", label:"Live Cattle",   unit:"$/cwt", emoji:"🐂", note:"Finished cattle — drives packer demand"   },
+  { ticker:"GF=F", label:"Feeder Cattle", unit:"$/cwt", emoji:"🐄", note:"Yearlings / your sale calves' forward price" },
+  { ticker:"ZC=F", label:"Corn",          unit:"¢/bu",  emoji:"🌽", note:"Cost-of-gain proxy for backgrounders"        }
+];
+
+function renderFuturesCard() {
+  const tiles = FUTURES_TILES.map(t => `
+    <div class="futures-tile" data-fut-ticker="${escapeHtml(t.ticker)}">
+      <div class="futures-emoji">${t.emoji}</div>
+      <div class="futures-label">${escapeHtml(t.label)}</div>
+      <div class="futures-price"><span class="spinner" style="width:13px;height:13px"></span></div>
+      <div class="futures-change">—</div>
+      <div class="futures-spark"></div>
+      <div class="futures-note">${escapeHtml(t.note)}</div>
+    </div>`).join("");
+
+  return `<div class="weekly-card futures-card" id="futuresCard">
+    <div class="weekly-card-header">
+      <div>
+        <div class="weekly-card-title">📊 CME Futures — Forward Prices</div>
+        <div class="weekly-card-meta">Nearby contracts · live quotes (15-min delayed via Yahoo)</div>
+      </div>
+    </div>
+    <div class="futures-grid">${tiles}</div>
+    <div class="futures-foot">Futures show where commercial traders think prices are heading. Big swings here often lead the cash market by 1–2 weeks.</div>
+  </div>`;
+}
+
+async function wireFuturesCard() {
+  const card = document.getElementById("futuresCard");
+  if (!card) return;
+  for (const t of FUTURES_TILES) {
+    fetchQuote(t.ticker).then(q => {
+      const tile = card.querySelector('[data-fut-ticker="' + t.ticker + '"]');
+      if (!tile) return;
+      if (!q) {
+        tile.querySelector(".futures-price").textContent = "—";
+        tile.querySelector(".futures-change").textContent = "quote unavailable";
+        tile.querySelector(".futures-change").style.color = "var(--text-muted)";
+        return;
+      }
+      // ZC=F (corn) is quoted in cents per bushel on CME, so values look like 450.25 = $4.5025/bu.
+      const priceEl  = tile.querySelector(".futures-price");
+      const changeEl = tile.querySelector(".futures-change");
+      const sparkEl  = tile.querySelector(".futures-spark");
+      const unitLbl  = t.unit;
+      priceEl.innerHTML = Number(q.price).toFixed(2) + ' <span class="futures-unit">' + unitLbl + '</span>';
+      const up = q.change >= 0;
+      changeEl.textContent = (up ? "+" : "") + q.change.toFixed(2) + " (" + (up ? "+" : "") + q.changePct.toFixed(2) + "%)";
+      changeEl.style.color = up ? "#15803d" : "#b91c1c";
+      sparkEl.innerHTML = sparklineSvg(q.closes || []);
+    }).catch(() => {
+      const tile = card.querySelector('[data-fut-ticker="' + t.ticker + '"]');
+      if (tile) {
+        tile.querySelector(".futures-price").textContent = "—";
+        tile.querySelector(".futures-change").textContent = "quote unavailable";
+      }
+    });
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// HAY PRICES + DROUGHT MONITOR
+// Hay: links to the USDA AMS Missouri Weekly Hay Report (no clean public API).
+// Drought: USDM has a public JSON service we can pull MO state-level % by class
+// (D0 abnormal → D4 exceptional) and show this week's snapshot.
+// ──────────────────────────────────────────────────────────────────────────────
+const USDM_API = "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByAreaPercent";
+const HAY_REPORT_URL = "https://www.ams.usda.gov/mnreports/ams_3645.pdf"; // USDA Missouri Weekly Hay Report
+const HAY_REPORT_BACKUP = "https://mymarketnews.ams.usda.gov/viewReport/2754"; // searchable archive
+
+function renderHayDroughtCard() {
+  return `<div class="weekly-card hay-card" id="hayDroughtCard">
+    <div class="weekly-card-header">
+      <div>
+        <div class="weekly-card-title">🌾 Hay & Drought — Missouri</div>
+        <div class="weekly-card-meta">Pasture & feed-cost outlook</div>
+      </div>
+    </div>
+    <div class="hay-grid">
+      <div class="hay-tile hay-drought" id="hayDroughtTile">
+        <div class="hay-tile-label">U.S. Drought Monitor — MO</div>
+        <div class="hay-tile-status"><span class="spinner" style="width:13px;height:13px"></span> Loading USDM data…</div>
+        <div class="hay-bar-wrap"><div class="hay-bar" id="hayDroughtBar"></div></div>
+        <div class="hay-tile-foot" id="hayDroughtFoot">D0 = abnormally dry · D4 = exceptional drought</div>
+      </div>
+      <div class="hay-tile hay-prices">
+        <div class="hay-tile-label">USDA MO Weekly Hay Report</div>
+        <div class="hay-prices-body">Large round bale prices, small squares, and alfalfa for MO auctions — published Wednesdays by USDA AMS.</div>
+        <div class="hay-links">
+          <a class="hay-link" href="${HAY_REPORT_URL}" target="_blank" rel="noopener">📄 Latest PDF report</a>
+          <a class="hay-link" href="${HAY_REPORT_BACKUP}" target="_blank" rel="noopener">🗂️ Archive (search by week)</a>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function wireHayDroughtCard() {
+  const tile = document.getElementById("hayDroughtTile");
+  if (!tile) return;
+  const statusEl = tile.querySelector(".hay-tile-status");
+  const barEl    = tile.querySelector("#hayDroughtBar");
+  const footEl   = tile.querySelector("#hayDroughtFoot");
+  // USDM API needs a date range — pull the last 14 days and take the most recent.
+  const endD   = new Date();
+  const startD = new Date(Date.now() - 14 * 86400000);
+  const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, "/");
+  const url = USDM_API
+    + "?aoi=MO&startdate=" + fmt(startD) + "&enddate=" + fmt(endD)
+    + "&statisticsType=1";
+  try {
+    const txt = await fetchTextThroughProxies(url);
+    const data = JSON.parse(txt);
+    if (!Array.isArray(data) || data.length === 0) throw new Error("no USDM rows");
+    // Take latest by MapDate
+    data.sort((a, b) => (a.MapDate || "").localeCompare(b.MapDate || ""));
+    const latest = data[data.length - 1];
+    // Categories are cumulative in USDM: D0 includes D1, D1 includes D2, etc.
+    // We invert to non-overlapping % for the bar.
+    const d0 = parseFloat(latest.D0) || 0;
+    const d1 = parseFloat(latest.D1) || 0;
+    const d2 = parseFloat(latest.D2) || 0;
+    const d3 = parseFloat(latest.D3) || 0;
+    const d4 = parseFloat(latest.D4) || 0;
+    const none = parseFloat(latest.None);
+    const pNone = isFinite(none) ? none : Math.max(0, 100 - d0);
+    const pD0 = Math.max(0, d0 - d1);
+    const pD1 = Math.max(0, d1 - d2);
+    const pD2 = Math.max(0, d2 - d3);
+    const pD3 = Math.max(0, d3 - d4);
+    const pD4 = d4;
+    const segs = [
+      { p:pNone, c:"#22c55e", lbl:"None" },
+      { p:pD0,   c:"#fde68a", lbl:"D0" },
+      { p:pD1,   c:"#fbbf24", lbl:"D1" },
+      { p:pD2,   c:"#f97316", lbl:"D2" },
+      { p:pD3,   c:"#dc2626", lbl:"D3" },
+      { p:pD4,   c:"#7f1d1d", lbl:"D4" }
+    ];
+    barEl.innerHTML = segs.filter(s => s.p > 0.3).map(s =>
+      `<span class="hay-bar-seg" style="width:${s.p.toFixed(1)}%;background:${s.c}" title="${s.lbl}: ${s.p.toFixed(1)}%"></span>`
+    ).join("");
+    // Pick worst category for headline
+    let headline, color;
+    if (pD4 >= 5)       { headline = "Exceptional drought in parts of MO"; color = "#7f1d1d"; }
+    else if (pD3 >= 5)  { headline = "Extreme drought across part of MO"; color = "#dc2626"; }
+    else if (pD2 >= 10) { headline = "Severe drought spreading"; color = "#f97316"; }
+    else if (pD1 >= 15) { headline = "Moderate drought in MO"; color = "#d97706"; }
+    else if (d0 >= 20)  { headline = "Abnormally dry conditions"; color = "#ca8a04"; }
+    else                { headline = "MO largely drought-free"; color = "#15803d"; }
+    statusEl.innerHTML = `<strong style="color:${color}">${headline}</strong> · ${(100 - pNone).toFixed(0)}% of state in D0+`;
+    footEl.textContent = "Map week of " + (latest.MapDate ? String(latest.MapDate).slice(0, 10) : "—") + " · source: U.S. Drought Monitor (NDMC / UNL)";
+  } catch (e) {
+    statusEl.innerHTML = '<span style="color:var(--text-muted)">Couldn\'t reach USDM. <a href="https://droughtmonitor.unl.edu/CurrentMap/StateDroughtMonitor.aspx?MO" target="_blank" rel="noopener" style="color:var(--accent)">View current MO map ↗</a></span>';
+    barEl.innerHTML = "";
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// CULL COW MARKET + SALE BARN SCHEDULE
+// Static list of nearby MO sale barns and a quick cull-cow class reference.
+// Real-time cull cow $/cwt comes from the MDA weekly when present in narrative.
+// ──────────────────────────────────────────────────────────────────────────────
+const NEARBY_BARNS = [
+  { name:"Wheeler Livestock",        city:"Osceola, MO",         day:"Tuesdays",     url:"https://www.wheelerlivestock.com/market-report-1", note:"Matt's buddy's barn" },
+  { name:"Joplin Regional Stockyards", city:"Carthage, MO",        day:"Mon · Wed",    url:"https://www.joplinstockyards.com/",                note:"One of the largest in the region" },
+  { name:"South Central Regional Stockyards", city:"Vienna, MO",   day:"Wednesdays",   url:"https://www.scrslivestock.com/",                   note:"Central MO" },
+  { name:"Springfield Livestock Marketing Center", city:"Springfield, MO", day:"Wednesdays", url:"https://www.springfieldlivestock.com/",       note:"SW MO" },
+  { name:"I-70 Livestock Auction",    city:"Sweet Springs, MO",   day:"Tuesdays",     url:"https://www.i70livestock.com/",                    note:"West-central MO" }
+];
+
+const CULL_CLASSES = [
+  { name:"Breakers",  desc:"Top-end cull cows (75-80% lean) · heaviest, most muscle" },
+  { name:"Boners",    desc:"Mid-grade (80-85% lean) · the bulk of fall cull cows" },
+  { name:"Lean",      desc:"Lightest, thinnest cows (85-90% lean) · lowest price" }
+];
+
+function renderCullSaleCard() {
+  const barns = NEARBY_BARNS.map(b => `
+    <a class="sale-barn-row" href="${b.url}" target="_blank" rel="noopener">
+      <div class="sale-barn-main">
+        <div class="sale-barn-name">${escapeHtml(b.name)}${b.note && b.note.indexOf("buddy") >= 0 ? ' <span class="sale-barn-tag">★ your barn</span>' : ""}</div>
+        <div class="sale-barn-city">${escapeHtml(b.city)} · sale day: <strong>${escapeHtml(b.day)}</strong></div>
+        ${b.note && b.note.indexOf("buddy") < 0 ? `<div class="sale-barn-note">${escapeHtml(b.note)}</div>` : ""}
+      </div>
+      <div class="sale-barn-arrow">↗</div>
+    </a>`).join("");
+  const classes = CULL_CLASSES.map(c => `
+    <div class="cull-class">
+      <div class="cull-class-name">${escapeHtml(c.name)}</div>
+      <div class="cull-class-desc">${escapeHtml(c.desc)}</div>
+    </div>`).join("");
+  return `<div class="weekly-card sale-card" id="cullSaleCard">
+    <div class="weekly-card-header">
+      <div>
+        <div class="weekly-card-title">🪧 Sale Barns & Cull Cow Reference</div>
+        <div class="weekly-card-meta">Where to sell · cull-cow grades · current cull prices show up in the weekly summary above</div>
+      </div>
+    </div>
+    <div class="sale-section-label">Nearby MO sale barns</div>
+    <div class="sale-barn-list">${barns}</div>
+    <div class="sale-section-label" style="margin-top:14px">Cull cow classes (USDA)</div>
+    <div class="cull-class-grid">${classes}</div>
+    <div class="sale-foot">💡 Cull timing tip: cull cow prices typically peak in spring (Apr–Jun) and bottom in fall (Oct–Nov). If a cow is open in October, weigh whether to feed her through winter or sell now.</div>
+  </div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BREAK-EVEN CALCULATOR
+// Inputs: weaning wt, sale wt, $/lb cost of gain, freight per head, commission %.
+// Output: break-even sale price ($/cwt) and projected profit per head at the
+// current Stocker Formula price (or at a manual override). Inputs persist in
+// localStorage so Matt's setup stays put.
+// ──────────────────────────────────────────────────────────────────────────────
+const BE_LS_KEY = "news.breakeven.v1";
+
+function loadBreakEvenInputs() {
+  try {
+    const raw = localStorage.getItem(BE_LS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  // Sensible MO cow/calf starting numbers.
+  return {
+    weanWt: 525,        // lb at weaning
+    saleWt: 550,        // lb at sale (light = sell off cow, heavy = backgrounded)
+    cowCost: 850,       // annual cow cost ($/cow/year — feed, mineral, hay, vet, repairs)
+    weanedPerCow: 0.90, // calves weaned per exposed cow (90% weaning rate)
+    cogPerLb: 0.85,     // $/lb cost of gain post-weaning (if backgrounding)
+    freightPerHd: 8,    // $/head trucking to the barn
+    commissionPct: 3.0, // sale commission % of gross
+    salePriceCwt: null  // null = use latest Stocker Formula
+  };
+}
+function saveBreakEvenInputs(o) { try { localStorage.setItem(BE_LS_KEY, JSON.stringify(o)); } catch {} }
+
+function renderBreakEvenCard(records) {
+  const latest = records && records.length ? records[records.length - 1] : null;
+  const live = latest && isFinite(latest.stocker_formula_cwt) ? latest.stocker_formula_cwt : null;
+  const liveLbl = live ? "$" + live.toFixed(2) + "/cwt (MO Stocker Formula, week of " + (latest.report_date || "—") + ")" : "no live price yet — upload the latest MDA PDF";
+  return `<div class="weekly-card be-card" id="breakEvenCard" data-live-price="${live || ""}">
+    <div class="weekly-card-header">
+      <div>
+        <div class="weekly-card-title">🧮 Break-Even Calculator</div>
+        <div class="weekly-card-meta">Profit per head at current MO calf prices</div>
+      </div>
+    </div>
+    <div class="be-grid">
+      <label class="be-field"><span>Cow annual cost ($/cow/yr)</span><input type="number" id="beCowCost" step="10" min="0"></label>
+      <label class="be-field"><span>Weaning rate (calves/cow)</span><input type="number" id="beWeanRate" step="0.01" min="0" max="1"></label>
+      <label class="be-field"><span>Weaning weight (lb)</span><input type="number" id="beWeanWt" step="5" min="0"></label>
+      <label class="be-field"><span>Sale weight (lb)</span><input type="number" id="beSaleWt" step="5" min="0"></label>
+      <label class="be-field"><span>Cost of gain ($/lb)</span><input type="number" id="beCog" step="0.05" min="0"></label>
+      <label class="be-field"><span>Freight ($/head)</span><input type="number" id="beFreight" step="1" min="0"></label>
+      <label class="be-field"><span>Commission (%)</span><input type="number" id="beComm" step="0.1" min="0" max="20"></label>
+      <label class="be-field"><span>Sale price override ($/cwt)</span><input type="number" id="bePrice" step="0.50" min="0" placeholder="auto"></label>
+    </div>
+    <div class="be-results" id="beResults">
+      <div class="be-result"><div class="be-result-lbl">Break-even sale price</div><div class="be-result-val" id="beBreakEven">—</div><div class="be-result-sub">to cover all costs at sale weight</div></div>
+      <div class="be-result"><div class="be-result-lbl">Projected gross/head</div><div class="be-result-val" id="beGross">—</div><div class="be-result-sub" id="beGrossSub">at current calf price</div></div>
+      <div class="be-result be-result-hero"><div class="be-result-lbl">Profit per head</div><div class="be-result-val" id="beProfit">—</div><div class="be-result-sub" id="beProfitSub">net after costs & commission</div></div>
+    </div>
+    <div class="be-foot">Using <strong id="beLivePriceLbl">${escapeHtml(liveLbl)}</strong>. Override above for what-if scenarios. Numbers save locally on your device.</div>
+  </div>`;
+}
+
+function wireBreakEvenCard(records) {
+  const card = document.getElementById("breakEvenCard");
+  if (!card) return;
+  const inputs = loadBreakEvenInputs();
+  const $ = id => card.querySelector("#" + id);
+  $("beCowCost").value   = inputs.cowCost;
+  $("beWeanRate").value  = inputs.weanedPerCow;
+  $("beWeanWt").value    = inputs.weanWt;
+  $("beSaleWt").value    = inputs.saleWt;
+  $("beCog").value       = inputs.cogPerLb;
+  $("beFreight").value   = inputs.freightPerHd;
+  $("beComm").value      = inputs.commissionPct;
+  $("bePrice").value     = inputs.salePriceCwt != null ? inputs.salePriceCwt : "";
+
+  function compute() {
+    const i = {
+      cowCost:      parseFloat($("beCowCost").value)  || 0,
+      weanedPerCow: parseFloat($("beWeanRate").value) || 0,
+      weanWt:       parseFloat($("beWeanWt").value)   || 0,
+      saleWt:       parseFloat($("beSaleWt").value)   || 0,
+      cogPerLb:     parseFloat($("beCog").value)      || 0,
+      freightPerHd: parseFloat($("beFreight").value)  || 0,
+      commissionPct:parseFloat($("beComm").value)     || 0,
+      salePriceCwt: $("bePrice").value === "" ? null : parseFloat($("bePrice").value)
+    };
+    saveBreakEvenInputs(i);
+
+    // Cost per weaned calf (annualized cow cost divided by weaning rate).
+    const cowCostPerCalf = i.weanedPerCow > 0 ? i.cowCost / i.weanedPerCow : 0;
+    // Gain cost (post-weaning gain × $/lb)
+    const gainLb = Math.max(0, i.saleWt - i.weanWt);
+    const gainCost = gainLb * i.cogPerLb;
+    // Total cost before commission/freight
+    const directCost = cowCostPerCalf + gainCost + i.freightPerHd;
+
+    // Break-even sale price ($/cwt) — solve: salePrice * saleWt * (1 - comm) = directCost
+    // → salePrice($/lb) = directCost / (saleWt * (1 - comm/100))
+    // → $/cwt = salePrice * 100
+    let breakEvenCwt = "—";
+    if (i.saleWt > 0 && (1 - i.commissionPct / 100) > 0) {
+      const beLb = directCost / (i.saleWt * (1 - i.commissionPct / 100));
+      breakEvenCwt = "$" + (beLb * 100).toFixed(2);
+    }
+    $("beBreakEven").textContent = breakEvenCwt;
+
+    // Live or override price
+    const livePrice = parseFloat(card.getAttribute("data-live-price")) || 0;
+    const priceCwt = (i.salePriceCwt != null && isFinite(i.salePriceCwt)) ? i.salePriceCwt : livePrice;
+    if (!priceCwt) {
+      $("beGross").textContent  = "—";
+      $("beProfit").textContent = "—";
+      $("beGrossSub").textContent  = "set a sale price override above";
+      $("beProfitSub").textContent = "needs a sale price to compute";
+      return;
+    }
+    const gross = (priceCwt / 100) * i.saleWt;
+    const grossAfterComm = gross * (1 - i.commissionPct / 100);
+    const profit = grossAfterComm - directCost;
+    $("beGross").textContent   = "$" + gross.toFixed(2);
+    $("beGrossSub").textContent = "at $" + priceCwt.toFixed(2) + "/cwt × " + i.saleWt + " lb";
+    $("beProfit").textContent  = (profit >= 0 ? "+$" : "−$") + Math.abs(profit).toFixed(2);
+    $("beProfit").style.color  = profit >= 0 ? "#15803d" : "#b91c1c";
+    $("beProfitSub").textContent = "after " + i.commissionPct.toFixed(1) + "% comm · cow cost $" + cowCostPerCalf.toFixed(0) + "/calf · gain $" + gainCost.toFixed(0);
+  }
+
+  card.querySelectorAll("input").forEach(el => {
+    el.addEventListener("input", compute);
+    el.addEventListener("change", compute);
+  });
+  compute();
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MONTHLY HERD CALENDAR — what a MO cow/calf op should be doing this month.
+// Default profile: spring-calving herd (Feb–Apr), fescue/legume pasture,
+// 75-day breeding season starting ~May 1, fall weaning in Sep–Oct.
+// ──────────────────────────────────────────────────────────────────────────────
+const HERD_CALENDAR = {
+  1: { season:"Mid-winter", focus:"Watch body condition, prep for calving", tasks:[
+    { tag:"FEED",     text:"Feed best hay to thin cows and bred heifers — they need to gain by calving." },
+    { tag:"MINERAL",  text:"Switch to a high-magnesium mineral by month-end to prevent spring grass tetany." },
+    { tag:"CALVING",  text:"Stock the calving kit: OB chains, sleeves, iodine, ear tags, electrolytes, colostrum replacer." },
+    { tag:"BCS",      text:"Body-condition score the herd. Target BCS 5–6 at calving — feed problem cows now, not later." },
+    { tag:"REPAIRS",  text:"Fix fence, check calving pen lights & gates before the first calf hits the ground." }
+  ]},
+  2: { season:"Spring calving begins", focus:"Calf watch", tasks:[
+    { tag:"CALVING",  text:"Check heifers every 2–3 hours during active labor. Mature cows usually go on their own." },
+    { tag:"PROCESS",  text:"Tag, weigh, dip navels with iodine, and record dam ID within 24 hrs of birth." },
+    { tag:"MINERAL",  text:"Stay on high-mag mineral — grass tetany risk peaks Feb–May on lush fescue." },
+    { tag:"FEED",     text:"Lactating cows need ~25% more energy. Step up protein/energy in the ration." }
+  ]},
+  3: { season:"Peak calving", focus:"Process calves, plan breeding", tasks:[
+    { tag:"VACCINE",  text:"Calves: clostridial (7- or 8-way) at 2–3 months, and intranasal IBR/PI3 if pneumonia is a risk." },
+    { tag:"BREEDING", text:"Order semen, sync supplies. Schedule Bull Soundness Exam (BSE) — don't skip this one." },
+    { tag:"PARASITE", text:"De-louse and pour-on for cattle grubs (last call before fly season)." },
+    { tag:"PASTURE",  text:"Walk fields — note thin spots, weed pressure, repair frost-damaged fence." }
+  ]},
+  4: { season:"Late calving / spring grass", focus:"Calf health, pasture turnout", tasks:[
+    { tag:"VACCINE",  text:"Spring vaccinations for cows: viral (IBR/BVD/PI3/BRSV killed if pregnant), Lepto/Vibrio pre-breeding." },
+    { tag:"BREEDING", text:"Sync heifers for AI ~30 days before turnout. Bull Soundness Exam complete before May 1." },
+    { tag:"PASTURE",  text:"Don't turn out too early — wait until grass is 4–6\" tall or you'll set the pasture back all summer." },
+    { tag:"FLY",      text:"Apply fly tags or order pour-on. Start before face flies establish." }
+  ]},
+  5: { season:"Bull turnout / breeding", focus:"Get cows bred", tasks:[
+    { tag:"BREEDING", text:"Turn bulls out by mid-May for Feb 20 calving. 75-day breeding season for tight calving window." },
+    { tag:"FLY",      text:"Fly tags in, oilers/dust bags filled. Horn flies pressure goes up sharply this month." },
+    { tag:"MINERAL",  text:"Switch off high-mag (tetany risk fades). Move to a complete mineral with high copper/zinc for breeding." },
+    { tag:"PASTURE",  text:"Clip seedheads on fescue to reduce ergovaline (heat stress later) and keep grass vegetative." }
+  ]},
+  6: { season:"Breeding / hay season", focus:"Watch cows, cut hay", tasks:[
+    { tag:"BREEDING", text:"Walk the herd daily — record heats and any non-cycling cows. Pull repeat breeders for vet check." },
+    { tag:"HAY",      text:"Cut first-cutting hay at boot stage for best quality. Watch the 5-day forecast — rain on cut hay is a disaster." },
+    { tag:"PINKEYE",  text:"Pinkeye season — clip tall weeds, control face flies, vaccinate if you've had outbreaks." },
+    { tag:"WATER",    text:"Check ponds and stock tanks daily. Water quality > water quantity in summer." }
+  ]},
+  7: { season:"Mid-summer", focus:"Bull pull, fly control, heat", tasks:[
+    { tag:"BREEDING", text:"Pull bulls mid-to-late July (75-day season ends). Late-bred cows = April calves = lower sale weights." },
+    { tag:"FLY",      text:"Face fly + horn fly pressure peaks. Re-treat oilers, consider feed-through fly control." },
+    { tag:"HEAT",     text:"Shade and water are critical. Endophyte fescue + 90°+ = serious heat stress." },
+    { tag:"ANAPLAS",  text:"Anaplasmosis season — watch for sudden death or yellow membranes. Consider Aureomycin in mineral." }
+  ]},
+  8: { season:"Late summer", focus:"Weaning prep, stockpile", tasks:[
+    { tag:"PREG",     text:"Early preg-check window opens 45 days after bull pull. Cull opens early — feed isn't free." },
+    { tag:"WEANING",  text:"Start weaning prep: vaccinate calves 30+ days pre-weaning (preconditioning = higher sale price)." },
+    { tag:"STOCKPILE",text:"Pull cows off fescue fields you want to stockpile for winter grazing. Apply N if rain is in the forecast." },
+    { tag:"FEED",     text:"Order winter feed/supplements early — DDGS, cottonseed, range cubes prices firm up in fall." }
+  ]},
+  9: { season:"Weaning / fall sales", focus:"Wean and market", tasks:[
+    { tag:"WEANING",  text:"Wean spring calves. Fence-line weaning beats hauling — calves bawl less, gain better." },
+    { tag:"MARKET",   text:"Heavy spring calves often hit peak prices Sep–Oct. Preconditioned calves earn $5–15/cwt premium." },
+    { tag:"PREG",     text:"Preg-check the whole herd. Open + late = cull (vet will mark expected calving date)." },
+    { tag:"PARASITE", text:"Wormer at weaning for both cows and calves — fall pour-on covers lice through winter." }
+  ]},
+ 10: { season:"Cull & graze", focus:"Sort, cull, prep winter", tasks:[
+    { tag:"CULL",     text:"Cull opens, structurally unsound, bad eyes/feet, bad attitude. Cull-cow prices typically softer than spring — but don't feed her through winter." },
+    { tag:"GRAZE",    text:"Start stockpiled fescue grazing — strip-graze with poly wire to stretch it 2× longer." },
+    { tag:"SOIL",     text:"Soil test now for spring lime/fertilizer planning. Lime needs months to react." },
+    { tag:"HAY",      text:"Hay test (CP, TDN) before winter. You can't ration without numbers." }
+  ]},
+ 11: { season:"Winter prep", focus:"Sort, supplement, ready facilities", tasks:[
+    { tag:"SORT",     text:"Sort cow herd into mature/older/heifer groups. Manage each group's ration separately — saves feed and improves BCS." },
+    { tag:"WATER",    text:"Service tank heaters and check waterer lines BEFORE first hard freeze." },
+    { tag:"MINERAL",  text:"Winter mineral on — selenium and vitamin A/D/E matter most in cold months." },
+    { tag:"TAXES",    text:"Talk to your accountant — Section 179, equipment depreciation, deferred sales. Year-end matters." }
+  ]},
+ 12: { season:"Mid-winter", focus:"Feed efficiently, plan next year", tasks:[
+    { tag:"FEED",     text:"Limit-feed hay with ring feeders or unrolled — open piles waste 30%+." },
+    { tag:"BCS",      text:"BCS check on bred cows — last chance to boost thin cows before calving." },
+    { tag:"BULL",     text:"Check bull condition. Thin bulls in December = poor breeders in May. Feed up if needed." },
+    { tag:"PLAN",     text:"Book semen, AI tech, vet preg-checks, and any spring lime/seed orders now while you have time." }
+  ]}
+};
+
+function renderHerdCalendarCard() {
+  const now = new Date();
+  const m = now.getMonth() + 1;
+  const monthName = now.toLocaleDateString("en-US", { month:"long" });
+  const data = HERD_CALENDAR[m] || HERD_CALENDAR[1];
+  // Build a 12-chip month-jumper
+  const monthChips = Array.from({ length:12 }, (_, i) => {
+    const mi = i + 1;
+    const isCur = mi === m;
+    const name = new Date(2024, i, 1).toLocaleDateString("en-US", { month:"short" });
+    return `<button class="hc-chip${isCur ? " active" : ""}" data-hc-month="${mi}">${name}</button>`;
+  }).join("");
+  const taskHtml = data.tasks.map(t => `
+    <div class="hc-task">
+      <span class="hc-tag hc-tag-${escapeHtml(t.tag.toLowerCase())}">${escapeHtml(t.tag)}</span>
+      <span class="hc-task-text">${escapeHtml(t.text)}</span>
+    </div>`).join("");
+  return `<div class="weekly-card hc-card" id="herdCalendarCard">
+    <div class="weekly-card-header">
+      <div>
+        <div class="weekly-card-title">📅 Herd Calendar — <span id="hcMonth">${escapeHtml(monthName)}</span></div>
+        <div class="weekly-card-meta" id="hcMeta"><strong>${escapeHtml(data.season)}</strong> · ${escapeHtml(data.focus)}</div>
+      </div>
+    </div>
+    <div class="hc-chips">${monthChips}</div>
+    <div class="hc-tasks" id="hcTasks">${taskHtml}</div>
+    <div class="hc-foot">Set up for a typical MO spring-calving herd (Feb–Apr calving · May 1 bull turnout · 75-day breeding season · Sep–Oct weaning). Adjust the timing in your head if you fall-calve.</div>
+  </div>`;
+}
+
+function wireHerdCalendarCard() {
+  const card = document.getElementById("herdCalendarCard");
+  if (!card) return;
+  card.querySelectorAll(".hc-chip").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const mi = parseInt(btn.getAttribute("data-hc-month"), 10);
+      const data = HERD_CALENDAR[mi];
+      if (!data) return;
+      card.querySelectorAll(".hc-chip").forEach(b => b.classList.toggle("active", b === btn));
+      const monthName = new Date(2024, mi - 1, 1).toLocaleDateString("en-US", { month:"long" });
+      card.querySelector("#hcMonth").textContent = monthName;
+      card.querySelector("#hcMeta").innerHTML = "<strong>" + escapeHtml(data.season) + "</strong> · " + escapeHtml(data.focus);
+      card.querySelector("#hcTasks").innerHTML = data.tasks.map(t =>
+        '<div class="hc-task"><span class="hc-tag hc-tag-' + escapeHtml(t.tag.toLowerCase()) + '">' + escapeHtml(t.tag) + '</span><span class="hc-task-text">' + escapeHtml(t.text) + '</span></div>'
+      ).join("");
+    });
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// USDA REPORT CALENDAR — upcoming market-moving releases.
+// Cattle on Feed = 3rd Friday each month, 2pm CT. Cold Storage = ~22nd.
+// Quarterly Cattle Inventory = Jan 31 + Jul 23. Computes next release dates
+// dynamically from "today" so this card stays correct forever.
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Helper: nth weekday of a month (year, month 0-indexed, weekday 0-6, n 1-5)
+function nthWeekdayOfMonth(year, month, weekday, n) {
+  const first = new Date(year, month, 1);
+  const offset = (weekday - first.getDay() + 7) % 7;
+  return new Date(year, month, 1 + offset + (n - 1) * 7);
+}
+
+// Next 3rd Friday on/after today (Cattle on Feed release)
+function nextNthWeekday(weekday, n, fromDate) {
+  const base = fromDate || new Date();
+  const candidates = [];
+  for (let offset = 0; offset <= 2; offset++) {
+    const d = new Date(base.getFullYear(), base.getMonth() + offset, 1);
+    const cand = nthWeekdayOfMonth(d.getFullYear(), d.getMonth(), weekday, n);
+    if (cand >= new Date(base.getFullYear(), base.getMonth(), base.getDate())) candidates.push(cand);
+  }
+  return candidates[0] || null;
+}
+
+// Next occurrence of a fixed day-of-month (used for Cold Storage ~22nd)
+function nextDayOfMonth(day, fromDate) {
+  const base = fromDate || new Date();
+  const today = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  for (let offset = 0; offset <= 2; offset++) {
+    const cand = new Date(base.getFullYear(), base.getMonth() + offset, day);
+    if (cand >= today) return cand;
+  }
+  return null;
+}
+
+// Next fixed month/day (used for quarterly Cattle Inventory)
+function nextFixedDates(monthDayList, fromDate) {
+  const base = fromDate || new Date();
+  const today = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  let best = null;
+  for (let yr = base.getFullYear(); yr <= base.getFullYear() + 1; yr++) {
+    for (const [m, d] of monthDayList) {
+      const cand = new Date(yr, m - 1, d);
+      if (cand >= today && (!best || cand < best)) best = cand;
+    }
+  }
+  return best;
+}
+
+function fmtReportDate(d) {
+  if (!d) return "—";
+  return d.toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric", year:"numeric" });
+}
+function daysFromToday(d) {
+  if (!d) return null;
+  const today = new Date();
+  const a = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.round((b - a) / 86400000);
+}
+
+function renderUsdaReportsCard() {
+  const cof    = nextNthWeekday(5, 3);                  // 3rd Friday — Cattle on Feed
+  const cold   = nextDayOfMonth(22);                    // ~22nd — Cold Storage
+  const slaug  = nextDayOfMonth(25);                    // ~25th — Livestock Slaughter monthly
+  const wasde  = nextDayOfMonth(12);                    // ~10th–12th — WASDE (corn/feed)
+  const inv    = nextFixedDates([[1,31],[7,23]]);       // Quarterly Cattle Inventory (NASS)
+  const hp     = nextFixedDates([[3,29],[6,27],[9,27],[12,22]]); // Quarterly Hogs & Pigs
+  const reports = [
+    { ico:"🐄", name:"Cattle on Feed",      d:cof,   note:"BIGGEST monthly mover for cattle prices. Released 2pm CT.",            url:"https://usda.library.cornell.edu/concern/publications/m326m174z" },
+    { ico:"📦", name:"Cold Storage",        d:cold,  note:"Beef in freezer storage — supply pipeline signal.",                    url:"https://usda.library.cornell.edu/concern/publications/pg15bd892" },
+    { ico:"🔪", name:"Livestock Slaughter", d:slaug, note:"Monthly federally-inspected slaughter totals + average weights.",      url:"https://usda.library.cornell.edu/concern/publications/r207tp32d" },
+    { ico:"🌽", name:"WASDE",               d:wasde, note:"World Ag Supply/Demand — moves corn (your cost of gain).",              url:"https://www.usda.gov/oce/commodity-markets/wasde" },
+    { ico:"📊", name:"Cattle Inventory",    d:inv,   note:"Semi-annual nationwide herd count — biggest long-term price driver.",  url:"https://usda.library.cornell.edu/concern/publications/h702q636h" },
+    { ico:"🐖", name:"Hogs & Pigs",         d:hp,    note:"Quarterly hog inventory — competing protein supply.",                  url:"https://usda.library.cornell.edu/concern/publications/rj430453j" }
+  ];
+  // Sort soonest-first
+  reports.sort((a, b) => (a.d ? a.d.getTime() : 9e15) - (b.d ? b.d.getTime() : 9e15));
+
+  const rows = reports.map(r => {
+    const days = daysFromToday(r.d);
+    let chip;
+    if (days === null)    chip = `<span class="rpt-chip rpt-chip-grey">—</span>`;
+    else if (days === 0)  chip = `<span class="rpt-chip rpt-chip-hot">today</span>`;
+    else if (days <= 3)   chip = `<span class="rpt-chip rpt-chip-hot">in ${days}d</span>`;
+    else if (days <= 14)  chip = `<span class="rpt-chip rpt-chip-warm">in ${days}d</span>`;
+    else                  chip = `<span class="rpt-chip rpt-chip-cool">in ${days}d</span>`;
+    return `<a class="rpt-row" href="${r.url}" target="_blank" rel="noopener">
+      <div class="rpt-ico">${r.ico}</div>
+      <div class="rpt-main">
+        <div class="rpt-name">${escapeHtml(r.name)} ${chip}</div>
+        <div class="rpt-date">${fmtReportDate(r.d)}</div>
+        <div class="rpt-note">${escapeHtml(r.note)}</div>
+      </div>
+      <div class="rpt-arrow">↗</div>
+    </a>`;
+  }).join("");
+  return `<div class="weekly-card rpt-card" id="usdaReportsCard">
+    <div class="weekly-card-header">
+      <div>
+        <div class="weekly-card-title">📡 USDA Report Calendar</div>
+        <div class="weekly-card-meta">Upcoming market-moving releases · soonest first</div>
+      </div>
+    </div>
+    <div class="rpt-list">${rows}</div>
+    <div class="rpt-foot">💡 Cattle on Feed (3rd Friday) is the report most likely to move feeder cattle prices. Watch placements vs. trade estimate — a "bearish" report can knock $2–3/cwt off futures Monday morning.</div>
+  </div>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MARKET TAB SUB-NAV — sticky chip nav at the top of the long market tab.
+// ──────────────────────────────────────────────────────────────────────────────
+const MARKET_NAV = [
+  { id:"wheelerCattle",     label:"Wheeler" },
+  { id:"weeklyMarketCard",  label:"MDA Weekly" },
+  { id:"weeklyHistoryCard", label:"History" },
+  { id:"futuresCard",       label:"Futures" },
+  { id:"breakEvenCard",     label:"Break-Even" },
+  { id:"herdCalendarCard",  label:"Herd Calendar" },
+  { id:"usdaReportsCard",   label:"USDA Reports" },
+  { id:"hayDroughtCard",    label:"Hay & Drought" },
+  { id:"cullSaleCard",      label:"Sale Barns" }
+];
+function renderMarketSubNav() {
+  const chips = MARKET_NAV.map(n =>
+    `<button class="market-nav-chip" data-jump-to="${escapeHtml(n.id)}">${escapeHtml(n.label)}</button>`
+  ).join("");
+  return `<div class="market-subnav" id="marketSubNav"><div class="market-subnav-inner">${chips}</div></div>`;
+}
+function wireMarketSubNav() {
+  const nav = document.getElementById("marketSubNav");
+  if (!nav) return;
+  nav.querySelectorAll(".market-nav-chip").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-jump-to");
+      // The cattle card is rendered with class .outdoor-card.cattle — give it the right ID
+      let el = document.getElementById(id);
+      if (!el && id === "wheelerCattle") el = document.querySelector(".outdoor-card.cattle");
+      if (el) {
+        const y = el.getBoundingClientRect().top + window.scrollY - 60;
+        window.scrollTo({ top:y, behavior:"smooth" });
       }
     });
   });
@@ -4618,7 +5561,8 @@ async function loadGarden(force) {
 }
 
 // ========== MARKET TAB ==========
-// Cattle Market summary card + Weekly Cattle Market PDF data card. No news feed.
+// Order: Wheeler cattle card → MDA weekly summary (improved) → 6-month history →
+// CME futures → break-even calculator → hay & drought → sale barns & cull cows.
 async function loadMarket(force) {
   listEl.innerHTML = "";
   statusEl.style.display = "none";
@@ -4627,22 +5571,45 @@ async function loadMarket(force) {
   const wrap = document.createElement("div");
   const renderMarket = (records) => {
     wrap.innerHTML =
+      renderMarketSubNav() +
       '<div class="outdoor-news-header" style="margin-top:4px">🐄 Missouri Cattle Markets</div>' +
       renderCattleMarketCard() +
-      renderWeeklyMarketCard(records || []);
+      renderWeeklyMarketCard(records || []) +
+      renderWeeklyHistoryCard(records || []) +
+      renderFuturesCard() +
+      renderBreakEvenCard(records || []) +
+      renderHerdCalendarCard() +
+      renderUsdaReportsCard() +
+      renderHayDroughtCard() +
+      renderCullSaleCard();
   };
   renderMarket([]);
   listEl.appendChild(wrap);
+  // Tag the Wheeler card so the sub-nav can jump to it (it doesn't have an id by default)
+  const wheelerEl = wrap.querySelector(".outdoor-card.cattle");
+  if (wheelerEl && !wheelerEl.id) wheelerEl.id = "wheelerCattle";
+  wireMarketSubNav();
   wireCattleMarket();
   wireWeeklyMarket();
+  wireFuturesCard();
+  wireBreakEvenCard([]);
+  wireHerdCalendarCard();
+  wireHayDroughtCard();
   // Pull cattle history from KV on first load so all browsers stay in sync
   syncCattleHistoryFromKV();
 
   try {
     const records = await fetchWeeklyData();
     renderMarket(records);
+    const wheelerEl2 = wrap.querySelector(".outdoor-card.cattle");
+    if (wheelerEl2 && !wheelerEl2.id) wheelerEl2.id = "wheelerCattle";
+    wireMarketSubNav();
     wireCattleMarket();
     wireWeeklyMarket();
+    wireFuturesCard();
+    wireBreakEvenCard(records);
+    wireHerdCalendarCard();
+    wireHayDroughtCard();
   } catch {}
 }
 

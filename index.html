@@ -607,16 +607,25 @@
   /* ── Sale barns + cull cow ── */
   .sale-section-label { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; }
   .sale-barn-list { display:flex; flex-direction:column; gap:6px; }
-  .sale-barn-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--card-hover); border:1px solid var(--border); border-radius:8px; text-decoration:none; color:var(--text); transition:border-color .15s,background .15s; }
+  .sale-barn-row { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:var(--card-hover); border:1px solid var(--border); border-radius:8px; color:var(--text); transition:border-color .15s,background .15s; }
   .sale-barn-row:hover { border-color:color-mix(in srgb,#2d5a1b 35%,var(--border)); background:color-mix(in srgb,#2d5a1b 4%,var(--card-hover)); }
+  .sale-barn-row.is-buddy { border-color:color-mix(in srgb,#c49b3f 40%,var(--border)); background:color-mix(in srgb,#c49b3f 5%,var(--card-hover)); }
+  [data-theme="dark"] .sale-barn-row.is-buddy { border-color:color-mix(in srgb,#d4af5c 35%,var(--border)); background:color-mix(in srgb,#d4af5c 8%,var(--card-hover)); }
   .sale-barn-main { flex:1; min-width:0; }
-  .sale-barn-name { font-size:13px; font-weight:700; color:var(--text); margin-bottom:2px; }
+  .sale-barn-name { display:block; font-size:13px; font-weight:700; color:var(--text); margin-bottom:2px; text-decoration:none; }
+  .sale-barn-name:hover { color:#2d5a1b; }
+  [data-theme="dark"] .sale-barn-name:hover { color:#7ec850; }
   .sale-barn-tag { display:inline-block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:1px 6px; border-radius:999px; background:color-mix(in srgb,#c49b3f 20%,var(--bg)); color:#8a5a00; margin-left:4px; }
   [data-theme="dark"] .sale-barn-tag { background:color-mix(in srgb,#d4af5c 25%,var(--bg)); color:#d4af5c; }
   .sale-barn-city { font-size:11.5px; color:var(--text-muted); }
   .sale-barn-city strong { color:var(--text); font-weight:700; }
   .sale-barn-note { font-size:11px; color:var(--text-muted); margin-top:2px; font-style:italic; }
-  .sale-barn-arrow { color:var(--text-muted); font-size:14px; flex-shrink:0; }
+  .sale-barn-report-link { display:inline-block; margin-top:5px; font-size:11.5px; color:#2d5a1b; text-decoration:none; font-weight:600; padding:2px 0; }
+  [data-theme="dark"] .sale-barn-report-link { color:#7ec850; }
+  .sale-barn-report-link:hover { text-decoration:underline; }
+  .sale-barn-arrow { color:var(--text-muted); font-size:14px; flex-shrink:0; text-decoration:none; padding:2px 4px; }
+  .sale-barn-arrow:hover { color:#2d5a1b; }
+  [data-theme="dark"] .sale-barn-arrow:hover { color:#7ec850; }
   .cull-class-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px; }
   .cull-class { padding:10px 12px; background:var(--card-hover); border:1px solid var(--border); border-radius:8px; }
   .cull-class-name { font-size:13px; font-weight:700; color:var(--text); margin-bottom:2px; }
@@ -4020,8 +4029,15 @@ async function wireFuturesCard() {
 // (D0 abnormal → D4 exceptional) and show this week's snapshot.
 // ──────────────────────────────────────────────────────────────────────────────
 const USDM_API = "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByAreaPercent";
-const HAY_REPORT_URL = "https://www.ams.usda.gov/mnreports/ams_3645.pdf"; // USDA Missouri Weekly Hay Report
-const HAY_REPORT_BACKUP = "https://mymarketnews.ams.usda.gov/viewReport/2754"; // searchable archive
+// USDA AMS hay reports — verified Apr 2026:
+//   ams_2929.pdf = Missouri Direct Hay Report (statewide, weekly, asks/offers across qualities + bale types)
+//   ams_3723.pdf = Southwest Missouri Hay Auction (Golden City, MO — closest auction to Osceola/Wheeler)
+//   viewReport/2929 = interactive portal w/ archive going back years
+//   /market-news/hay-reports = browse all states / report types
+const HAY_REPORT_MO         = "https://www.ams.usda.gov/mnreports/ams_2929.pdf";
+const HAY_REPORT_SWMO       = "https://www.ams.usda.gov/mnreports/ams_3723.pdf";
+const HAY_REPORT_PORTAL     = "https://mymarketnews.ams.usda.gov/viewReport/2929";
+const HAY_REPORT_BROWSE_ALL = "https://www.ams.usda.gov/market-news/hay-reports";
 
 function renderHayDroughtCard() {
   // The USDM "current_mo_trd.png" is the official MO drought map image — it
@@ -4050,11 +4066,13 @@ function renderHayDroughtCard() {
         <div class="hay-tile-foot" id="hayDroughtFoot">Updates every Thursday · D0 = abnormally dry · D4 = exceptional drought</div>
       </div>
       <div class="hay-tile hay-prices">
-        <div class="hay-tile-label">USDA MO Weekly Hay Report</div>
-        <div class="hay-prices-body">Large round bale prices, small squares, and alfalfa for MO auctions — published Wednesdays by USDA AMS.</div>
+        <div class="hay-tile-label">USDA AMS Hay Reports — MO</div>
+        <div class="hay-prices-body">Live prices for alfalfa, mixed grass, large rounds, small squares — direct off the latest USDA AMS reports.</div>
         <div class="hay-links">
-          <a class="hay-link" href="${HAY_REPORT_URL}" target="_blank" rel="noopener">📄 Latest PDF report</a>
-          <a class="hay-link" href="${HAY_REPORT_BACKUP}" target="_blank" rel="noopener">🗂️ Archive (search by week)</a>
+          <a class="hay-link" href="${HAY_REPORT_MO}" target="_blank" rel="noopener">📄 Missouri Direct Hay Report (statewide weekly)</a>
+          <a class="hay-link" href="${HAY_REPORT_SWMO}" target="_blank" rel="noopener">🏪 Southwest MO Hay Auction — Golden City</a>
+          <a class="hay-link" href="${HAY_REPORT_PORTAL}" target="_blank" rel="noopener">🗂️ Archive · view past weeks</a>
+          <a class="hay-link" href="${HAY_REPORT_BROWSE_ALL}" target="_blank" rel="noopener">🌐 All USDA hay reports (by state)</a>
         </div>
       </div>
     </div>
@@ -4205,12 +4223,15 @@ async function wireHayDroughtCard() {
 // Static list of nearby MO sale barns and a quick cull-cow class reference.
 // Real-time cull cow $/cwt comes from the MDA weekly when present in narrative.
 // ──────────────────────────────────────────────────────────────────────────────
+// Ordered by drive time from Clinton, MO (Henry Co.) — closest first.
+// buddy:true gets the ★ buddy's barn tag in the UI.
 const NEARBY_BARNS = [
-  { name:"Wheeler Livestock",        city:"Osceola, MO",         day:"Tuesdays",     url:"https://www.wheelerlivestock.com/market-report-1", note:"Matt's buddy's barn" },
-  { name:"Joplin Regional Stockyards", city:"Carthage, MO",        day:"Mon · Wed",    url:"https://www.joplinstockyards.com/",                note:"One of the largest in the region" },
-  { name:"South Central Regional Stockyards", city:"Vienna, MO",   day:"Wednesdays",   url:"https://www.scrslivestock.com/",                   note:"Central MO" },
-  { name:"Springfield Livestock Marketing Center", city:"Springfield, MO", day:"Wednesdays", url:"https://www.springfieldlivestock.com/",       note:"SW MO" },
-  { name:"I-70 Livestock Auction",    city:"Sweet Springs, MO",   day:"Tuesdays",     url:"https://www.i70livestock.com/",                    note:"West-central MO" }
+  { name:"Wheeler Livestock",                city:"Osceola, MO · ~30 min S",       day:"Tuesdays",       url:"https://www.wheelerlivestock.com/market-report-1", buddy:true,  note:"Where one of your buddies sells" },
+  { name:"Central Missouri Sales Company",   city:"Sedalia, MO · ~40 min N",       day:"Mondays 11 am",  url:"https://centralmissourisales.com/",                buddy:false, note:"Pettis Co. — closest big auction north" },
+  { name:"Kingsville Livestock Auction",     city:"Kingsville, MO · ~50 min NW",   day:"Tuesdays",       url:"https://kingsvillelivestock.com/",                 buddy:true,  reportUrl:"https://www.ams.usda.gov/mnreports/ams_1815.pdf", note:"Where your other buddy sells · USDA weighted-avg report linked" },
+  { name:"I-70 Livestock Auction",           city:"Sweet Springs, MO · ~1 hr NW",  day:"Tuesdays",       url:"https://www.i70livestock.com/",                    buddy:false, note:"Saline Co. · west-central MO" },
+  { name:"Joplin Regional Stockyards",       city:"Carthage, MO · ~1.5 hr SW",     day:"Mon · Wed",      url:"https://www.joplinstockyards.com/",                buddy:false, note:"One of the largest in the region — worth the haul for big drafts" },
+  { name:"South Central Regional Stockyards",city:"Vienna, MO · ~1.5 hr E",        day:"Wednesdays",     url:"https://scrsvienna.com/",                          buddy:false, note:"Central MO" }
 ];
 
 const CULL_CLASSES = [
@@ -4221,14 +4242,15 @@ const CULL_CLASSES = [
 
 function renderCullSaleCard() {
   const barns = NEARBY_BARNS.map(b => `
-    <a class="sale-barn-row" href="${b.url}" target="_blank" rel="noopener">
+    <div class="sale-barn-row${b.buddy ? " is-buddy" : ""}" data-barn-url="${escapeHtml(b.url)}">
       <div class="sale-barn-main">
-        <div class="sale-barn-name">${escapeHtml(b.name)}${b.note && b.note.indexOf("buddy") >= 0 ? ' <span class="sale-barn-tag">★ your barn</span>' : ""}</div>
+        <a class="sale-barn-name" href="${b.url}" target="_blank" rel="noopener">${escapeHtml(b.name)}${b.buddy ? ' <span class="sale-barn-tag">★ buddy\'s barn</span>' : ""}</a>
         <div class="sale-barn-city">${escapeHtml(b.city)} · sale day: <strong>${escapeHtml(b.day)}</strong></div>
-        ${b.note && b.note.indexOf("buddy") < 0 ? `<div class="sale-barn-note">${escapeHtml(b.note)}</div>` : ""}
+        ${b.note ? `<div class="sale-barn-note">${escapeHtml(b.note)}</div>` : ""}
+        ${b.reportUrl ? `<a class="sale-barn-report-link" href="${b.reportUrl}" target="_blank" rel="noopener">📄 USDA AMS weekly report (PDF)</a>` : ""}
       </div>
-      <div class="sale-barn-arrow">↗</div>
-    </a>`).join("");
+      <a class="sale-barn-arrow" href="${b.url}" target="_blank" rel="noopener" aria-label="Open ${escapeHtml(b.name)}">↗</a>
+    </div>`).join("");
   const classes = CULL_CLASSES.map(c => `
     <div class="cull-class">
       <div class="cull-class-name">${escapeHtml(c.name)}</div>

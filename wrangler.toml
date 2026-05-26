@@ -21,8 +21,13 @@ id = "0f86e3f7503f41279b0af5e8f132cacd"
 #   "0 15 * * 1"  →  every Monday   at 15:00 UTC  =  9 am CST / 10 am CDT
 #                    Missouri Dept of Agriculture posts the new weekly summary PDF Monday morning.
 #
+#   "0 18 * * 2"  →  every Tuesday  at 18:00 UTC  =  noon CST / 1 pm CDT
+#                    Backup pull — catches reports that drop late on holiday weeks
+#                    (Memorial Day, Labor Day, etc. when MDA is closed Monday).
+#                    Safe to run weekly: it's a no-op if Monday already grabbed it.
+#
 [triggers]
-crons = ["0 21 * * 5", "0 15 * * 1"]
+crons = ["0 21 * * 5", "0 15 * * 1", "0 18 * * 2"]
 
 # ── Secrets (set in Cloudflare dashboard or via wrangler secret put) ──────────
 # ANTHROPIC_API_KEY  — Claude API key for PDF parsing and cattle price OCR

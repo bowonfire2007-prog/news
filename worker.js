@@ -43,21 +43,64 @@ async function runWheelerScheduled(env, ctx) {
   } catch (_) {}
 }
 
-// Monday ~9am CST: download Missouri weekly PDF, extract with Claude, save to KV.
-const MO_WEEKLY_PDF_URL = "https://agriculture.mo.gov/Market/pdf/weeklysummary.pdf";
+// Monday ~9am CST: download newest Missouri weekly PDF, extract with Claude, save to KV.
+//
+// IMPORTANT — why we don't just hit /Market/pdf/weeklysummary.pdf:
+// MDA stopped updating that "latest" alias around April 6, 2026. It still
+// serves the April 6 report no matter what. Real reports now live at dated
+// URLs only — e.g. /Market/pdf/2026_0518.pdf. To find the newest one we
+// scrape the archive index page, which DOES update reliably.
+const MO_WEEKLY_LATEST_URL  = "https://agriculture.mo.gov/Market/pdf/weeklysummary.pdf";
+const MO_ARCHIVE_URL_FMT    = "https://agriculture.mo.gov/abd/wklymarketarchive.php?cyear=";
 
-async function runMissouriScheduled(env, ctx) {
+// Scrape the archive page → return dated PDF URLs, newest first, plus the
+// legacy "latest" URL as a final fallback.
+async function findMoWeeklyPdfUrls() {
+  const urls = [];
+  const seen = new Set();
+  const tryYear = async (year) => {
+    try {
+      const res = await fetch(MO_ARCHIVE_URL_FMT + year, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; MoMarketBot/1.0)" }
+      });
+      if (!res.ok) return;
+      const html = await res.text();
+      // Match /Market/pdf/YYYY_MMDD.pdf entries. MDA lists newest-first.
+      const re = /\/Market\/pdf\/(20\d{2})_(\d{4})\.pdf/g;
+      let m;
+      while ((m = re.exec(html)) !== null) {
+        const full = "https://agriculture.mo.gov" + m[0];
+        if (!seen.has(full)) { seen.add(full); urls.push(full); }
+      }
+    } catch (_) {}
+  };
+  // Try current year, then previous (handles early-January rollover where
+  // the new year's archive may not yet have the late-December report).
+  const now = new Date();
+  await tryYear(now.getFullYear());
+  if (now.getMonth() === 0) await tryYear(now.getFullYear() - 1);
+  // Final fallback — the legacy "latest" URL. Usually stale but no harm in trying.
+  if (!seen.has(MO_WEEKLY_LATEST_URL)) urls.push(MO_WEEKLY_LATEST_URL);
+  return urls;
+}
+
+// Parse the dated URL pattern /YYYY_MMDD.pdf → "YYYY-MM-DD". Returns null on
+// the legacy URL (which has no date hint).
+function isoDateFromMoUrl(url) {
+  const m = url && url.match(/\/(20\d{2})_(\d{2})(\d{2})\.pdf$/);
+  return m ? (m[1] + "-" + m[2] + "-" + m[3]) : null;
+}
+
+// Send a single PDF to Claude → extract → save to KV. Returns the saved date
+// on success, or null on any failure.
+async function extractAndSaveMoWeekly(pdfUrl, env) {
   try {
-    if (!env.ANTHROPIC_API_KEY || !env.WEEKLY_KV) return;
-
-    // Download the PDF
-    const pdfRes = await fetch(MO_WEEKLY_PDF_URL, {
+    const pdfRes = await fetch(pdfUrl, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; MoMarketBot/1.0)" }
     });
-    if (!pdfRes.ok) return;
+    if (!pdfRes.ok) return null;
     const pdfBase64 = arrayBufferToBase64(await pdfRes.arrayBuffer());
 
-    // Call Claude to extract market data (same prompt as handleWeeklyUpload)
     const model = env.AI_MODEL || "claude-sonnet-4-5";
     const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -103,7 +146,7 @@ Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY 
         }]
       })
     });
-    if (!claudeRes.ok) return;
+    if (!claudeRes.ok) return null;
 
     const claudeData = await claudeRes.json();
     const rawText = (claudeData.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
@@ -111,11 +154,10 @@ Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY 
     try {
       const cleaned = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
       extracted = JSON.parse(cleaned);
-    } catch { return; }
-    if (!extracted.report_date || !/^\d{4}-\d{2}-\d{2}$/.test(extracted.report_date)) return;
+    } catch { return null; }
+    if (!extracted.report_date || !/^\d{4}-\d{2}-\d{2}$/.test(extracted.report_date)) return null;
 
-    // Save to KV (same keys as handleWeeklyUpload)
-    const record = { ...extracted, uploaded_at: new Date().toISOString(), model, source: "scheduled" };
+    const record = { ...extracted, uploaded_at: new Date().toISOString(), model, source: "scheduled", pdf_url: pdfUrl };
     const kvKey = "weekly:" + extracted.report_date;
     await env.WEEKLY_KV.put(kvKey, JSON.stringify(record), { expirationTtl: 4 * 365 * 24 * 3600 });
 
@@ -126,9 +168,72 @@ Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY 
       index.sort();
       await env.WEEKLY_KV.put("weekly:index", JSON.stringify(index), { expirationTtl: 4 * 365 * 24 * 3600 });
     }
-    // Bust the /weeklydata edge cache so browsers see the new data immediately
     await caches.default.delete(new Request("https://weeklydata-cache.local/v1/limit=300"));
+    return extracted.report_date;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function runMissouriScheduled(env, ctx) {
+  try {
+    if (!env.ANTHROPIC_API_KEY || !env.WEEKLY_KV) return;
+
+    // Snapshot the index up-front so we can skip URLs whose date we already have.
+    const indexRaw = await env.WEEKLY_KV.get("weekly:index");
+    const index = indexRaw ? JSON.parse(indexRaw) : [];
+    const knownDates = new Set(index);
+
+    const urls = await findMoWeeklyPdfUrls();
+    // Walk newest-first. Skip URLs whose date is already in KV. Stop at the
+    // first successful new save — no need to re-fetch every older report.
+    for (const pdfUrl of urls) {
+      const urlDate = isoDateFromMoUrl(pdfUrl);
+      if (urlDate && knownDates.has(urlDate)) continue;
+      const savedDate = await extractAndSaveMoWeekly(pdfUrl, env);
+      if (savedDate && !knownDates.has(savedDate)) return; // new report saved, done
+    }
   } catch (_) {}
+}
+
+// Manual-trigger HTTP endpoint. Hit GET /weeklyrefresh to force a fetch.
+// Returns JSON detailing what was tried + what got saved, so you can debug
+// without staring at Cloudflare's cron logs.
+async function handleWeeklyRefresh(request, env, ctx) {
+  if (!env.ANTHROPIC_API_KEY || !env.WEEKLY_KV) {
+    return jsonResponse({ error: "ANTHROPIC_API_KEY or WEEKLY_KV not configured" }, 500);
+  }
+  const indexRaw = await env.WEEKLY_KV.get("weekly:index");
+  const index = indexRaw ? JSON.parse(indexRaw) : [];
+  const knownDates = new Set(index);
+
+  const urls = await findMoWeeklyPdfUrls();
+  const tried = [];
+  let saved = null;
+
+  for (const pdfUrl of urls) {
+    const urlDate = isoDateFromMoUrl(pdfUrl);
+    if (urlDate && knownDates.has(urlDate)) {
+      tried.push({ url: pdfUrl, urlDate, action: "skipped-already-have" });
+      continue;
+    }
+    const savedDate = await extractAndSaveMoWeekly(pdfUrl, env);
+    if (savedDate && !knownDates.has(savedDate)) {
+      tried.push({ url: pdfUrl, urlDate, savedDate, action: "saved-new" });
+      saved = savedDate;
+      break;
+    } else if (savedDate) {
+      tried.push({ url: pdfUrl, urlDate, savedDate, action: "claude-returned-known-date" });
+    } else {
+      tried.push({ url: pdfUrl, urlDate, action: "fetch-or-parse-failed" });
+    }
+  }
+  return jsonResponse({
+    saved,
+    discovered_urls: urls.length,
+    already_known_dates: index.length,
+    attempts: tried
+  }, 200);
 }
 
 
@@ -168,6 +273,12 @@ export default {
     if (url.pathname === "/weeklydata") {
       return handleWeeklyData(url, env, ctx);
     }
+    if (url.pathname === "/weeklyrefresh") {
+      // Manual trigger — runs the same logic as the Monday cron. Hit this URL
+      // from a browser any time you want to force-pull the newest MDA report.
+      // Returns JSON listing every URL the worker tried + what date got saved.
+      return handleWeeklyRefresh(request, env, ctx);
+    }
     if (url.pathname === "/watertemp") {
       return handleWaterTemp(url, ctx);
     }
@@ -184,10 +295,12 @@ export default {
   // Schedules (UTC — Missouri is CST = UTC-6, CDT = UTC-5):
   //   "0 21 * * 5"  →  Friday   3 pm CST / 4 pm CDT  — Wheeler auto-fetch
   //   "0 15 * * 1"  →  Monday   9 am CST / 10 am CDT  — Missouri weekly report
+  //   "0 18 * * 2"  →  Tuesday  noon CST / 1 pm CDT  — backup pull (holiday weeks)
   async scheduled(event, env, ctx) {
     const cron = event.cron;
     if (cron === "0 21 * * 5") ctx.waitUntil(runWheelerScheduled(env, ctx));
     if (cron === "0 15 * * 1") ctx.waitUntil(runMissouriScheduled(env, ctx));
+    if (cron === "0 18 * * 2") ctx.waitUntil(runMissouriScheduled(env, ctx));
   }
 };
 

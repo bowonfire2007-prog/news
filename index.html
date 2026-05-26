@@ -589,6 +589,15 @@
   .hay-bar { display:flex; width:100%; height:100%; }
   .hay-bar-seg { display:block; height:100%; }
   .hay-tile-foot { font-size:10.5px; color:var(--text-muted); margin-top:6px; line-height:1.4; }
+  .hay-bar-legend { display:flex; flex-wrap:wrap; gap:8px 12px; margin-top:6px; }
+  .hay-leg-item { display:inline-flex; align-items:center; gap:4px; font-size:10.5px; color:var(--text-muted); font-weight:600; font-variant-numeric:tabular-nums; }
+  .hay-leg-dot { width:8px; height:8px; border-radius:2px; display:inline-block; }
+  .hay-map-link { display:block; margin-top:10px; border-radius:8px; overflow:hidden; text-decoration:none; color:inherit; border:1px solid var(--border); background:#fff; transition:border-color .15s; }
+  [data-theme="dark"] .hay-map-link { background:#1a1a1a; }
+  .hay-map-link:hover { border-color:color-mix(in srgb,#2d5a1b 35%,var(--border)); }
+  .hay-map-img { display:block; width:100%; height:auto; max-height:200px; object-fit:contain; background:#fff; }
+  [data-theme="dark"] .hay-map-img { background:#fff; } /* keep the chart legible in dark mode */
+  .hay-map-cap { font-size:10.5px; color:var(--text-muted); padding:5px 8px; text-align:center; background:var(--card-hover); }
   .hay-prices-body { font-size:12.5px; color:var(--text); line-height:1.5; margin-bottom:8px; }
   .hay-links { display:flex; flex-direction:column; gap:5px; }
   .hay-link { display:inline-block; font-size:12.5px; color:#2d5a1b; text-decoration:none; font-weight:600; padding:5px 0; }
@@ -4015,6 +4024,12 @@ const HAY_REPORT_URL = "https://www.ams.usda.gov/mnreports/ams_3645.pdf"; // USD
 const HAY_REPORT_BACKUP = "https://mymarketnews.ams.usda.gov/viewReport/2754"; // searchable archive
 
 function renderHayDroughtCard() {
+  // The USDM "current_mo_trd.png" is the official MO drought map image — it
+  // updates every Thursday and is the most reliable visual reference. Render
+  // it directly (img loads bypass CORS). The numeric % breakdown comes from
+  // the CSV API and may take a moment or fail; the image is the safety net.
+  const mapImg = "https://droughtmonitor.unl.edu/data/png/current/current_mo_trd.png";
+  const mapLink = "https://droughtmonitor.unl.edu/CurrentMap/StateDroughtMonitor.aspx?MO";
   return `<div class="weekly-card hay-card" id="hayDroughtCard">
     <div class="weekly-card-header">
       <div>
@@ -4025,9 +4040,14 @@ function renderHayDroughtCard() {
     <div class="hay-grid">
       <div class="hay-tile hay-drought" id="hayDroughtTile">
         <div class="hay-tile-label">U.S. Drought Monitor — MO</div>
-        <div class="hay-tile-status"><span class="spinner" style="width:13px;height:13px"></span> Loading USDM data…</div>
-        <div class="hay-bar-wrap"><div class="hay-bar" id="hayDroughtBar"></div></div>
-        <div class="hay-tile-foot" id="hayDroughtFoot">D0 = abnormally dry · D4 = exceptional drought</div>
+        <div class="hay-tile-status" id="hayDroughtStatus"><span class="spinner" style="width:13px;height:13px"></span> Loading current drought conditions…</div>
+        <div class="hay-bar-wrap" id="hayDroughtBarWrap" style="display:none"><div class="hay-bar" id="hayDroughtBar"></div></div>
+        <div class="hay-bar-legend" id="hayDroughtLegend" style="display:none"></div>
+        <a href="${mapLink}" target="_blank" rel="noopener" class="hay-map-link">
+          <img class="hay-map-img" src="${mapImg}" alt="MO Drought Monitor trend chart" loading="lazy" referrerpolicy="no-referrer">
+          <div class="hay-map-cap">Official USDM MO trend chart — tap to view live map ↗</div>
+        </a>
+        <div class="hay-tile-foot" id="hayDroughtFoot">Updates every Thursday · D0 = abnormally dry · D4 = exceptional drought</div>
       </div>
       <div class="hay-tile hay-prices">
         <div class="hay-tile-label">USDA MO Weekly Hay Report</div>
@@ -4041,35 +4061,108 @@ function renderHayDroughtCard() {
   </div>`;
 }
 
+// Parse the USDM CSV response. Handles quoted fields and trims values.
+function parseUsdmCsv(text) {
+  if (!text || typeof text !== "string") return [];
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const splitRow = (row) => {
+    const cells = [];
+    let cur = "", inQ = false;
+    for (let i = 0; i < row.length; i++) {
+      const c = row[i];
+      if (c === '"') { inQ = !inQ; continue; }
+      if (c === "," && !inQ) { cells.push(cur); cur = ""; continue; }
+      cur += c;
+    }
+    cells.push(cur);
+    return cells.map(s => s.trim());
+  };
+  const headers = splitRow(lines[0]);
+  return lines.slice(1).map(line => {
+    const cells = splitRow(line);
+    const row = {};
+    headers.forEach((h, i) => { row[h] = cells[i]; });
+    return row;
+  });
+}
+
 async function wireHayDroughtCard() {
   const tile = document.getElementById("hayDroughtTile");
   if (!tile) return;
-  const statusEl = tile.querySelector(".hay-tile-status");
+  const statusEl = tile.querySelector("#hayDroughtStatus");
+  const barWrap  = tile.querySelector("#hayDroughtBarWrap");
   const barEl    = tile.querySelector("#hayDroughtBar");
+  const legendEl = tile.querySelector("#hayDroughtLegend");
   const footEl   = tile.querySelector("#hayDroughtFoot");
-  // USDM API needs a date range — pull the last 14 days and take the most recent.
+
+  // USDM API:
+  //   - expects M/D/YYYY (no zero-padding, no leading zeros)
+  //   - returns CSV by default — Content-Type: text/csv
+  //   - "statisticsType=1" = cumulative percent (D0 includes D1+D2+...)
+  // Pull a 21-day window so we land at least one weekly map even right after
+  // Wednesday (USDM publishes Thursdays).
   const endD   = new Date();
-  const startD = new Date(Date.now() - 14 * 86400000);
-  const fmt = d => d.toISOString().slice(0, 10).replace(/-/g, "/");
+  const startD = new Date(Date.now() - 21 * 86400000);
+  const slashFmt = d => (d.getMonth() + 1) + "/" + d.getDate() + "/" + d.getFullYear();
   const url = USDM_API
-    + "?aoi=MO&startdate=" + fmt(startD) + "&enddate=" + fmt(endD)
+    + "?aoi=MO"
+    + "&startdate=" + encodeURIComponent(slashFmt(startD))
+    + "&enddate="   + encodeURIComponent(slashFmt(endD))
     + "&statisticsType=1";
+
   try {
     const txt = await fetchTextThroughProxies(url);
-    const data = JSON.parse(txt);
-    if (!Array.isArray(data) || data.length === 0) throw new Error("no USDM rows");
-    // Take latest by MapDate
-    data.sort((a, b) => (a.MapDate || "").localeCompare(b.MapDate || ""));
-    const latest = data[data.length - 1];
-    // Categories are cumulative in USDM: D0 includes D1, D1 includes D2, etc.
-    // We invert to non-overlapping % for the bar.
+    if (!txt || !txt.trim()) throw new Error("empty USDM response");
+
+    // Response is CSV — sometimes a proxy wraps it in JSON envelope ({contents:"..."}).
+    let csv = txt.trim();
+    if (csv.startsWith("{") || csv.startsWith("[")) {
+      try {
+        const j = JSON.parse(csv);
+        if (j && typeof j.contents === "string") csv = j.contents;
+        else if (Array.isArray(j) && j.length && typeof j[0] === "object") {
+          // Already-parsed JSON array (some proxies do this) — synthesize a CSV-like row set
+          const rows = j;
+          rows.sort((a, b) => (a.MapDate || "").localeCompare(b.MapDate || ""));
+          renderUsdmRow(rows[rows.length - 1]);
+          return;
+        }
+      } catch {}
+    }
+
+    const rows = parseUsdmCsv(csv);
+    if (!rows.length) throw new Error("no rows parsed from CSV");
+
+    // Pick the row with the latest MapDate (sometimes YYYYMMDD, sometimes M/D/YYYY)
+    rows.sort((a, b) => {
+      const ka = (a.MapDate || a.ValidEnd || "").replace(/\D/g, "");
+      const kb = (b.MapDate || b.ValidEnd || "").replace(/\D/g, "");
+      return ka.localeCompare(kb);
+    });
+    renderUsdmRow(rows[rows.length - 1]);
+
+  } catch (e) {
+    // API failed — keep the image, just simplify the status text
+    statusEl.innerHTML = '<span style="color:var(--text-muted)">Live USDM numbers unavailable — see the trend chart below for current MO conditions.</span>';
+    if (barWrap) barWrap.style.display = "none";
+    footEl.textContent = "Image updates every Thursday from droughtmonitor.unl.edu";
+  }
+
+  function renderUsdmRow(latest) {
+    if (!latest) {
+      statusEl.innerHTML = '<span style="color:var(--text-muted)">No recent USDM data for MO.</span>';
+      return;
+    }
+    // USDM "cumulative" stats: D0 includes everything D0+ (so D0 ≥ D1 ≥ D2 …).
+    // Invert to non-overlapping percentages for the bar.
     const d0 = parseFloat(latest.D0) || 0;
     const d1 = parseFloat(latest.D1) || 0;
     const d2 = parseFloat(latest.D2) || 0;
     const d3 = parseFloat(latest.D3) || 0;
     const d4 = parseFloat(latest.D4) || 0;
-    const none = parseFloat(latest.None);
-    const pNone = isFinite(none) ? none : Math.max(0, 100 - d0);
+    const noneRaw = parseFloat(latest.None);
+    const pNone = isFinite(noneRaw) ? noneRaw : Math.max(0, 100 - d0);
     const pD0 = Math.max(0, d0 - d1);
     const pD1 = Math.max(0, d1 - d2);
     const pD2 = Math.max(0, d2 - d3);
@@ -4086,19 +4179,24 @@ async function wireHayDroughtCard() {
     barEl.innerHTML = segs.filter(s => s.p > 0.3).map(s =>
       `<span class="hay-bar-seg" style="width:${s.p.toFixed(1)}%;background:${s.c}" title="${s.lbl}: ${s.p.toFixed(1)}%"></span>`
     ).join("");
-    // Pick worst category for headline
+    legendEl.innerHTML = segs.filter(s => s.p > 0.3).map(s =>
+      `<span class="hay-leg-item"><span class="hay-leg-dot" style="background:${s.c}"></span>${s.lbl} ${s.p.toFixed(0)}%</span>`
+    ).join("");
+    barWrap.style.display = "";
+    legendEl.style.display = "";
+
     let headline, color;
     if (pD4 >= 5)       { headline = "Exceptional drought in parts of MO"; color = "#7f1d1d"; }
     else if (pD3 >= 5)  { headline = "Extreme drought across part of MO"; color = "#dc2626"; }
-    else if (pD2 >= 10) { headline = "Severe drought spreading"; color = "#f97316"; }
-    else if (pD1 >= 15) { headline = "Moderate drought in MO"; color = "#d97706"; }
-    else if (d0 >= 20)  { headline = "Abnormally dry conditions"; color = "#ca8a04"; }
-    else                { headline = "MO largely drought-free"; color = "#15803d"; }
+    else if (pD2 >= 10) { headline = "Severe drought spreading";          color = "#f97316"; }
+    else if (pD1 >= 15) { headline = "Moderate drought in MO";            color = "#d97706"; }
+    else if (d0 >= 20)  { headline = "Abnormally dry conditions";         color = "#ca8a04"; }
+    else                { headline = "MO largely drought-free";           color = "#15803d"; }
     statusEl.innerHTML = `<strong style="color:${color}">${headline}</strong> · ${(100 - pNone).toFixed(0)}% of state in D0+`;
-    footEl.textContent = "Map week of " + (latest.MapDate ? String(latest.MapDate).slice(0, 10) : "—") + " · source: U.S. Drought Monitor (NDMC / UNL)";
-  } catch (e) {
-    statusEl.innerHTML = '<span style="color:var(--text-muted)">Couldn\'t reach USDM. <a href="https://droughtmonitor.unl.edu/CurrentMap/StateDroughtMonitor.aspx?MO" target="_blank" rel="noopener" style="color:var(--accent)">View current MO map ↗</a></span>';
-    barEl.innerHTML = "";
+
+    // ValidEnd is the most reliable date field (ISO format)
+    const dateStr = latest.ValidEnd || latest.MapDate || "";
+    footEl.textContent = "Week ending " + dateStr + " · source: U.S. Drought Monitor (NDMC / UNL)";
   }
 }
 

@@ -6024,7 +6024,7 @@ function loadLWC() {
   _lwcPromise = new Promise((resolve, reject) => {
     if (typeof LightweightCharts !== "undefined") { resolve(); return; }
     const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js";
+    s.src = "./lwc.min.js";
     s.onload = resolve; s.onerror = () => reject(new Error("LWC CDN failed"));
     document.head.appendChild(s);
   });

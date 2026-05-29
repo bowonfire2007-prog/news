@@ -745,45 +745,50 @@ async function handleStockQuote(url, env, ctx) {
 }
 
 // GET /stockcandles?ticker=AAPL&range=1Y
-// Returns daily OHLCV candles. Range: 1M=30d, 6M=180d, 1Y=365d, 5Y=1825d.
+// Returns daily OHLCV candles via Yahoo Finance (free, no key required).
+// Range: 1M / 6M / 1Y / 5Y
 async function handleStockCandles(url, env, ctx) {
   const ticker = (url.searchParams.get("ticker") || "").toUpperCase().trim();
   const range  = url.searchParams.get("range") || "1Y";
   if (!ticker) return jsonResponse({ error: "ticker required" }, 400);
-  if (!env.FINNHUB_API_KEY) return jsonResponse({ error: "FINNHUB_API_KEY not set" }, 500);
-
-  const RANGE_DAYS = { "1M": 35, "6M": 185, "1Y": 370, "5Y": 1830 }; // slight padding so edge bars appear
-  const days = RANGE_DAYS[range] || 370;
 
   const cache = caches.default;
-  const cacheReq = new Request("https://stockcandles-cache.local/" + encodeURIComponent(ticker + ":" + range));
+  const cacheReq = new Request("https://stockcandles-cache2.local/" + encodeURIComponent(ticker + ":" + range));
   const cached = await cache.match(cacheReq);
   if (cached) return jsonResponse({ ...(await cached.json()), cached: true });
 
-  const now  = Math.floor(Date.now() / 1000);
-  const from = now - days * 86400;
-  const tok  = env.FINNHUB_API_KEY;
+  // Yahoo Finance chart API — free, no key, supports 1mo/6mo/1y/5y ranges
+  const RANGE_MAP = { "1M": "1mo", "6M": "6mo", "1Y": "1y", "5Y": "5y" };
+  const yhRange = RANGE_MAP[range] || "1y";
+  const yhUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=${yhRange}`;
 
-  // ── Provider: Finnhub /stock/candle (resolution=D for daily) ──
-  // Alpha Vantage swap: GET /query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=TICKER&outputsize=full&apikey=AV_API_KEY
-  // Twelve Data swap:   GET /time_series?symbol=TICKER&interval=1day&outputsize=${days}&apikey=TWELVE_DATA_KEY
-  const res = await fetch(
-    `https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(ticker)}&resolution=D&from=${from}&to=${now}&token=${tok}`
-  );
-  if (!res.ok) return jsonResponse({ error: "Finnhub candles HTTP " + res.status }, 502);
+  const res = await fetch(yhUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept": "application/json, */*"
+    }
+  });
+  if (!res.ok) return jsonResponse({ error: "Yahoo candles HTTP " + res.status }, 502);
 
   const data = await res.json();
-  if (data.s === "no_data" || !Array.isArray(data.t)) {
-    return jsonResponse({ error: "No candle data for " + ticker, status: data.s }, 404);
-  }
+  const r = data?.chart?.result?.[0];
+  if (!r || !r.timestamp) return jsonResponse({ error: "No candle data for " + ticker }, 404);
 
-  // Zip parallel arrays → [{time, open, high, low, close, volume}], sorted by time asc
-  const candles = data.t
-    .map((t, i) => ({ time: t, open: data.o[i], high: data.h[i], low: data.l[i], close: data.c[i], volume: data.v[i] }))
-    .filter(c => c.open && c.close)
+  const q = r.indicators?.quote?.[0] || {};
+  const timestamps = r.timestamp;
+  const candles = timestamps
+    .map((t, i) => ({
+      time:   t,
+      open:   q.open?.[i]   != null ? +q.open[i].toFixed(4)   : null,
+      high:   q.high?.[i]   != null ? +q.high[i].toFixed(4)   : null,
+      low:    q.low?.[i]    != null ? +q.low[i].toFixed(4)     : null,
+      close:  q.close?.[i]  != null ? +q.close[i].toFixed(4)  : null,
+      volume: q.volume?.[i] != null ? Math.round(q.volume[i]) : 0
+    }))
+    .filter(c => c.open != null && c.close != null)
     .sort((a, b) => a.time - b.time);
 
-  const result = { ticker, range, candles, count: candles.length, source: "Finnhub" };
+  const result = { ticker, range, candles, count: candles.length, source: "Yahoo" };
   const cacheRes = new Response(JSON.stringify(result), {
     headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" }
   });
@@ -792,7 +797,7 @@ async function handleStockCandles(url, env, ctx) {
 }
 
 // GET /stocknews?ticker=AAPL
-// Returns last 30 days of company news from Finnhub, capped at 20 items.
+// Returns last 90 days of company news from Finnhub, capped at 50 items.
 async function handleStockNews(url, env, ctx) {
   const ticker = (url.searchParams.get("ticker") || "").toUpperCase().trim();
   if (!ticker) return jsonResponse({ error: "ticker required" }, 400);
@@ -805,7 +810,7 @@ async function handleStockNews(url, env, ctx) {
 
   const now     = new Date();
   const toDate  = now.toISOString().slice(0, 10);
-  const fromDate = new Date(now - 30 * 86400000).toISOString().slice(0, 10);
+  const fromDate = new Date(now - 90 * 86400000).toISOString().slice(0, 10);
   const tok     = env.FINNHUB_API_KEY;
 
   // ── Provider: Finnhub /company-news ──
@@ -818,7 +823,7 @@ async function handleStockNews(url, env, ctx) {
   const data = await res.json();
   if (!Array.isArray(data)) return jsonResponse({ error: "Unexpected response format" }, 502);
 
-  const news = data.slice(0, 20).map(n => ({
+  const news = data.slice(0, 50).map(n => ({
     headline: n.headline,
     summary:  n.summary  || "",
     url:      n.url,

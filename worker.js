@@ -288,6 +288,12 @@ export default {
     if (url.pathname === "/lake-history") {
       return handleLakeHistory(url, env, ctx);
     }
+    // ── Stock Analysis endpoints (Finnhub-backed) ──
+    if (url.pathname === "/stockquote")   return handleStockQuote(url, env, ctx);
+    if (url.pathname === "/stockcandles") return handleStockCandles(url, env, ctx);
+    if (url.pathname === "/stocknews")    return handleStockNews(url, env, ctx);
+    if (url.pathname === "/stockforecast") return handleStockForecast(url, env, ctx);
+    if (url.pathname === "/stockbrief")   return handleStockBrief(request, env, ctx);
     return handleRssProxy(url);
   },
 
@@ -667,6 +673,324 @@ async function handleLakeHistory(url, env, ctx) {
 
   const readings = history.slice(-limit);
   return jsonResponse({ readings, count: readings.length });
+}
+
+// ─────────────── STOCK ANALYSIS (Finnhub) ─────────────────────────────────────
+//
+// Primary data provider: Finnhub (FINNHUB_API_KEY secret).
+// To swap to Alpha Vantage: replace fetch URLs with:
+//   https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=TICKER&apikey=AV_API_KEY
+//   https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=TICKER&outputsize=full&apikey=AV_API_KEY
+// To swap to Twelve Data: replace with:
+//   https://api.twelvedata.com/quote?symbol=TICKER&apikey=TWELVE_DATA_KEY
+//   https://api.twelvedata.com/time_series?symbol=TICKER&interval=1day&outputsize=DAYS&apikey=TWELVE_DATA_KEY
+//
+// All endpoints cache aggressively: quotes 60s, candles 1h, news 2h, forecast 4h, brief 6h.
+
+// GET /stockquote?ticker=AAPL
+// Returns current price, daily change, 52w high/low, company name + industry.
+async function handleStockQuote(url, env, ctx) {
+  const ticker = (url.searchParams.get("ticker") || "").toUpperCase().trim();
+  if (!ticker) return jsonResponse({ error: "ticker required" }, 400);
+  if (!env.FINNHUB_API_KEY) return jsonResponse({ error: "FINNHUB_API_KEY not set" }, 500);
+
+  const cache = caches.default;
+  const cacheReq = new Request("https://stockquote-cache.local/" + encodeURIComponent(ticker));
+  const cached = await cache.match(cacheReq);
+  if (cached) return jsonResponse({ ...(await cached.json()), cached: true });
+
+  const base = "https://finnhub.io/api/v1";
+  const tok  = env.FINNHUB_API_KEY;
+
+  // Fetch quote + company profile + 52w metrics in parallel
+  const [quoteRes, profileRes, metricRes] = await Promise.all([
+    fetch(`${base}/quote?symbol=${encodeURIComponent(ticker)}&token=${tok}`),
+    fetch(`${base}/stock/profile2?symbol=${encodeURIComponent(ticker)}&token=${tok}`),
+    fetch(`${base}/stock/metric?symbol=${encodeURIComponent(ticker)}&metric=all&token=${tok}`)
+  ]);
+
+  if (!quoteRes.ok) return jsonResponse({ error: "Finnhub quote HTTP " + quoteRes.status }, 502);
+  const [quote, profile, metric] = await Promise.all([
+    quoteRes.json(),
+    profileRes.ok ? profileRes.json() : {},
+    metricRes.ok  ? metricRes.json()  : {}
+  ]);
+
+  if (!quote || quote.c == null) return jsonResponse({ error: "No quote data" }, 502);
+
+  // Finnhub quote: c=current, d=change, dp=changePct, h=dayHigh, l=dayLow, o=open, pc=prevClose, t=timestamp
+  const result = {
+    ticker,
+    name:       profile.name      || ticker,
+    exchange:   profile.exchange  || "",
+    industry:   profile.finnhubIndustry || "",
+    price:      quote.c,
+    change:     quote.d,
+    changePct:  quote.dp,
+    high:       quote.h,
+    low:        quote.l,
+    open:       quote.o,
+    prevClose:  quote.pc,
+    timestamp:  quote.t,
+    week52High: metric?.metric?.["52WeekHigh"] ?? null,
+    week52Low:  metric?.metric?.["52WeekLow"]  ?? null,
+    source: "Finnhub"
+  };
+
+  const cacheRes = new Response(JSON.stringify(result), {
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=60" }
+  });
+  ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+  return jsonResponse({ ...result, cached: false });
+}
+
+// GET /stockcandles?ticker=AAPL&range=1Y
+// Returns daily OHLCV candles. Range: 1M=30d, 6M=180d, 1Y=365d, 5Y=1825d.
+async function handleStockCandles(url, env, ctx) {
+  const ticker = (url.searchParams.get("ticker") || "").toUpperCase().trim();
+  const range  = url.searchParams.get("range") || "1Y";
+  if (!ticker) return jsonResponse({ error: "ticker required" }, 400);
+  if (!env.FINNHUB_API_KEY) return jsonResponse({ error: "FINNHUB_API_KEY not set" }, 500);
+
+  const RANGE_DAYS = { "1M": 35, "6M": 185, "1Y": 370, "5Y": 1830 }; // slight padding so edge bars appear
+  const days = RANGE_DAYS[range] || 370;
+
+  const cache = caches.default;
+  const cacheReq = new Request("https://stockcandles-cache.local/" + encodeURIComponent(ticker + ":" + range));
+  const cached = await cache.match(cacheReq);
+  if (cached) return jsonResponse({ ...(await cached.json()), cached: true });
+
+  const now  = Math.floor(Date.now() / 1000);
+  const from = now - days * 86400;
+  const tok  = env.FINNHUB_API_KEY;
+
+  // ── Provider: Finnhub /stock/candle (resolution=D for daily) ──
+  // Alpha Vantage swap: GET /query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=TICKER&outputsize=full&apikey=AV_API_KEY
+  // Twelve Data swap:   GET /time_series?symbol=TICKER&interval=1day&outputsize=${days}&apikey=TWELVE_DATA_KEY
+  const res = await fetch(
+    `https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(ticker)}&resolution=D&from=${from}&to=${now}&token=${tok}`
+  );
+  if (!res.ok) return jsonResponse({ error: "Finnhub candles HTTP " + res.status }, 502);
+
+  const data = await res.json();
+  if (data.s === "no_data" || !Array.isArray(data.t)) {
+    return jsonResponse({ error: "No candle data for " + ticker, status: data.s }, 404);
+  }
+
+  // Zip parallel arrays → [{time, open, high, low, close, volume}], sorted by time asc
+  const candles = data.t
+    .map((t, i) => ({ time: t, open: data.o[i], high: data.h[i], low: data.l[i], close: data.c[i], volume: data.v[i] }))
+    .filter(c => c.open && c.close)
+    .sort((a, b) => a.time - b.time);
+
+  const result = { ticker, range, candles, count: candles.length, source: "Finnhub" };
+  const cacheRes = new Response(JSON.stringify(result), {
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" }
+  });
+  ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+  return jsonResponse({ ...result, cached: false });
+}
+
+// GET /stocknews?ticker=AAPL
+// Returns last 30 days of company news from Finnhub, capped at 20 items.
+async function handleStockNews(url, env, ctx) {
+  const ticker = (url.searchParams.get("ticker") || "").toUpperCase().trim();
+  if (!ticker) return jsonResponse({ error: "ticker required" }, 400);
+  if (!env.FINNHUB_API_KEY) return jsonResponse({ error: "FINNHUB_API_KEY not set" }, 500);
+
+  const cache = caches.default;
+  const cacheReq = new Request("https://stocknews-cache.local/" + encodeURIComponent(ticker));
+  const cached = await cache.match(cacheReq);
+  if (cached) return jsonResponse({ ...(await cached.json()), cached: true });
+
+  const now     = new Date();
+  const toDate  = now.toISOString().slice(0, 10);
+  const fromDate = new Date(now - 30 * 86400000).toISOString().slice(0, 10);
+  const tok     = env.FINNHUB_API_KEY;
+
+  // ── Provider: Finnhub /company-news ──
+  // Alpha Vantage swap: GET /query?function=NEWS_SENTIMENT&tickers=TICKER&apikey=AV_API_KEY
+  const res = await fetch(
+    `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(ticker)}&from=${fromDate}&to=${toDate}&token=${tok}`
+  );
+  if (!res.ok) return jsonResponse({ error: "Finnhub news HTTP " + res.status }, 502);
+
+  const data = await res.json();
+  if (!Array.isArray(data)) return jsonResponse({ error: "Unexpected response format" }, 502);
+
+  const news = data.slice(0, 20).map(n => ({
+    headline: n.headline,
+    summary:  n.summary  || "",
+    url:      n.url,
+    source:   n.source   || "",
+    datetime: n.datetime   // unix seconds
+  }));
+
+  const result = { ticker, news, count: news.length, source: "Finnhub" };
+  const cacheRes = new Response(JSON.stringify(result), {
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=7200" }
+  });
+  ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+  return jsonResponse({ ...result, cached: false });
+}
+
+// GET /stockforecast?ticker=AAPL
+// Returns analyst recs, price targets, recent earnings, and next earnings date.
+async function handleStockForecast(url, env, ctx) {
+  const ticker = (url.searchParams.get("ticker") || "").toUpperCase().trim();
+  if (!ticker) return jsonResponse({ error: "ticker required" }, 400);
+  if (!env.FINNHUB_API_KEY) return jsonResponse({ error: "FINNHUB_API_KEY not set" }, 500);
+
+  const cache = caches.default;
+  const cacheReq = new Request("https://stockforecast-cache.local/" + encodeURIComponent(ticker));
+  const cached = await cache.match(cacheReq);
+  if (cached) return jsonResponse({ ...(await cached.json()), cached: true });
+
+  const tok      = env.FINNHUB_API_KEY;
+  const now      = new Date();
+  const fromDate = now.toISOString().slice(0, 10);
+  const toDate   = new Date(now.getTime() + 90 * 86400000).toISOString().slice(0, 10);
+
+  // ── Provider: Finnhub — all fetched in parallel ──
+  // Alpha Vantage swap: /query?function=EARNINGS&symbol=TICKER&apikey=AV_API_KEY (no analyst recs)
+  const [recsRes, targetRes, earningsRes, calRes] = await Promise.all([
+    fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${encodeURIComponent(ticker)}&token=${tok}`),
+    fetch(`https://finnhub.io/api/v1/stock/price-target?symbol=${encodeURIComponent(ticker)}&token=${tok}`),
+    fetch(`https://finnhub.io/api/v1/stock/earnings?symbol=${encodeURIComponent(ticker)}&limit=8&token=${tok}`),
+    fetch(`https://finnhub.io/api/v1/calendar/earnings?symbol=${encodeURIComponent(ticker)}&from=${fromDate}&to=${toDate}&token=${tok}`)
+  ]);
+
+  const [recs, target, earnings, cal] = await Promise.all([
+    recsRes.ok    ? recsRes.json()    : [],
+    targetRes.ok  ? targetRes.json()  : {},
+    earningsRes.ok ? earningsRes.json() : [],
+    calRes.ok     ? calRes.json()     : {}
+  ]);
+
+  const latestRec = Array.isArray(recs) && recs.length ? recs[0] : null;
+  const nextE = (cal?.earningsCalendar || []).find(e => e.date >= fromDate) || null;
+
+  const result = {
+    ticker,
+    recommendation: latestRec ? {
+      period:    latestRec.period,
+      strongBuy: latestRec.strongBuy,
+      buy:       latestRec.buy,
+      hold:      latestRec.hold,
+      sell:      latestRec.sell,
+      strongSell: latestRec.strongSell
+    } : null,
+    priceTarget: (target?.targetHigh) ? {
+      high:     target.targetHigh,
+      low:      target.targetLow,
+      mean:     target.targetMean,
+      median:   target.targetMedian,
+      analysts: target.numberOfAnalysts || null
+    } : null,
+    earnings: Array.isArray(earnings) ? earnings.slice(0, 8).map(e => ({
+      period:      e.period,
+      actual:      e.actual,
+      estimate:    e.estimate,
+      surprise:    e.surprise,
+      surprisePct: e.surprisePercent
+    })) : [],
+    nextEarnings: nextE ? {
+      date:            nextE.date,
+      epsEstimate:     nextE.epsEstimate     ?? null,
+      revenueEstimate: nextE.revenueEstimate ?? null,
+      quarter:         nextE.quarter,
+      year:            nextE.year
+    } : null,
+    source: "Finnhub"
+  };
+
+  const cacheRes = new Response(JSON.stringify(result), {
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=14400" }
+  });
+  ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+  return jsonResponse({ ...result, cached: false });
+}
+
+// POST /stockbrief
+// Body: { ticker, name, price, changePct, weekHigh, weekLow, yoyPct, news, forecast }
+// Returns a 2-3 sentence AI "what's the chart and news saying" blurb, cached 6h per day.
+async function handleStockBrief(request, env, ctx) {
+  if (request.method !== "POST") return jsonResponse({ error: "POST only" }, 405);
+  if (!env.ANTHROPIC_API_KEY) return jsonResponse({ error: "ANTHROPIC_API_KEY not set" }, 500);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonResponse({ error: "Invalid JSON body" }, 400); }
+
+  const { ticker } = body;
+  if (!ticker) return jsonResponse({ error: "ticker required" }, 400);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const cacheKey = await hashKey("stockbrief:" + ticker + ":" + today);
+  const cache = caches.default;
+  const cacheReq = new Request("https://stockbrief-cache.local/" + cacheKey);
+  const cached = await cache.match(cacheReq);
+  if (cached) return jsonResponse({ ...(await cached.json()), cached: true });
+
+  const model = env.AI_MODEL || "claude-haiku-4-5-20251001";
+  let claudeRes;
+  try {
+    claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 400,
+        messages: [{ role: "user", content: buildStockBriefPrompt(body) }]
+      })
+    });
+  } catch (err) {
+    return jsonResponse({ error: "Claude fetch failed: " + err.message }, 502);
+  }
+
+  if (!claudeRes.ok) {
+    const errText = await claudeRes.text();
+    return jsonResponse({ error: "Claude API " + claudeRes.status, details: errText.slice(0, 300) }, 502);
+  }
+
+  const data = await claudeRes.json();
+  const brief = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n\n").trim();
+  if (!brief) return jsonResponse({ error: "Empty response from model" }, 502);
+
+  const result = { brief, model, generated_at: new Date().toISOString() };
+  const cacheRes = new Response(JSON.stringify(result), {
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=21600" }
+  });
+  ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+  return jsonResponse({ ...result, cached: false });
+}
+
+function buildStockBriefPrompt(b) {
+  const { ticker, name, price, changePct, weekHigh, weekLow, yoyPct, news, forecast } = b;
+  const lines = [];
+  lines.push(`Ticker: ${ticker}${name && name !== ticker ? " (" + name + ")" : ""}`);
+  if (price != null) lines.push(`Current price: $${Number(price).toFixed(2)} (${changePct >= 0 ? "+" : ""}${Number(changePct || 0).toFixed(2)}% today)`);
+  if (weekHigh && weekLow) lines.push(`52-week range: $${Number(weekLow).toFixed(2)} – $${Number(weekHigh).toFixed(2)}`);
+  if (yoyPct != null) lines.push(`YoY performance: ${yoyPct >= 0 ? "+" : ""}${Number(yoyPct).toFixed(1)}%`);
+  const pt = forecast?.priceTarget;
+  if (pt?.mean) lines.push(`Analyst price target: low $${Number(pt.low).toFixed(2)}, mean $${Number(pt.mean).toFixed(2)}, high $${Number(pt.high).toFixed(2)}${pt.analysts ? " (" + pt.analysts + " analysts)" : ""}`);
+  const rec = forecast?.recommendation;
+  if (rec) {
+    const buy = (rec.strongBuy || 0) + (rec.buy || 0);
+    lines.push(`Analyst consensus (${rec.period}): ${buy} buy, ${rec.hold || 0} hold, ${(rec.sell || 0) + (rec.strongSell || 0)} sell`);
+  }
+  if (forecast?.nextEarnings) lines.push(`Next earnings: ${forecast.nextEarnings.date}`);
+  if (Array.isArray(news) && news.length) {
+    lines.push(`\nRecent news:`);
+    news.slice(0, 5).forEach(n => lines.push(`- ${n.headline || n}`));
+  }
+  return `You are a concise market analyst. Based on the following public market data, write 2-3 sentences of plain prose summarizing what the data suggests about this stock: momentum direction, how the price compares to analyst targets, and the key news driver if any. NO bullet points, NO headers, NO investment advice, NO buy/sell recommendations. End with: "This is AI-generated analysis of public data."
+
+${lines.join("\n")}`;
 }
 
 // ─────────────── RSS PROXY ───────────────

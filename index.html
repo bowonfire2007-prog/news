@@ -702,6 +702,79 @@
   [data-theme="dark"] .rpt-chip-warm { background:color-mix(in srgb,#a16207 25%,var(--bg)); color:#fde68a; }
   [data-theme="dark"] .rpt-chip-cool { background:color-mix(in srgb,#15803d 25%,var(--bg)); color:#86efac; }
   .rpt-foot { font-size:12px; color:var(--text-muted); margin-top:10px; padding:10px 12px; background:var(--card-hover); border-radius:8px; line-height:1.5; border-left:3px solid color-mix(in srgb,#c49b3f 60%,var(--border)); }
+
+  /* ── STOCK ANALYSIS VIEW ── */
+  .stock-row { cursor:pointer; }
+  .stock-row:hover .stock-ticker { color:var(--accent); }
+  .sa-back { display:inline-flex; align-items:center; gap:6px; padding:12px 0 6px; background:transparent; border:none; color:var(--accent); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .sa-back:hover { text-decoration:underline; }
+  .sa-header { padding:6px 0 14px; border-bottom:1px solid var(--border); margin-bottom:10px; }
+  .sa-ticker-row { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .sa-ticker { font-weight:900; font-size:24px; letter-spacing:-0.01em; }
+  .sa-name { font-size:14px; color:var(--text-muted); }
+  .sa-price-row { display:flex; align-items:baseline; gap:10px; margin-top:5px; flex-wrap:wrap; }
+  .sa-price { font-size:30px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .sa-change { font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .sa-meta-row { font-size:11px; color:var(--text-soft); letter-spacing:0.04em; text-transform:uppercase; margin-top:3px; }
+  .sa-range-row { display:flex; gap:6px; padding:8px 0 4px; }
+  .sa-range-btn { padding:4px 12px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .sa-range-btn:hover { background:var(--card-hover); color:var(--text); }
+  .sa-range-btn.active { background:var(--text); color:var(--bg); border-color:var(--text); }
+  .sa-overlay-row { display:flex; gap:5px; flex-wrap:wrap; padding:3px 0 5px; }
+  .sa-pill-btn { padding:3px 10px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .sa-pill-btn:hover { background:var(--card-hover); color:var(--text); }
+  .sa-pill-btn.active { background:color-mix(in srgb,var(--accent) 14%,transparent); color:var(--accent); border-color:color-mix(in srgb,var(--accent) 38%,var(--border)); }
+  #saMainChart { width:100%; height:280px; border-radius:6px; overflow:hidden; background:var(--card-hover); }
+  .sa-pane-wrap { margin-top:4px; }
+  .sa-pane-label { font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-soft); padding:4px 2px 2px; }
+  .sa-pane-chart { width:100%; height:100px; border-radius:6px; overflow:hidden; background:var(--card-hover); display:none; }
+  .sa-trend-card { background:var(--card-hover); border-radius:10px; padding:14px 16px; margin:12px 0; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .sa-trend-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-soft); margin-bottom:3px; }
+  .sa-trend-val { font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .sa-trend-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .sa-range-bar-wrap { grid-column:1 / -1; }
+  .sa-range-bar { height:6px; background:var(--border); border-radius:999px; position:relative; margin-top:8px; }
+  .sa-range-fill { position:absolute; left:0; top:0; height:100%; background:var(--accent); border-radius:999px; transition:width .3s; }
+  .sa-range-dot { position:absolute; top:50%; width:10px; height:10px; background:var(--text); border:2px solid var(--bg); border-radius:50%; transform:translate(-50%,-50%); }
+  .sa-range-labels { display:flex; justify-content:space-between; font-size:10px; color:var(--text-soft); margin-top:4px; font-variant-numeric:tabular-nums; }
+  .sa-section-title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:17px; font-weight:700; border-top:2px solid var(--border); padding-top:12px; margin:12px 0 8px; }
+  .sa-forecast-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin-bottom:10px; }
+  .sa-forecast-tile { background:var(--card-hover); border-radius:8px; padding:10px 12px; }
+  .sa-forecast-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .sa-target-blk { padding:12px 14px; background:var(--card-hover); border-radius:8px; margin-bottom:10px; }
+  .sa-rec-bar { display:flex; height:8px; border-radius:999px; overflow:hidden; margin:8px 0 6px; }
+  .sa-rec-buy  { background:#15803d; } [data-theme="dark"] .sa-rec-buy  { background:#4ade80; }
+  .sa-rec-hold { background:var(--mustard); }
+  .sa-rec-sell { background:#b91c1c; } [data-theme="dark"] .sa-rec-sell { background:#f87171; }
+  .sa-rec-legend { display:flex; gap:12px; font-size:11px; color:var(--text-muted); flex-wrap:wrap; }
+  .sa-rec-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; display:inline-block; margin-right:3px; }
+  .sa-earnings-tbl { width:100%; font-size:12px; border-collapse:collapse; margin-top:8px; }
+  .sa-earnings-tbl th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-soft); text-align:right; padding:4px 6px; border-bottom:1px solid var(--border); }
+  .sa-earnings-tbl th:first-child { text-align:left; }
+  .sa-earnings-tbl td { padding:5px 6px; border-bottom:1px solid var(--border); text-align:right; font-variant-numeric:tabular-nums; color:var(--text); }
+  .sa-earnings-tbl td:first-child { text-align:left; color:var(--text-muted); }
+  .sa-beat { color:#15803d; font-weight:700; } [data-theme="dark"] .sa-beat { color:#4ade80; }
+  .sa-miss { color:#b91c1c; font-weight:700; } [data-theme="dark"] .sa-miss { color:#f87171; }
+  .sa-news-item { display:flex; flex-direction:column; gap:3px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .sa-news-item:last-child { border-bottom:none; }
+  .sa-news-hl { font-size:14px; font-weight:600; line-height:1.3; color:var(--text); text-decoration:none; display:block; }
+  .sa-news-hl:hover { color:var(--accent); }
+  .sa-news-meta { font-size:11px; color:var(--text-muted); }
+  .sa-ai-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 16px; border-radius:999px; border:1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); background:color-mix(in srgb,var(--accent) 7%,transparent); color:var(--accent); font-size:12px; font-weight:700; letter-spacing:0.04em; cursor:pointer; font-family:inherit; text-transform:uppercase; margin:10px 0 4px; }
+  .sa-ai-btn:hover, .sa-ai-btn.is-open { background:var(--accent); color:#fff; }
+  .sa-ai-btn.is-loading { pointer-events:none; opacity:0.7; }
+  .sa-ai-panel { max-height:0; overflow:hidden; transition:max-height .35s ease,padding .2s ease; padding:0 16px; background:color-mix(in srgb,var(--accent) 4%,var(--card-hover)); border-left:3px solid var(--accent); border-radius:0 6px 6px 0; }
+  .sa-ai-panel.open { max-height:600px; padding:14px 16px; margin-bottom:12px; }
+  .sa-ai-head { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); margin-bottom:8px; }
+  .sa-ai-text { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:14px; line-height:1.65; color:var(--text); }
+  .sa-ai-foot { font-size:10px; color:var(--text-soft); margin-top:10px; padding-top:8px; border-top:1px solid color-mix(in srgb,var(--accent) 15%,var(--border)); text-transform:uppercase; letter-spacing:.04em; }
+  .sa-ai-err  { color:#b91c1c; font-size:13px; } [data-theme="dark"] .sa-ai-err { color:#f87171; }
+  @media (max-width:520px) {
+    #saMainChart { height:220px; }
+    .sa-price { font-size:24px; }
+    .sa-change { font-size:13px; }
+    .sa-trend-card { grid-template-columns:repeat(2,1fr); }
+  }
 </style>
 </head>
 <body>
@@ -1076,7 +1149,7 @@ const FEED_TIMEOUT_MS      = 6000;   // reduced from 8s
 const STOCKS_CACHE_TTL_MS  = 60*1000;
 const WEATHER_CACHE_TTL_MS = 15*60*1000;
 const ALERTS_CACHE_TTL_MS  = 5*60*1000;
-const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","LRCX","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F","GF=F","LE=F","ZC=F","ZS=F"];
+const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","MU","LRCX","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F","GF=F","LE=F","ZC=F","ZS=F"];
 const WATCHLIST_VERSION = 5;
 const TICKER_DISPLAY = { "BZ=F":"BRENT","CL=F":"WTI","BTC-USD":"BITCOIN","XRP-USD":"XRP","GF=F":"FEEDER CATTLE","LE=F":"LIVE CATTLE","ZC=F":"CORN","ZS=F":"SOYBEANS" };
 
@@ -5902,6 +5975,8 @@ async function loadStocks(force) {
         '<div class="stock-spark"></div>'+
         '<div class="stock-price"><div class="price">—</div><div class="change">—</div></div>'+
         '<button class="stock-remove" data-ticker="'+escapeHtml(t)+'" title="Remove">×</button>';
+      // Tap/click row → open analysis view (ignore remove button clicks)
+      row.addEventListener("click", e => { if (!e.target.closest(".stock-remove")) openStockAnalysis(t); });
       rowsContainer.appendChild(row);
     });
   }
@@ -5937,6 +6012,568 @@ async function loadStocks(force) {
     })),
     loadStockNews(force)
   ]);
+}
+
+// ========== STOCK ANALYSIS VIEW ==========
+const SA_BASE = CF_WORKER.replace(/\/$/, "");
+
+// ── Lazy-load TradingView Lightweight Charts v4 from CDN ──
+let _lwcPromise = null;
+function loadLWC() {
+  if (_lwcPromise) return _lwcPromise;
+  _lwcPromise = new Promise((resolve, reject) => {
+    if (typeof LightweightCharts !== "undefined") { resolve(); return; }
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js";
+    s.onload = resolve; s.onerror = () => reject(new Error("LWC CDN failed"));
+    document.head.appendChild(s);
+  });
+  return _lwcPromise;
+}
+
+// ── Client-side technical indicator math ──
+function saCalcSMA(closes, period) {
+  const out = new Array(closes.length).fill(null);
+  for (let i = period - 1; i < closes.length; i++) {
+    let s = 0; for (let j = i - period + 1; j <= i; j++) s += closes[j];
+    out[i] = s / period;
+  }
+  return out;
+}
+function saCalcEMA(closes, period) {
+  const k = 2 / (period + 1);
+  const out = new Array(closes.length).fill(null);
+  let ema = null;
+  for (let i = 0; i < closes.length; i++) {
+    if (ema === null) {
+      if (i < period - 1) continue;
+      let s = 0; for (let j = i - period + 1; j <= i; j++) s += closes[j];
+      ema = s / period;
+    } else {
+      ema = closes[i] * k + ema * (1 - k);
+    }
+    out[i] = ema;
+  }
+  return out;
+}
+function saCalcRSI(closes, period) {
+  const out = new Array(closes.length).fill(null);
+  if (closes.length < period + 1) return out;
+  let g = 0, l = 0;
+  for (let i = 1; i <= period; i++) { const d = closes[i] - closes[i-1]; d > 0 ? g += d : l -= d; }
+  g /= period; l /= period;
+  out[period] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i-1];
+    g = (g * (period-1) + Math.max(d, 0))  / period;
+    l = (l * (period-1) + Math.max(-d, 0)) / period;
+    out[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+  }
+  return out;
+}
+function saCalcMACD(closes, fast, slow, sig) {
+  const ef = saCalcEMA(closes, fast), es = saCalcEMA(closes, slow);
+  const macd = closes.map((_, i) => ef[i] != null && es[i] != null ? ef[i] - es[i] : null);
+  // EMA of MACD signal line — only over non-null values
+  const nonNull = macd.filter(x => x != null);
+  const rawSig = saCalcEMA(nonNull, sig);
+  const sigFull = new Array(closes.length).fill(null);
+  let si = 0; for (let i = 0; i < closes.length; i++) if (macd[i] != null) sigFull[i] = rawSig[si++] ?? null;
+  return { macd, signal: sigFull };
+}
+function saCalcBB(closes, period, mult) {
+  const sma = saCalcSMA(closes, period);
+  const upper = new Array(closes.length).fill(null);
+  const lower = new Array(closes.length).fill(null);
+  for (let i = period - 1; i < closes.length; i++) {
+    const sl = closes.slice(i - period + 1, i + 1);
+    const std = Math.sqrt(sl.reduce((a, v) => a + (v - sma[i]) ** 2, 0) / period);
+    upper[i] = sma[i] + mult * std;
+    lower[i] = sma[i] - mult * std;
+  }
+  return { upper, lower };
+}
+
+// ── Chart theme helpers ──
+function saIsDark() { return document.documentElement.dataset.theme === "dark"; }
+function saBg()     { return saIsDark() ? "#0f0e0d" : "#f8f4ec"; }
+function saFg()     { return saIsDark() ? "#a39c8f" : "#6b6258"; }
+function saGrid()   { return saIsDark() ? "#2a2825" : "#e3ddcf"; }
+function saUp()     { return saIsDark() ? "#4ade80" : "#15803d"; }
+function saDown()   { return saIsDark() ? "#f87171" : "#b91c1c"; }
+function saAccent() { return saIsDark() ? "#ff6b4a" : "#b8331a"; }
+
+// ── Chart state ──
+let _saCharts = [], _saCandles = [], _saOverlays = {}, _saIndicators = {};
+let _saSeriesMap = {};
+
+function saDestroyCharts() {
+  _saCharts.forEach(c => { try { c.remove(); } catch {} });
+  _saCharts = []; _saSeriesMap = {};
+}
+
+function saBuildChart(elId, height) {
+  const el = document.getElementById(elId);
+  if (!el) return null;
+  el.style.height = height + "px";
+  const chart = LightweightCharts.createChart(el, {
+    width: el.offsetWidth, height,
+    layout:  { background: { color: saBg() }, textColor: saFg() },
+    grid:    { vertLines: { color: saGrid() }, horzLines: { color: saGrid() } },
+    crosshair: { mode: 1 },
+    rightPriceScale: { borderColor: saGrid() },
+    timeScale: { borderColor: saGrid(), timeVisible: true, secondsVisible: false },
+    handleScale: { mouseWheel: false, pinch: false },
+    handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: true, vertTouchDrag: false }
+  });
+  const ro = new ResizeObserver(() => { try { chart.applyOptions({ width: el.offsetWidth }); } catch {} });
+  ro.observe(el);
+  _saCharts.push(chart);
+  return chart;
+}
+
+function saApplyOverlays(mainChart, closes, times) {
+  const COLORS = { sma20:"#f59e0b", sma50:"#3b82f6", ema20:"#10b981", ema50:"#8b5cf6" };
+  ["sma20","sma50","ema20","ema50","bbU","bbL"].forEach(k => {
+    if (_saSeriesMap[k]) { try { mainChart.removeSeries(_saSeriesMap[k]); } catch {} delete _saSeriesMap[k]; }
+  });
+  const toData = (arr) => arr.map((v, i) => v != null ? { time: times[i], value: v } : null).filter(Boolean);
+  if (_saOverlays.sma20) { const s = mainChart.addLineSeries({ color: COLORS.sma20, lineWidth:1, priceLineVisible:false }); s.setData(toData(saCalcSMA(closes,20))); _saSeriesMap.sma20=s; }
+  if (_saOverlays.sma50) { const s = mainChart.addLineSeries({ color: COLORS.sma50, lineWidth:1, priceLineVisible:false }); s.setData(toData(saCalcSMA(closes,50))); _saSeriesMap.sma50=s; }
+  if (_saOverlays.ema20) { const s = mainChart.addLineSeries({ color: COLORS.ema20, lineWidth:1, priceLineVisible:false }); s.setData(toData(saCalcEMA(closes,20))); _saSeriesMap.ema20=s; }
+  if (_saOverlays.ema50) { const s = mainChart.addLineSeries({ color: COLORS.ema50, lineWidth:1, priceLineVisible:false }); s.setData(toData(saCalcEMA(closes,50))); _saSeriesMap.ema50=s; }
+  if (_saOverlays.bb) {
+    const { upper, lower } = saCalcBB(closes, 20, 2);
+    const bbc = saGrid();
+    const u = mainChart.addLineSeries({ color: bbc, lineWidth:1, lineStyle:2, priceLineVisible:false });
+    const l = mainChart.addLineSeries({ color: bbc, lineWidth:1, lineStyle:2, priceLineVisible:false });
+    u.setData(toData(upper)); l.setData(toData(lower));
+    _saSeriesMap.bbU = u; _saSeriesMap.bbL = l;
+  }
+}
+
+function saRenderCharts() {
+  saDestroyCharts();
+  if (!_saCandles.length) return;
+  const isMob = window.innerWidth <= 520;
+  const mainChart = saBuildChart("saMainChart", isMob ? 220 : 280);
+  if (!mainChart) return;
+
+  const closes = _saCandles.map(c => c.close);
+  const times  = _saCandles.map(c => c.time);
+
+  // Candlestick series
+  const cs = mainChart.addCandlestickSeries({
+    upColor: saUp(), downColor: saDown(),
+    borderUpColor: saUp(), borderDownColor: saDown(),
+    wickUpColor: saUp(), wickDownColor: saDown()
+  });
+  cs.setData(_saCandles.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close })));
+  _saSeriesMap.candles = cs;
+
+  // Volume histogram (own scale, bottom 15% of chart)
+  const vs = mainChart.addHistogramSeries({
+    color: saGrid(), priceFormat: { type:"volume" }, priceScaleId:"vol",
+    scaleMargins: { top:0.85, bottom:0 }
+  });
+  vs.setData(_saCandles.map(c => ({ time:c.time, value:c.volume, color: c.close>=c.open?"rgba(74,222,128,0.25)":"rgba(248,113,113,0.25)" })));
+
+  // Overlays (SMA/EMA/BB)
+  saApplyOverlays(mainChart, closes, times);
+  mainChart.timeScale().fitContent();
+
+  // RSI pane
+  const rsiEl = document.getElementById("saRsiChart");
+  if (_saIndicators.rsi && rsiEl) {
+    rsiEl.style.display = "block";
+    const rsiChart = saBuildChart("saRsiChart", 100);
+    if (rsiChart) {
+      const rsiVals = saCalcRSI(closes, 14);
+      const rsiData = rsiVals.map((v,i) => v!=null ? {time:times[i],value:v} : null).filter(Boolean);
+      const rsiLine = rsiChart.addLineSeries({ color: "#8b5cf6", lineWidth:1 });
+      rsiLine.setData(rsiData);
+      // Overbought/oversold reference lines
+      [70,30].forEach(lv => {
+        const ref = rsiChart.addLineSeries({ color: saGrid(), lineWidth:1, lineStyle:2 });
+        ref.setData(rsiData.map(d => ({ time:d.time, value:lv })));
+      });
+      rsiChart.timeScale().fitContent();
+    }
+  } else if (rsiEl) { rsiEl.style.display="none"; }
+
+  // MACD pane
+  const macdEl = document.getElementById("saMacdChart");
+  if (_saIndicators.macd && macdEl) {
+    macdEl.style.display = "block";
+    const macdChart = saBuildChart("saMacdChart", 100);
+    if (macdChart) {
+      const { macd, signal: sig } = saCalcMACD(closes, 12, 26, 9);
+      const toD = (arr) => arr.map((v,i) => v!=null ? {time:times[i],value:v} : null).filter(Boolean);
+      macdChart.addLineSeries({ color:saAccent(), lineWidth:1 }).setData(toD(macd));
+      macdChart.addLineSeries({ color:"#8b5cf6",  lineWidth:1 }).setData(toD(sig));
+      const hist = macd.map((v,i) => v!=null && sig[i]!=null ? v-sig[i] : null);
+      macdChart.addHistogramSeries({ priceScaleId:"right", scaleMargins:{top:0,bottom:0} })
+        .setData(toD(hist).map(d => ({ ...d, color: d.value>=0 ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)" })));
+      macdChart.timeScale().fitContent();
+    }
+  } else if (macdEl) { macdEl.style.display="none"; }
+}
+
+// ── Main entry point — called when a ticker row is tapped ──
+async function openStockAnalysis(ticker) {
+  _saOverlays = { sma20:false, sma50:false, ema20:false, ema50:false, bb:false };
+  _saIndicators = { rsi:false, macd:false };
+  _saCandles = [];
+  saDestroyCharts();
+
+  history.pushState({ saView:ticker }, "", "#stock-" + ticker.replace(/[^A-Za-z0-9\-=.]/g,""));
+  window.scrollTo(0, 0);
+
+  const disp = TICKER_DISPLAY[ticker] || ticker;
+  listEl.innerHTML = `
+    <button class="sa-back" id="saBackBtn">← Watchlist</button>
+    <div class="sa-header">
+      <div class="sa-ticker-row">
+        <span class="sa-ticker">${escapeHtml(disp)}</span>
+        <span class="sa-name" id="saName"><span class="spinner"></span></span>
+      </div>
+      <div class="sa-price-row">
+        <span class="sa-price" id="saPrice">—</span>
+        <span class="sa-change" id="saChg"></span>
+      </div>
+      <div class="sa-meta-row" id="saMeta"></div>
+    </div>
+    <div class="sa-range-row" id="saRangeRow">
+      ${["1M","6M","1Y","5Y"].map(r=>`<button class="sa-range-btn${r==="1Y"?" active":""}" data-range="${r}">${r}</button>`).join("")}
+    </div>
+    <div class="sa-overlay-row" id="saOverlayRow">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-soft);margin-right:2px">Overlays</span>
+      ${[["sma20","SMA 20"],["sma50","SMA 50"],["ema20","EMA 20"],["ema50","EMA 50"],["bb","BB 20"]].map(([k,l])=>`<button class="sa-pill-btn" data-ov="${k}">${l}</button>`).join("")}
+    </div>
+    <div class="sa-overlay-row">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-soft);margin-right:2px">Panes</span>
+      ${[["rsi","RSI 14"],["macd","MACD"]].map(([k,l])=>`<button class="sa-pill-btn" data-ind="${k}">${l}</button>`).join("")}
+    </div>
+    <div id="saMainChart"></div>
+    <div class="sa-pane-wrap" id="saRsiWrap" style="display:none">
+      <div class="sa-pane-label">RSI (14)</div><div class="sa-pane-chart" id="saRsiChart"></div>
+    </div>
+    <div class="sa-pane-wrap" id="saMacdWrap" style="display:none">
+      <div class="sa-pane-label">MACD (12,26,9)</div><div class="sa-pane-chart" id="saMacdChart"></div>
+    </div>
+    <div id="saTrend"><div class="status" style="padding:8px 0"><span class="spinner"></span></div></div>
+    <div id="saAI"></div>
+    <div class="sa-section-title">Analyst Forecast</div>
+    <div id="saForecast"><div class="status" style="padding:8px 0"><span class="spinner"></span></div></div>
+    <div class="sa-section-title">Recent News</div>
+    <div id="saNews"><div class="status" style="padding:8px 0"><span class="spinner"></span></div></div>
+  `;
+
+  document.getElementById("saBackBtn").addEventListener("click", () => {
+    history.pushState({}, "", location.pathname + location.search);
+    saDestroyCharts();
+    loadStocks();
+  });
+
+  // Range selector
+  document.getElementById("saRangeRow").addEventListener("click", e => {
+    const btn = e.target.closest(".sa-range-btn");
+    if (!btn) return;
+    const range = btn.dataset.range;
+    listEl.querySelectorAll(".sa-range-btn").forEach(b => b.classList.toggle("active", b.dataset.range === range));
+    saLoadCandles(ticker, range);
+  });
+
+  // Overlay toggles (SMA/EMA/BB)
+  listEl.querySelectorAll(".sa-pill-btn[data-ov]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const k = btn.dataset.ov;
+      _saOverlays[k] = !_saOverlays[k];
+      btn.classList.toggle("active", _saOverlays[k]);
+      if (_saSeriesMap.candles && _saCandles.length) {
+        saApplyOverlays(_saCharts[0], _saCandles.map(c=>c.close), _saCandles.map(c=>c.time));
+      }
+    });
+  });
+
+  // Indicator pane toggles (RSI/MACD)
+  listEl.querySelectorAll(".sa-pill-btn[data-ind]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const k = btn.dataset.ind;
+      _saIndicators[k] = !_saIndicators[k];
+      btn.classList.toggle("active", _saIndicators[k]);
+      const wrap = document.getElementById("sa" + k.charAt(0).toUpperCase() + k.slice(1) + "Wrap");
+      if (wrap) wrap.style.display = _saIndicators[k] ? "block" : "none";
+      const pane = document.getElementById("sa" + k.charAt(0).toUpperCase() + k.slice(1) + "Chart");
+      if (pane) pane.style.display = _saIndicators[k] ? "block" : "none";
+      if (_saCandles.length) saRenderCharts();
+    });
+  });
+
+  // Load all data in parallel
+  await Promise.all([
+    saLoadQuote(ticker),
+    saLoadCandles(ticker, "1Y"),
+    saLoadForecast(ticker),
+    saLoadNews(ticker)
+  ]);
+  saRenderAIBrief(ticker);
+}
+
+async function saLoadQuote(ticker) {
+  try {
+    const res = await fetch(SA_BASE + "/stockquote?ticker=" + encodeURIComponent(ticker));
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const q = await res.json();
+    const el = id => document.getElementById(id);
+    if (el("saName"))  el("saName").textContent  = q.name || ticker;
+    if (el("saPrice")) el("saPrice").textContent  = q.price != null ? "$" + Number(q.price).toFixed(2) : "—";
+    const up = (q.change || 0) >= 0;
+    if (el("saChg")) {
+      el("saChg").textContent = q.change != null
+        ? (up?"+":"") + Number(q.change).toFixed(2) + " (" + (up?"+":"") + Number(q.changePct).toFixed(2) + "%)"
+        : "";
+      el("saChg").className = "sa-change " + (up ? "up" : "down");
+    }
+    if (el("saMeta")) el("saMeta").textContent = [q.exchange, q.industry].filter(Boolean).join(" · ");
+    saRenderTrendCard(q);
+  } catch(e) {
+    const n = document.getElementById("saName");
+    if (n) n.textContent = ticker;
+  }
+}
+
+function saRenderTrendCard(q) {
+  const el = document.getElementById("saTrend");
+  if (!el) return;
+  const { price, week52High: h, week52Low: l } = q;
+  const pct = (h && l && h>l) ? ((price-l)/(h-l)*100) : null;
+  el.innerHTML = `<div class="sa-trend-card">
+    <div>
+      <div class="sa-trend-label">52W High</div>
+      <div class="sa-trend-val ${price>=h*0.98?"up":""}">${h ? "$"+Number(h).toFixed(2) : "—"}</div>
+    </div>
+    <div>
+      <div class="sa-trend-label">52W Low</div>
+      <div class="sa-trend-val">${l ? "$"+Number(l).toFixed(2) : "—"}</div>
+    </div>
+    <div id="saYoy">
+      <div class="sa-trend-label">YoY Return</div>
+      <div class="sa-trend-val" id="saYoyVal">—</div>
+    </div>
+    ${pct!=null ? `<div class="sa-range-bar-wrap">
+      <div class="sa-trend-label">In 52-week range</div>
+      <div class="sa-range-bar">
+        <div class="sa-range-fill" style="width:${Math.min(pct,100).toFixed(1)}%"></div>
+        <div class="sa-range-dot"  style="left:${Math.min(pct,100).toFixed(1)}%"></div>
+      </div>
+      <div class="sa-range-labels">
+        <span>$${Number(l).toFixed(2)}</span>
+        <span style="color:var(--text-muted);font-size:9px">${pct.toFixed(0)}% from low</span>
+        <span>$${Number(h).toFixed(2)}</span>
+      </div>
+    </div>` : ""}
+  </div>`;
+}
+
+async function saLoadCandles(ticker, range) {
+  try {
+    await loadLWC();
+    const res = await fetch(SA_BASE + "/stockcandles?ticker=" + encodeURIComponent(ticker) + "&range=" + range);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    _saCandles = data.candles || [];
+    if (!_saCandles.length) { saDestroyCharts(); return; }
+
+    // YoY return (only when showing 1Y chart)
+    if (range === "1Y") {
+      const cl = _saCandles.map(c=>c.close);
+      if (cl.length >= 2) {
+        const yoy = ((cl[cl.length-1]-cl[0])/cl[0])*100;
+        const yoyEl = document.getElementById("saYoyVal");
+        if (yoyEl) {
+          yoyEl.textContent = (yoy>=0?"+":"") + yoy.toFixed(1) + "%";
+          yoyEl.className = "sa-trend-val " + (yoy>=0?"up":"down");
+        }
+        // Store for AI brief
+        if (!window._saQuoteData) window._saQuoteData = {};
+        window._saQuoteData[ticker] = { ...window._saQuoteData[ticker], yoyPct: yoy };
+      }
+    }
+    saRenderCharts();
+  } catch(e) {
+    saDestroyCharts();
+    const el = document.getElementById("saMainChart");
+    if (el) el.innerHTML = '<div class="status" style="height:100%;display:flex;align-items:center;justify-content:center;font-size:13px">Chart unavailable</div>';
+  }
+}
+
+async function saLoadForecast(ticker) {
+  const el = document.getElementById("saForecast");
+  if (!el) return;
+  try {
+    const res = await fetch(SA_BASE + "/stockforecast?ticker=" + encodeURIComponent(ticker));
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const f = await res.json();
+    el.innerHTML = saForecastHtml(f);
+    el._data = f; // cache for AI brief
+  } catch {
+    el.innerHTML = '<div class="status" style="padding:8px 0;font-size:13px">Forecast unavailable</div>';
+  }
+}
+
+function saForecastHtml(f) {
+  let html = "";
+  const pt = f.priceTarget, rec = f.recommendation, nextE = f.nextEarnings;
+  const priceEl = document.getElementById("saPrice");
+  const cur = priceEl ? parseFloat(priceEl.textContent.replace("$","")) : null;
+
+  // Price targets
+  if (pt?.mean) {
+    const upside = cur ? (((pt.mean - cur)/cur)*100) : null;
+    html += `<div class="sa-target-blk">
+      <div class="sa-trend-label">Analyst Price Target${pt.analysts?" ("+pt.analysts+" analysts)":""}</div>
+      <div class="sa-forecast-grid" style="margin:8px 0 0">
+        <div class="sa-forecast-tile"><div class="sa-trend-label">Low</div><div class="sa-trend-val">$${Number(pt.low).toFixed(2)}</div></div>
+        <div class="sa-forecast-tile"><div class="sa-trend-label">Mean</div><div class="sa-trend-val">$${Number(pt.mean).toFixed(2)}</div>${upside!=null?`<div class="sa-forecast-sub ${upside>=0?"up":"down"}">${upside>=0?"+":""}${upside.toFixed(1)}% vs now</div>`:""}
+        </div>
+        <div class="sa-forecast-tile"><div class="sa-trend-label">High</div><div class="sa-trend-val">$${Number(pt.high).toFixed(2)}</div></div>
+      </div>
+    </div>`;
+  }
+
+  // Analyst buy/hold/sell bar
+  if (rec) {
+    const buy = (rec.strongBuy||0)+(rec.buy||0), hold=rec.hold||0, sell=(rec.sell||0)+(rec.strongSell||0);
+    const total = buy+hold+sell;
+    if (total > 0) {
+      html += `<div style="margin:10px 0">
+        <div class="sa-trend-label">Analyst Consensus (${rec.period})</div>
+        <div class="sa-rec-bar">
+          <div class="sa-rec-buy"  style="width:${(buy/total*100).toFixed(1)}%"></div>
+          <div class="sa-rec-hold" style="width:${(hold/total*100).toFixed(1)}%"></div>
+          <div class="sa-rec-sell" style="width:${(sell/total*100).toFixed(1)}%"></div>
+        </div>
+        <div class="sa-rec-legend">
+          <span><span class="sa-rec-dot" style="background:#15803d"></span>${buy} Buy</span>
+          <span><span class="sa-rec-dot" style="background:var(--mustard)"></span>${hold} Hold</span>
+          <span><span class="sa-rec-dot" style="background:#b91c1c"></span>${sell} Sell</span>
+        </div>
+      </div>`;
+    }
+  }
+
+  // Next earnings
+  if (nextE) {
+    html += `<div class="sa-forecast-grid" style="margin:8px 0">
+      <div class="sa-forecast-tile">
+        <div class="sa-trend-label">Next Earnings</div>
+        <div class="sa-trend-val">${nextE.date}</div>
+        ${nextE.epsEstimate!=null?`<div class="sa-forecast-sub">EPS est. $${Number(nextE.epsEstimate).toFixed(2)}</div>`:""}
+      </div>
+    </div>`;
+  }
+
+  // Past earnings table
+  if (f.earnings?.length) {
+    html += `<div class="sa-trend-label" style="margin-top:12px;margin-bottom:4px">Recent Earnings (EPS)</div>
+    <table class="sa-earnings-tbl">
+      <thead><tr><th>Period</th><th>Actual</th><th>Est.</th><th>Surprise</th></tr></thead>
+      <tbody>${f.earnings.map(e=>`<tr>
+        <td>${e.period||"—"}</td>
+        <td>${e.actual!=null?"$"+Number(e.actual).toFixed(2):"—"}</td>
+        <td>${e.estimate!=null?"$"+Number(e.estimate).toFixed(2):"—"}</td>
+        <td class="${(e.surprisePct||0)>0?"sa-beat":(e.surprisePct||0)<0?"sa-miss":""}">${e.surprisePct!=null?(e.surprisePct>0?"+":"")+Number(e.surprisePct).toFixed(1)+"%":"—"}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  }
+
+  return html || '<div class="status" style="padding:8px 0;font-size:13px">No forecast data</div>';
+}
+
+async function saLoadNews(ticker) {
+  const el = document.getElementById("saNews");
+  if (!el) return;
+  try {
+    const res = await fetch(SA_BASE + "/stocknews?ticker=" + encodeURIComponent(ticker));
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const news = data.news || [];
+    if (!news.length) { el.innerHTML = '<div class="status" style="padding:8px 0;font-size:13px">No recent news</div>'; return; }
+    el.innerHTML = news.map(n => {
+      const age = n.datetime ? relativeTime(n.datetime * 1000) : "";
+      return `<div class="sa-news-item">
+        <a href="${escapeHtml(n.url||"#")}" target="_blank" rel="noopener" class="sa-news-hl">${escapeHtml(n.headline||"")}</a>
+        <div class="sa-news-meta">${escapeHtml(n.source||"")}${age?" · "+age:""}</div>
+      </div>`;
+    }).join("");
+  } catch {
+    el.innerHTML = '<div class="status" style="padding:8px 0;font-size:13px">Could not load news</div>';
+  }
+}
+
+function saRenderAIBrief(ticker) {
+  const el = document.getElementById("saAI");
+  if (!el) return;
+  el.innerHTML = `<button class="sa-ai-btn" id="saAIBtn">✦ AI Analysis</button>
+    <div class="sa-ai-panel" id="saAIPanel"></div>`;
+
+  document.getElementById("saAIBtn").addEventListener("click", async function() {
+    const btn = this, panel = document.getElementById("saAIPanel");
+    if (panel.classList.contains("open") && !btn.classList.contains("is-loading")) {
+      panel.classList.remove("open"); btn.classList.remove("is-open"); return;
+    }
+    btn.classList.add("is-loading");
+    panel.innerHTML = `<div class="sa-ai-head">✦ AI Analysis <span style="font-size:9px;opacity:.7;font-weight:400">AI-GENERATED · PUBLIC DATA ONLY</span></div><div style="display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:13px"><span class="spinner"></span>Analyzing…</div>`;
+    panel.classList.add("open"); btn.classList.add("is-open");
+
+    try {
+      // Gather context
+      const priceEl = document.getElementById("saPrice");
+      const chgEl   = document.getElementById("saChg");
+      const nameEl  = document.getElementById("saName");
+      const forecastEl = document.getElementById("saForecast");
+
+      const price = priceEl ? parseFloat(priceEl.textContent.replace("$","")) : null;
+      const name  = nameEl  ? nameEl.textContent : ticker;
+      const cpMatch = (chgEl?.textContent||"").match(/\(([+-]?\d+\.?\d*)%\)/);
+      const changePct = cpMatch ? parseFloat(cpMatch[1]) : null;
+
+      let yoyPct = null, weekHigh = null, weekLow = null;
+      if (_saCandles.length >= 2) {
+        const cl = _saCandles.map(c=>c.close);
+        yoyPct = ((cl[cl.length-1]-cl[0])/cl[0])*100;
+      }
+      const trendCard = listEl.querySelector(".sa-trend-card");
+      if (trendCard) {
+        trendCard.querySelectorAll("div > div").forEach(d => {
+          const lbl = d.querySelector(".sa-trend-label")?.textContent||"";
+          const val = parseFloat((d.querySelector(".sa-trend-val")?.textContent||"").replace("$",""));
+          if (lbl.includes("High") && isFinite(val)) weekHigh = val;
+          if (lbl.includes("Low")  && isFinite(val)) weekLow  = val;
+        });
+      }
+
+      const newsEl = document.getElementById("saNews");
+      const newsItems = newsEl ? Array.from(newsEl.querySelectorAll(".sa-news-hl")).slice(0,5).map(a=>({headline:a.textContent})) : [];
+
+      const res = await fetch(SA_BASE + "/stockbrief", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ ticker, name, price, changePct, weekHigh, weekLow, yoyPct, news:newsItems, forecast: forecastEl?._data||null })
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      panel.innerHTML = `
+        <div class="sa-ai-head">✦ AI Analysis <span style="font-size:9px;opacity:.7;font-weight:400">AI-GENERATED · PUBLIC DATA ONLY</span></div>
+        <div class="sa-ai-text">${escapeHtml(data.brief||"").replace(/\n/g,"<br>")}</div>
+        <div class="sa-ai-foot">${escapeHtml(data.model||"")} · ${data.generated_at ? new Date(data.generated_at).toLocaleString() : ""}${data.cached?" · cached":""}</div>`;
+    } catch(e) {
+      panel.innerHTML = `<div class="sa-ai-err">Could not load: ${escapeHtml(e.message)}</div>`;
+    }
+    btn.classList.remove("is-loading");
+  });
 }
 
 // ========== AI BRIEF ==========
@@ -6426,6 +7063,24 @@ updateSectionLabel();
 fetchNWSAlerts();
 loadWeather();
 loadCategory();
+
+// ── Hash routing: #stock-TICKER opens analysis view; browser Back returns to watchlist ──
+(function() {
+  function handleHash() {
+    const m = location.hash.match(/^#stock-(.+)$/);
+    if (m) {
+      const tk = decodeURIComponent(m[1]).toUpperCase();
+      if (activeCat !== "stocks") { activeCat = "stocks"; renderDrawer(); renderQuickTabs(); updateSectionLabel(); }
+      openStockAnalysis(tk);
+    } else if (document.getElementById("saBackBtn")) {
+      // Back button pressed while analysis is showing — return to watchlist
+      saDestroyCharts();
+      loadStocks();
+    }
+  }
+  window.addEventListener("popstate", handleHash);
+  if (location.hash.startsWith("#stock-")) handleHash();
+})();
 
 setInterval(()=>{ localStorage.removeItem("news.nws.alerts"); fetchNWSAlerts(); }, ALERTS_CACHE_TTL_MS);
 // ─── Auto-hide header on scroll down, reveal on scroll up (iOS news-app pattern)

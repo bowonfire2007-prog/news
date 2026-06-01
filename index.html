@@ -87,6 +87,7 @@
   /* ── WEATHER ── */
   .weather { max-width:760px; margin:0 auto 2px; padding:10px 0; display:flex; flex-direction:column; gap:8px; font-size:14px; }
   .weather.loading { opacity:0.5; }
+  /* Current conditions row */
   .w-current { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .w-temp { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
   .w-icon { font-size:22px; }
@@ -94,10 +95,35 @@
   .w-sep { color:var(--text-soft); }
   .w-meta { color:var(--text-muted); font-size:12px; margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
   .w-meta span { white-space:nowrap; }
-  .w-forecast { display:flex; align-items:center; gap:10px; padding-top:6px; border-top:1px solid var(--border); font-size:13px; color:var(--text-muted); flex-wrap:wrap; }
-  .w-day { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
-  .w-day-name { color:var(--text); font-weight:600; }
-  .w-radar { margin-left:auto; color:var(--accent); font-weight:600; white-space:nowrap; text-decoration:none; }
+  /* Hourly strip */
+  .w-hourly-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .w-hourly-wrap::-webkit-scrollbar { display:none; }
+  .w-hourly { display:flex; gap:5px; padding:6px 0 2px; border-top:1px solid var(--border); }
+  .w-hour { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 9px; border-radius:8px; background:var(--card-hover); min-width:50px; }
+  .w-hour.now { background:color-mix(in srgb,var(--accent) 10%,var(--card-hover)); border:1px solid color-mix(in srgb,var(--accent) 30%,transparent); }
+  .w-hour-time { font-size:10px; font-weight:700; color:var(--text-muted); letter-spacing:0.03em; }
+  .w-hour.now .w-hour-time { color:var(--accent); }
+  .w-hour-icon { font-size:15px; line-height:1.1; }
+  .w-hour-temp { font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--text); }
+  .w-hour-pop { font-size:10px; color:var(--text-soft); font-variant-numeric:tabular-nums; min-height:13px; }
+  .w-hour-pop.wet { color:#3b82f6; font-weight:700; }
+  [data-theme="dark"] .w-hour-pop.wet { color:#60a5fa; }
+  /* 10-day forecast row */
+  .w-forecast { overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; display:flex; align-items:stretch; gap:5px; padding-top:6px; border-top:1px solid var(--border); }
+  .w-forecast::-webkit-scrollbar { display:none; }
+  .w-day { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 9px; border-radius:8px; background:var(--card-hover); min-width:56px; }
+  .w-day.today { background:color-mix(in srgb,var(--accent) 10%,var(--card-hover)); border:1px solid color-mix(in srgb,var(--accent) 30%,transparent); }
+  .w-day-name { font-size:10px; font-weight:700; color:var(--text-muted); letter-spacing:0.03em; text-transform:uppercase; white-space:nowrap; }
+  .w-day.today .w-day-name { color:var(--accent); }
+  .w-day-icon { font-size:17px; line-height:1.1; }
+  .w-day-temps { font-size:11.5px; font-variant-numeric:tabular-nums; display:flex; gap:2px; align-items:baseline; }
+  .w-day-hi { font-weight:700; color:var(--text); }
+  .w-day-lo { color:var(--text-soft); }
+  .w-day-pop { font-size:10px; color:var(--text-soft); font-variant-numeric:tabular-nums; min-height:13px; }
+  .w-day-pop.wet { color:#3b82f6; font-weight:700; }
+  [data-theme="dark"] .w-day-pop.wet { color:#60a5fa; }
+  .w-radar-wrap { display:flex; align-items:center; flex-shrink:0; padding-left:4px; }
+  .w-radar { color:var(--accent); font-weight:600; white-space:nowrap; text-decoration:none; font-size:13px; padding:4px 6px; }
   .w-radar:hover { text-decoration:underline; }
   .w-lake { display:inline-flex; align-items:center; gap:5px; padding:3px 10px 3px 8px; background:color-mix(in srgb,var(--accent) 12%,transparent); border-radius:999px; font-weight:700; color:var(--accent); font-size:13px; white-space:nowrap; text-decoration:none; }
   .w-lake:hover { text-decoration:underline; }
@@ -277,14 +303,18 @@
     header .header-row { padding-bottom:1px; }
     /* Hide quote of the day in the sticky header — biggest single space-saver */
     .quote-bar { display:none; }
-    /* Collapse weather to current-conditions only — hide the multi-day forecast row */
-    .weather { padding:4px 0 3px; gap:4px; }
-    .w-forecast { display:none; }
-    /* Trim meta row to just the essentials (wind + precip) */
-    .w-meta { font-size:10.5px; gap:5px; }
+    /* Compact weather on mobile — keep all strips but tighten spacing */
+    .weather { padding:4px 0 3px; gap:6px; }
+    .w-meta { font-size:10.5px; gap:6px; }
     .w-meta span:not(.w-lake) { white-space:nowrap; }
     .w-temp { font-size:19px; }
     .w-icon { font-size:19px; }
+    .w-hour { padding:6px 7px; min-width:44px; }
+    .w-hour-icon { font-size:14px; }
+    .w-hour-temp { font-size:11px; }
+    .w-day { padding:6px 7px; min-width:50px; }
+    .w-day-icon { font-size:15px; }
+    .w-day-temps { font-size:11px; }
     /* Shrink dateline — hide the centre motto, keep date + edition */
     .dateline { padding:3px 0 4px; }
     .dateline-volume { display:none; }
@@ -1815,7 +1845,7 @@ async function fetchTrumanLake() {
 async function loadWeather(force) {
   // Bumped cache keys to v2 so old cached values (e.g. raw TUMM7 stage 28.8 ft
   // from the pre-datum-offset code) are automatically invalidated.
-  const cacheKey="news.weather.v2", lakeCacheKey="news.truman.v2";
+  const cacheKey="news.weather.v3", lakeCacheKey="news.truman.v2";
   let data, lake;
   if (!force) {
     try { const p=JSON.parse(localStorage.getItem(cacheKey)||"null"); if(p&&Date.now()-p.ts<WEATHER_CACHE_TTL_MS) data=p.data; } catch {}
@@ -1825,10 +1855,10 @@ async function loadWeather(force) {
   weatherEl.className="weather loading";
   weatherEl.innerHTML='<span class="spinner"></span><span>Loading weather…</span>';
   const url = "https://api.open-meteo.com/v1/forecast?latitude="+WEATHER_LOCATION.lat+"&longitude="+WEATHER_LOCATION.lon+
-    "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m" +
-    "&hourly=wind_direction_10m,wind_speed_10m" +
-    "&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max" +
-    "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone="+encodeURIComponent(WEATHER_LOCATION.tz)+"&forecast_days=3&past_days=1";
+    "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m" +
+    "&hourly=temperature_2m,apparent_temperature,weather_code,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,relative_humidity_2m" +
+    "&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset" +
+    "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone="+encodeURIComponent(WEATHER_LOCATION.tz)+"&forecast_days=10&past_days=1";
   try {
     const [wRes, lakeData] = await Promise.all([fetchWithTimeout(url, FEED_TIMEOUT_MS), fetchTrumanLake()]);
     if (!wRes.ok) throw new Error("HTTP "+wRes.status);
@@ -1862,35 +1892,94 @@ function findTodayIndex(times, tz) {
 }
 
 function renderWeather(data, lake) {
-  const c=data.current||{}, d=data.daily||{};
+  const c=data.current||{}, d=data.daily||{}, h=data.hourly||{};
   const entry=WEATHER_CODE_MAP[c.weather_code]||["—","🌡️"];
   const temp=Math.round(c.temperature_2m), feels=Math.round(c.apparent_temperature);
   const todayIdx = findTodayIndex(d.time, WEATHER_LOCATION.tz);
   const hi=d.temperature_2m_max&&Math.round(d.temperature_2m_max[todayIdx]);
   const lo=d.temperature_2m_min&&Math.round(d.temperature_2m_min[todayIdx]);
   const wind=Math.round(c.wind_speed_10m), hum=c.relative_humidity_2m;
+  const gusts=isFinite(c.wind_gusts_10m)?Math.round(c.wind_gusts_10m):null;
   const windDirText = isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m)+" " : "";
-  let forecastHtml="";
-  const totalDays = (d.time||[]).length;
-  for (let dispIdx=0; dispIdx<3 && (todayIdx+dispIdx)<totalDays; dispIdx++) {
-    const i = todayIdx + dispIdx;
-    const e=WEATHER_CODE_MAP[(d.weather_code||[])[i]]||["","🌡️"];
-    const pop=(d.precipitation_probability_max||[])[i];
-    forecastHtml+='<span class="w-day"><span class="w-day-name">'+dayLabel((d.time||[])[i],dispIdx)+'</span> '+e[1]+' '+
-      Math.round((d.temperature_2m_max||[])[i])+'° / '+Math.round((d.temperature_2m_min||[])[i])+'°'+
-      (isFinite(pop)&&pop>0?' <span style="color:var(--text-soft)">💧'+pop+'%</span>':'')+' </span>';
+  const gustText = gusts && gusts > wind+3 ? ' (G '+gusts+')' : '';
+
+  // ── Past 24h precipitation total (inches, from hourly data) ──
+  let precip24 = 0;
+  if (h.time && h.precipitation) {
+    const cutoff = Date.now() - 24*3600000;
+    for (let i=0; i<h.time.length; i++) {
+      const t = new Date(h.time[i]).getTime();
+      if (t >= cutoff && t <= Date.now()+60000 && h.precipitation[i]>0) precip24 += h.precipitation[i];
+    }
   }
+  const precipText = precip24>=0.01 ? precip24.toFixed(2)+'" last 24h' : '0.00" last 24h';
+
+  // ── Lake pill ──
   const radarHref="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My43NzgsMzguMzY4Nl0sImxvY2F0aW9uIjpudWxsLCJ6b29tIjo4LCJmaWx0ZXJpbmciOnRydWUsImxheWVyIjoiYnJlZiIsInN0YXRpb24iOiJLRUFYIn19";
   const trendArrow = lake?.trend==="rising"?"▲":lake?.trend==="falling"?"▼":"—";
   const dc = (lake && lake.dailyChange !== null && isFinite(lake.dailyChange)) ? lake.dailyChange : null;
   const dailyText = dc !== null
-    ? ' <span style="opacity:0.75;font-weight:500">('+(dc>=0?'+':'')+dc.toFixed(2)+'ft/24h)</span>'
+    ? ' <span style="opacity:0.75;font-weight:500">'+(dc>=0?'+':'')+dc.toFixed(2)+'ft/24h)</span>'
     : '';
-  // Link to the USACE Corps page (matches the official numbers; same source we're using).
   const TRUMAN_INFO_URL = "https://water.usace.army.mil/overview/nwk/locations/hast";
   const lakeHtml = lake&&isFinite(lake.stage)
-    ? '<a class="w-lake" href="'+TRUMAN_INFO_URL+'" target="_blank" rel="noopener">🌊 Truman <strong>'+lake.stage.toFixed(1)+'ft</strong> '+trendArrow+dailyText+'</a>'
+    ? '<a class="w-lake" href="'+TRUMAN_INFO_URL+'" target="_blank" rel="noopener">🌊 Truman <strong>'+lake.stage.toFixed(1)+'ft</strong> '+trendArrow+(dc!==null?' <span style="opacity:0.75;font-weight:500">('+( dc>=0?'+':'')+dc.toFixed(2)+'ft/24h)</span>':'')+'</a>'
     : '<a class="w-lake" href="'+TRUMAN_INFO_URL+'" target="_blank" rel="noopener">🌊 Truman Lake →</a>';
+
+  // ── Hourly strip: current hour + next 24 hours ──
+  let hourlyHtml = '';
+  if (h.time && h.temperature_2m) {
+    const now = Date.now();
+    let count = 0;
+    for (let i=0; i<h.time.length && count<25; i++) {
+      const t = new Date(h.time[i]).getTime();
+      if (t < now - 1800000) continue;   // skip past hours (keep if within 30 min)
+      if (t > now + 25*3600000) break;
+      const isNow = Math.abs(t - now) < 3600000;
+      const hEntry = WEATHER_CODE_MAP[h.weather_code?.[i]] || ["","🌡️"];
+      const hTemp = h.temperature_2m?.[i]!=null ? Math.round(h.temperature_2m[i]) : "—";
+      const hPop  = h.precipitation_probability?.[i];
+      const timeStr = isNow ? "Now"
+        : new Date(h.time[i]).toLocaleTimeString("en-US",{hour:"numeric",timeZone:WEATHER_LOCATION.tz})
+            .replace(" AM","a").replace(" PM","p");
+      const popHtml = isFinite(hPop)&&hPop>0
+        ? '<span class="w-hour-pop wet">'+hPop+'%</span>'
+        : '<span class="w-hour-pop"></span>';
+      hourlyHtml +=
+        '<div class="w-hour'+(isNow?' now':'')+'">'+
+          '<span class="w-hour-time">'+timeStr+'</span>'+
+          '<span class="w-hour-icon">'+hEntry[1]+'</span>'+
+          '<span class="w-hour-temp">'+hTemp+'°</span>'+
+          popHtml+
+        '</div>';
+      count++;
+    }
+  }
+
+  // ── 10-day forecast ──
+  let forecastHtml = '';
+  const totalDays = (d.time||[]).length;
+  for (let dispIdx=0; dispIdx<10 && (todayIdx+dispIdx)<totalDays; dispIdx++) {
+    const i = todayIdx+dispIdx;
+    const e = WEATHER_CODE_MAP[(d.weather_code||[])[i]] || ["","🌡️"];
+    const pop  = (d.precipitation_probability_max||[])[i];
+    const nameLabel = dispIdx===0 ? "Today" : dispIdx===1 ? "Tmrw"
+      : new Date((d.time[i])+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",timeZone:WEATHER_LOCATION.tz});
+    const popHtml = isFinite(pop)&&pop>0
+      ? '<span class="w-day-pop wet">💧'+pop+'%</span>'
+      : '<span class="w-day-pop"></span>';
+    forecastHtml +=
+      '<div class="w-day'+(dispIdx===0?' today':'')+'">'+
+        '<span class="w-day-name">'+nameLabel+'</span>'+
+        '<span class="w-day-icon">'+e[1]+'</span>'+
+        '<div class="w-day-temps">'+
+          '<span class="w-day-hi">'+Math.round((d.temperature_2m_max||[])[i])+'°</span>'+
+          '<span class="w-day-lo">/'+Math.round((d.temperature_2m_min||[])[i])+'°</span>'+
+        '</div>'+
+        popHtml+
+      '</div>';
+  }
+
   weatherEl.className="weather";
   weatherEl.innerHTML=
     '<div class="w-current">'+
@@ -1902,12 +1991,16 @@ function renderWeather(data, lake) {
       '<span class="w-meta">'+
         '<span>H '+(isFinite(hi)?hi:"—")+'° L '+(isFinite(lo)?lo:"—")+'°</span>'+
         '<span>Feels '+feels+'°</span>'+
-        '<span>💨 '+windDirText+wind+' mph</span>'+
+        '<span>💨 '+windDirText+wind+' mph'+gustText+'</span>'+
         '<span>💧 '+hum+'%</span>'+
+        '<span>🌂 '+precipText+'</span>'+
         lakeHtml+
       '</span>'+
     '</div>'+
-    '<div class="w-forecast">'+forecastHtml+'<a class="w-radar" target="_blank" href="'+radarHref+'">📡 Radar →</a></div>';
+    (hourlyHtml?'<div class="w-hourly-wrap"><div class="w-hourly">'+hourlyHtml+'</div></div>':'')+
+    '<div class="w-forecast">'+forecastHtml+
+      '<div class="w-radar-wrap"><a class="w-radar" target="_blank" href="'+radarHref+'">📡 Radar →</a></div>'+
+    '</div>';
 }
 
 // ========== NEWS FEEDS ==========
@@ -2007,7 +2100,7 @@ function getCachedWeather() {
   // Read from the v2 cache key so we match what loadWeather() writes — older code
   // looked at "news.weather" which no longer exists, leaving the fishing report
   // bite meter without temp/wind values.
-  try { const p=JSON.parse(localStorage.getItem("news.weather.v2")||"null"); return (p&&p.data)?p.data:null; } catch { return null; }
+  try { const p=JSON.parse(localStorage.getItem("news.weather.v3")||"null"); return (p&&p.data)?p.data:null; } catch { return null; }
 }
 
 // ── WIND HELPERS ──

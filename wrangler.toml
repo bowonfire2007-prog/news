@@ -1,6 +1,7 @@
 name = "rss-proxy"
 main = "worker.js"
 compatibility_date = "2026-05-01"
+account_id = "3826a504e1b9ef4b240565bea6621cb9"
 
 # ── KV namespace for Missouri Weekly Market Summary data ──────────────────────
 # One-time setup:

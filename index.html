@@ -85,20 +85,29 @@
   .search-clear { width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; font-size:17px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 
   /* ── WEATHER ── */
-  .weather { max-width:760px; margin:0 auto 2px; padding:10px 0; display:flex; flex-direction:column; gap:8px; font-size:14px; }
+  .weather { max-width:760px; margin:0 auto 2px; padding:10px 0; display:flex; flex-direction:column; gap:0; font-size:14px; }
   .weather.loading { opacity:0.5; }
   /* Current conditions row */
-  .w-current { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .w-current { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-bottom:8px; }
   .w-temp { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
   .w-icon { font-size:22px; }
   .w-cond { color:var(--text); font-weight:500; }
   .w-sep { color:var(--text-soft); }
   .w-meta { color:var(--text-muted); font-size:12px; margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
   .w-meta span { white-space:nowrap; }
+  /* Collapsible section toggle row */
+  .w-toggle { display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-top:1px solid var(--border); cursor:pointer; user-select:none; font-size:10.5px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); transition:color .15s; }
+  .w-toggle:hover { color:var(--text); }
+  .w-toggle-chevron { font-size:9px; transition:transform .2s ease; display:inline-block; }
+  .w-toggle.open .w-toggle-chevron { transform:rotate(180deg); }
+  /* Collapse wrapper */
+  .w-collapse { max-height:0; overflow:hidden; transition:max-height .28s ease; }
+  .w-collapse.open { max-height:160px; }
+  .w-collapse.open.has-detail { max-height:700px; }
   /* Hourly strip */
-  .w-hourly-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .w-hourly-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:6px; }
   .w-hourly-wrap::-webkit-scrollbar { display:none; }
-  .w-hourly { display:flex; gap:5px; padding:6px 0 2px; border-top:1px solid var(--border); }
+  .w-hourly { display:flex; gap:5px; padding-top:6px; }
   .w-hour { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 9px; border-radius:8px; background:var(--card-hover); min-width:50px; }
   .w-hour.now { background:color-mix(in srgb,var(--accent) 10%,var(--card-hover)); border:1px solid color-mix(in srgb,var(--accent) 30%,transparent); }
   .w-hour-time { font-size:10px; font-weight:700; color:var(--text-muted); letter-spacing:0.03em; }
@@ -109,12 +118,14 @@
   .w-hour-pop.wet { color:#3b82f6; font-weight:700; }
   [data-theme="dark"] .w-hour-pop.wet { color:#60a5fa; }
   /* 10-day forecast row */
-  .w-forecast { overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; display:flex; align-items:stretch; gap:5px; padding-top:6px; border-top:1px solid var(--border); }
+  .w-forecast { overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; display:flex; align-items:stretch; gap:5px; padding-top:6px; padding-bottom:2px; }
   .w-forecast::-webkit-scrollbar { display:none; }
-  .w-day { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 9px; border-radius:8px; background:var(--card-hover); min-width:56px; }
-  .w-day.today { background:color-mix(in srgb,var(--accent) 10%,var(--card-hover)); border:1px solid color-mix(in srgb,var(--accent) 30%,transparent); }
+  .w-day { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 9px; border-radius:8px; background:var(--card-hover); min-width:56px; cursor:pointer; transition:background .12s, border-color .12s; border:1px solid transparent; }
+  .w-day:hover { background:color-mix(in srgb,var(--accent) 6%,var(--card-hover)); }
+  .w-day.today { background:color-mix(in srgb,var(--accent) 10%,var(--card-hover)); border-color:color-mix(in srgb,var(--accent) 30%,transparent); }
+  .w-day.selected { background:color-mix(in srgb,var(--accent) 18%,var(--card-hover)); border-color:var(--accent); }
   .w-day-name { font-size:10px; font-weight:700; color:var(--text-muted); letter-spacing:0.03em; text-transform:uppercase; white-space:nowrap; }
-  .w-day.today .w-day-name { color:var(--accent); }
+  .w-day.today .w-day-name, .w-day.selected .w-day-name { color:var(--accent); }
   .w-day-icon { font-size:17px; line-height:1.1; }
   .w-day-temps { font-size:11.5px; font-variant-numeric:tabular-nums; display:flex; gap:2px; align-items:baseline; }
   .w-day-hi { font-weight:700; color:var(--text); }
@@ -127,6 +138,21 @@
   .w-radar:hover { text-decoration:underline; }
   .w-lake { display:inline-flex; align-items:center; gap:5px; padding:3px 10px 3px 8px; background:color-mix(in srgb,var(--accent) 12%,transparent); border-radius:999px; font-weight:700; color:var(--accent); font-size:13px; white-space:nowrap; text-decoration:none; }
   .w-lake:hover { text-decoration:underline; }
+  /* Day detail panel */
+  .w-day-detail { padding:10px 0 6px; }
+  .w-detail-header { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:10px; padding-top:8px; border-top:1px solid var(--border); }
+  .w-detail-date { font-weight:700; font-size:13px; color:var(--text); }
+  .w-detail-meta { font-size:11px; color:var(--text-muted); }
+  .w-detail-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(58px,1fr)); gap:5px; }
+  .w-detail-hour { display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 4px; border-radius:8px; background:var(--card-hover); }
+  .w-detail-time { font-size:9px; font-weight:700; color:var(--text-muted); letter-spacing:0.03em; }
+  .w-detail-icon { font-size:15px; line-height:1.1; }
+  .w-detail-temp { font-size:12px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+  .w-detail-pop { font-size:9px; color:var(--text-soft); min-height:12px; font-variant-numeric:tabular-nums; }
+  .w-detail-pop.wet { color:#3b82f6; font-weight:700; }
+  [data-theme="dark"] .w-detail-pop.wet { color:#60a5fa; }
+  .w-detail-wind { font-size:9px; color:var(--text-soft); white-space:nowrap; }
+  .w-detail-prec { font-size:9px; min-height:12px; font-variant-numeric:tabular-nums; }
 
   /* ── QUOTE OF DAY ── */
   .quote-bar { max-width:760px; margin:0 auto; padding:12px 0 12px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-bottom:6px; position:relative; }
@@ -303,18 +329,23 @@
     header .header-row { padding-bottom:1px; }
     /* Hide quote of the day in the sticky header — biggest single space-saver */
     .quote-bar { display:none; }
-    /* Compact weather on mobile — keep all strips but tighten spacing */
-    .weather { padding:4px 0 3px; gap:6px; }
+    /* Compact weather on mobile */
+    .weather { padding:4px 0 3px; }
+    .w-current { padding-bottom:4px; }
     .w-meta { font-size:10.5px; gap:6px; }
     .w-meta span:not(.w-lake) { white-space:nowrap; }
     .w-temp { font-size:19px; }
     .w-icon { font-size:19px; }
+    .w-toggle { font-size:9.5px; padding:4px 0; }
     .w-hour { padding:6px 7px; min-width:44px; }
     .w-hour-icon { font-size:14px; }
     .w-hour-temp { font-size:11px; }
     .w-day { padding:6px 7px; min-width:50px; }
     .w-day-icon { font-size:15px; }
     .w-day-temps { font-size:11px; }
+    .w-detail-grid { grid-template-columns:repeat(auto-fill,minmax(52px,1fr)); gap:4px; }
+    .w-collapse.open { max-height:180px; }
+    .w-collapse.open.has-detail { max-height:750px; }
     /* Shrink dateline — hide the centre motto, keep date + edition */
     .dateline { padding:3px 0 4px; }
     .dateline-volume { display:none; }
@@ -1918,9 +1949,6 @@ function renderWeather(data, lake) {
   const radarHref="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My43NzgsMzguMzY4Nl0sImxvY2F0aW9uIjpudWxsLCJ6b29tIjo4LCJmaWx0ZXJpbmciOnRydWUsImxheWVyIjoiYnJlZiIsInN0YXRpb24iOiJLRUFYIn19";
   const trendArrow = lake?.trend==="rising"?"▲":lake?.trend==="falling"?"▼":"—";
   const dc = (lake && lake.dailyChange !== null && isFinite(lake.dailyChange)) ? lake.dailyChange : null;
-  const dailyText = dc !== null
-    ? ' <span style="opacity:0.75;font-weight:500">'+(dc>=0?'+':'')+dc.toFixed(2)+'ft/24h)</span>'
-    : '';
   const TRUMAN_INFO_URL = "https://water.usace.army.mil/overview/nwk/locations/hast";
   const lakeHtml = lake&&isFinite(lake.stage)
     ? '<a class="w-lake" href="'+TRUMAN_INFO_URL+'" target="_blank" rel="noopener">🌊 Truman <strong>'+lake.stage.toFixed(1)+'ft</strong> '+trendArrow+(dc!==null?' <span style="opacity:0.75;font-weight:500">('+( dc>=0?'+':'')+dc.toFixed(2)+'ft/24h)</span>':'')+'</a>'
@@ -1933,7 +1961,7 @@ function renderWeather(data, lake) {
     let count = 0;
     for (let i=0; i<h.time.length && count<25; i++) {
       const t = new Date(h.time[i]).getTime();
-      if (t < now - 1800000) continue;   // skip past hours (keep if within 30 min)
+      if (t < now - 1800000) continue;
       if (t > now + 25*3600000) break;
       const isNow = Math.abs(t - now) < 3600000;
       const hEntry = WEATHER_CODE_MAP[h.weather_code?.[i]] || ["","🌡️"];
@@ -1962,14 +1990,14 @@ function renderWeather(data, lake) {
   for (let dispIdx=0; dispIdx<10 && (todayIdx+dispIdx)<totalDays; dispIdx++) {
     const i = todayIdx+dispIdx;
     const e = WEATHER_CODE_MAP[(d.weather_code||[])[i]] || ["","🌡️"];
-    const pop  = (d.precipitation_probability_max||[])[i];
+    const pop = (d.precipitation_probability_max||[])[i];
     const nameLabel = dispIdx===0 ? "Today" : dispIdx===1 ? "Tmrw"
       : new Date((d.time[i])+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",timeZone:WEATHER_LOCATION.tz});
     const popHtml = isFinite(pop)&&pop>0
       ? '<span class="w-day-pop wet">💧'+pop+'%</span>'
       : '<span class="w-day-pop"></span>';
     forecastHtml +=
-      '<div class="w-day'+(dispIdx===0?' today':'')+'">'+
+      '<div class="w-day'+(dispIdx===0?' today':'')+'" data-disp-idx="'+dispIdx+'">'+
         '<span class="w-day-name">'+nameLabel+'</span>'+
         '<span class="w-day-icon">'+e[1]+'</span>'+
         '<div class="w-day-temps">'+
@@ -1982,6 +2010,7 @@ function renderWeather(data, lake) {
 
   weatherEl.className="weather";
   weatherEl.innerHTML=
+    // Current conditions — always visible
     '<div class="w-current">'+
       '<span class="w-icon">'+entry[1]+'</span>'+
       '<span class="w-temp">'+temp+'°F</span>'+
@@ -1997,10 +2026,114 @@ function renderWeather(data, lake) {
         lakeHtml+
       '</span>'+
     '</div>'+
-    (hourlyHtml?'<div class="w-hourly-wrap"><div class="w-hourly">'+hourlyHtml+'</div></div>':'')+
-    '<div class="w-forecast">'+forecastHtml+
-      '<div class="w-radar-wrap"><a class="w-radar" target="_blank" href="'+radarHref+'">📡 Radar →</a></div>'+
+    // Hourly section (collapsed by default)
+    (hourlyHtml
+      ? '<div class="w-toggle" id="wHourlyToggle"><span>⏱ Hourly Forecast</span><span class="w-toggle-chevron">▾</span></div>'+
+        '<div class="w-collapse" id="wHourlyCollapse"><div class="w-hourly-wrap"><div class="w-hourly">'+hourlyHtml+'</div></div></div>'
+      : '')+
+    // 10-day section (collapsed by default)
+    '<div class="w-toggle" id="wForecastToggle"><span>📅 10-Day Forecast</span><span class="w-toggle-chevron">▾</span></div>'+
+    '<div class="w-collapse" id="wForecastCollapse">'+
+      '<div class="w-forecast">'+forecastHtml+
+        '<div class="w-radar-wrap"><a class="w-radar" target="_blank" href="'+radarHref+'">📡 Radar →</a></div>'+
+      '</div>'+
+      '<div class="w-day-detail" id="wDayDetail"></div>'+
     '</div>';
+
+  // ── Toggle handlers ──
+  const hourlyToggle   = document.getElementById('wHourlyToggle');
+  const hourlyCollapse = document.getElementById('wHourlyCollapse');
+  const fcastToggle    = document.getElementById('wForecastToggle');
+  const fcastCollapse  = document.getElementById('wForecastCollapse');
+  const dayDetail      = document.getElementById('wDayDetail');
+
+  if (hourlyToggle && hourlyCollapse) {
+    hourlyToggle.addEventListener('click', () => {
+      const open = hourlyCollapse.classList.toggle('open');
+      hourlyToggle.classList.toggle('open', open);
+    });
+  }
+  if (fcastToggle && fcastCollapse) {
+    fcastToggle.addEventListener('click', () => {
+      const open = fcastCollapse.classList.toggle('open');
+      fcastToggle.classList.toggle('open', open);
+      if (!open) {
+        if (dayDetail) dayDetail.innerHTML = '';
+        fcastCollapse.classList.remove('has-detail');
+        weatherEl.querySelectorAll('.w-day').forEach(el => el.classList.remove('selected'));
+      }
+    });
+  }
+
+  // ── Day click → hourly detail panel ──
+  weatherEl.querySelectorAll('.w-day[data-disp-idx]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const dispIdx = parseInt(el.dataset.dispIdx||'0');
+      const dayI    = todayIdx + dispIdx;
+      const dayDate = (d.time||[])[dayI];
+      if (!dayDate || !dayDetail || !fcastCollapse) return;
+
+      // Toggle off if same day re-clicked
+      if (el.classList.contains('selected')) {
+        el.classList.remove('selected');
+        dayDetail.innerHTML = '';
+        fcastCollapse.classList.remove('has-detail');
+        return;
+      }
+      weatherEl.querySelectorAll('.w-day').forEach(x => x.classList.remove('selected'));
+      el.classList.add('selected');
+
+      // Day summary header
+      const fullDate = new Date(dayDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric',timeZone:WEATHER_LOCATION.tz});
+      const dHi      = d.temperature_2m_max?.[dayI]!=null ? Math.round(d.temperature_2m_max[dayI])+'°' : '—';
+      const dLo      = d.temperature_2m_min?.[dayI]!=null ? Math.round(d.temperature_2m_min[dayI])+'°' : '—';
+      const dPrecip  = (d.precipitation_sum?.[dayI]||0) > 0.005 ? d.precipitation_sum[dayI].toFixed(2)+'"' : '0"';
+      const dUV      = isFinite(d.uv_index_max?.[dayI]) ? ' · UV '+Math.round(d.uv_index_max[dayI]) : '';
+      const fmtSun   = iso => { try { return new Date(iso).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:WEATHER_LOCATION.tz}).replace(' AM','a').replace(' PM','p'); } catch { return ''; } };
+      const sunLine  = d.sunrise?.[dayI]&&d.sunset?.[dayI] ? ' · ☀️ '+fmtSun(d.sunrise[dayI])+' 🌙 '+fmtSun(d.sunset[dayI]) : '';
+
+      // Hourly breakdown — every 2 hours for this day
+      let hoursHtml = '';
+      if (h.time) {
+        for (let i=0; i<h.time.length; i++) {
+          if (!h.time[i].startsWith(dayDate)) continue;
+          const hr = parseInt(h.time[i].slice(11,13));
+          if (hr % 2 !== 0) continue;
+          const hEntry = WEATHER_CODE_MAP[h.weather_code?.[i]] || ["","🌡️"];
+          const hT     = h.temperature_2m?.[i]!=null ? Math.round(h.temperature_2m[i])+'°' : '—';
+          const hPop   = h.precipitation_probability?.[i];
+          const hWind  = h.wind_speed_10m?.[i]!=null ? Math.round(h.wind_speed_10m[i]) : '—';
+          const hDir   = isFinite(h.wind_direction_10m?.[i]) ? compassFromDegrees(h.wind_direction_10m[i]) : '';
+          const hPrec  = (h.precipitation?.[i]||0) > 0.005
+            ? '<span class="w-detail-prec" style="color:#3b82f6;font-weight:700">'+h.precipitation[i].toFixed(2)+'"</span>'
+            : '<span class="w-detail-prec"></span>';
+          const tLabel = new Date(h.time[i]).toLocaleTimeString('en-US',{hour:'numeric',timeZone:WEATHER_LOCATION.tz}).replace(' AM','a').replace(' PM','p');
+          const popCls = isFinite(hPop)&&hPop>0 ? ' wet' : '';
+          hoursHtml +=
+            '<div class="w-detail-hour">'+
+              '<span class="w-detail-time">'+tLabel+'</span>'+
+              '<span class="w-detail-icon">'+hEntry[1]+'</span>'+
+              '<span class="w-detail-temp">'+hT+'</span>'+
+              '<span class="w-detail-pop'+popCls+'">'+(isFinite(hPop)&&hPop>0 ? hPop+'%' : '—')+'</span>'+
+              '<span class="w-detail-wind">'+hDir+' '+hWind+'</span>'+
+              hPrec+
+            '</div>';
+        }
+      }
+
+      dayDetail.innerHTML =
+        '<div class="w-detail-header">'+
+          '<span class="w-detail-date">'+fullDate+'</span>'+
+          '<span class="w-detail-meta">H '+dHi+' / L '+dLo+' · 🌂 '+dPrecip+dUV+sunLine+'</span>'+
+        '</div>'+
+        (hoursHtml
+          ? '<div class="w-detail-grid">'+hoursHtml+'</div>'
+          : '<div style="color:var(--text-muted);font-size:12px;padding:6px 0">No hourly data available for this day.</div>');
+
+      fcastCollapse.classList.add('has-detail');
+    });
+  });
 }
 
 // ========== NEWS FEEDS ==========

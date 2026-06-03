@@ -1680,10 +1680,38 @@ function outdoorRelevance(item) {
 }
 
 // Cross-source trending: count how many distinct sources share overlapping title words
-function wordSet(title) {
-  const stop = new Set(["the","a","an","in","of","to","and","is","for","on","at","by","with","as","from","are","was","his","her","its","it","says","say","after","over"]);
-  return new Set(title.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !stop.has(w)));
+const STOP_WORDS = new Set([
+  "the","a","an","in","of","to","and","is","for","on","at","by","with","as","from","are","was",
+  "his","her","its","it","says","say","after","over","that","this","but","not","have","has","had",
+  "been","will","would","could","should","than","more","also","into","they","them","their","about",
+  "which","who","new","one","two","three","amid","even","just","like","much","many","most","some",
+  "any","all","both","each","such","very","well","too","yet","now","then","here","there","when",
+  "where","how","may","did","does","gets","got","set","put","use","used","make","made","take",
+  "took","give","gave","come","came","know","knew","find","want","need","call","show","see","ask",
+  "asks","told","tell","says","said","report","reports","reported","amid","between","against","up",
+  "out","down","off","back","what","why","than","own","other","first","last","next","high","low",
+  "big","old","long","day","week","year","time","way","man","men","women","woman","people","us",
+  "can","our","him","won","hit","top","key","led","war","aid","law","add","end","due","put","run",
+  "set","let","saw","old","ago","far","via","per","act","aim","ban","bar","cut","die","era","gap",
+  "say","yet","two","bit","lot","try","buy","win","pay","ask","may","six","ten"
+]);
+// Light stemming: strip common suffixes so "missiles"→"missil", "attacked"→"attack"
+function stem(w) {
+  return w.replace(/ies$/, 'y').replace(/ves$/, 'f')
+          .replace(/tion$/, 'tion')
+          .replace(/([^aeiou])s$/, '$1')
+          .replace(/ing$/, '').replace(/ed$/, '')
+          .replace(/er$/, '').replace(/ly$/, '');
 }
+function wordSet(title) {
+  return new Set(
+    title.toLowerCase().split(/[\s\W]+/)
+      .filter(w => w.length >= 3 && !STOP_WORDS.has(w))
+      .map(stem)
+      .filter(w => w.length >= 3)
+  );
+}
+
 function markTrending(items) {
   const sets = items.map(i => wordSet(i.title));
   items.forEach((item, i) => {
@@ -1693,12 +1721,13 @@ function markTrending(items) {
       if (i === j) return;
       if (seenSources.has(items[j].source)) return;
       const inter = [...sets[i]].filter(w => s.has(w));
-      if (inter.length / Math.max(sets[i].size, s.size, 1) >= 0.38) {
+      // Trending: 2+ shared key words OR ratio ≥ 0.28
+      if (inter.length >= 2 && inter.length / Math.max(sets[i].size, s.size, 1) >= 0.18) {
         matches++;
         seenSources.add(items[j].source);
       }
     });
-    item.sourceCount = matches + 1; // +1 for the item itself
+    item.sourceCount = matches + 1;
     item.trending = matches >= 2;
   });
 }
@@ -1716,12 +1745,13 @@ function collapseByTopic(items) {
     items.forEach((_, j) => {
       if (used[j]) return;
       const inter = [...sets[i]].filter(w => sets[j].has(w));
-      if (inter.length / Math.max(sets[i].size, sets[j].size, 1) >= 0.36) {
+      const ratio = inter.length / Math.max(sets[i].size, sets[j].size, 1);
+      // Same story = 2+ matching key words AND ratio ≥ 0.15
+      if (inter.length >= 2 && ratio >= 0.15) {
         used[j] = true;
         clusterSize++;
       }
     });
-    // Use the larger of cross-source count vs cluster size
     item.sourceCount = Math.max(item.sourceCount || 1, clusterSize);
     if (clusterSize >= 3) item.trending = true;
     result.push(item);

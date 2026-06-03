@@ -255,6 +255,8 @@
   [data-theme="dark"] .badge-sources { color:#a5b4fc; background:color-mix(in srgb,#a5b4fc 14%,transparent); border-color:color-mix(in srgb,#a5b4fc 28%,transparent); }
   /* Topic tags */
   .badge-topic { border-radius:999px; }
+  .topic-military { background:#1c1917dd; color:#d97706; border:1px solid #d9770688; font-weight:800; }
+  [data-theme="dark"] .topic-military { color:#fbbf24; background:color-mix(in srgb,#fbbf24 16%,transparent); border-color:color-mix(in srgb,#fbbf24 40%,transparent); }
   .topic-politics { background:#1e3a5f22; color:#1e6cbf; border:1px solid #1e6cbf44; }
   .topic-conflict { background:#7f1d1d22; color:#b91c1c; border:1px solid #b91c1c44; }
   .topic-economy  { background:#78350f22; color:#b45309; border:1px solid #b4530944; }
@@ -940,13 +942,13 @@
 const WEATHER_LOCATION = { name:"Clinton, MO", lat:38.3686, lon:-93.7780, tz:"America/Chicago" };
 
 const CATEGORY_ICONS = {
-  saved:"🔖", stocks:"📈", world:"🌍", usa:"🇺🇸", local:"📍", ukraine:"🇺🇦", iran:"🕌",
+  saved:"🔖", stocks:"📈", world:"🌍", usa:"🇺🇸", military:"💥", local:"📍", ukraine:"🇺🇦", iran:"🕌",
   scs:"⚓", tech:"💻", business:"💼", science:"🔬",
   philippines:"🇵🇭", cannabis:"🌿", outdoor:"🎣", garden:"🌱", market:"🐄"
 };
 
 // Quick-access tab bar
-const QUICK_TAB_IDS = ["world","usa","local","outdoor","garden","market","tech","stocks","cannabis","saved"];
+const QUICK_TAB_IDS = ["world","usa","military","local","outdoor","garden","market","tech","stocks","cannabis","saved"];
 
 const CATEGORIES = [
   { id:"saved", label:"Saved", isSaved:true, feeds:[] },
@@ -983,6 +985,31 @@ const CATEGORIES = [
     { source:"ProPublica", url:"https://feeds.propublica.org/propublica/main" },
     { source:"The Atlantic", url:"https://news.google.com/rss/search?q=when:2d+site:theatlantic.com&hl=en-US&gl=US&ceid=US:en" },
     { source:"Vox", url:"https://www.vox.com/rss/index.xml" },
+  ]},
+  { id:"military", label:"Military", maxAgeHours:72, feeds:[
+    // ── Dedicated defense/military outlets ──
+    { source:"Defense News", url:"https://www.defensenews.com/rss/" },
+    { source:"Breaking Defense", url:"https://breakingdefense.com/feed/" },
+    { source:"USNI News", url:"https://news.usni.org/feed" },
+    { source:"Military Times", url:"https://www.militarytimes.com/rss/" },
+    { source:"Defense One", url:"https://www.defenseone.com/rss/all/" },
+    { source:"Task & Purpose", url:"https://taskandpurpose.com/feed/" },
+    { source:"Stars and Stripes", url:"https://www.stripes.com/arc/outboundfeeds/rss/?outputType=xml" },
+    { source:"Air Force Times", url:"https://www.airforcetimes.com/rss/" },
+    { source:"Army Times", url:"https://www.armytimes.com/rss/" },
+    { source:"Navy Times", url:"https://www.navytimes.com/rss/" },
+    { source:"War on the Rocks", url:"https://warontherocks.com/feed/" },
+    // ── DoD official releases ──
+    { source:"DoD News", url:"https://www.defense.gov/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=945&max=20" },
+    // ── Contracts — DoD publishes daily contract awards ──
+    { source:"DoD Contracts", url:"https://news.google.com/rss/search?q=pentagon+contract+awarded+million+OR+billion+defense&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Defense Contracts", url:"https://news.google.com/rss/search?q=%22defense+contract%22+OR+%22awarded+contract%22+pentagon+raytheon+OR+lockheed+OR+northrop+OR+boeing+OR+l3harris+OR+leidos+OR+SAIC&hl=en-US&gl=US&ceid=US:en" },
+    // ── Wire services for military/war coverage ──
+    { source:"AP Military", url:"https://news.google.com/rss/search?q=when:2d+site:apnews.com+military+OR+pentagon+OR+army+OR+navy+OR+air+force&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Reuters Military", url:"https://news.google.com/rss/search?q=when:2d+site:reuters.com+military+OR+defense+OR+pentagon+OR+troops&hl=en-US&gl=US&ceid=US:en" },
+    // ── Policy & analysis ──
+    { source:"Foreign Policy Mil", url:"https://news.google.com/rss/search?q=when:3d+site:foreignpolicy.com+military+OR+defense+OR+troops+OR+war&hl=en-US&gl=US&ceid=US:en" },
+    { source:"RAND Defense", url:"https://news.google.com/rss/search?q=when:7d+site:rand.org+military+OR+defense+OR+nuclear&hl=en-US&gl=US&ceid=US:en" },
   ]},
   { id:"local", label:"Local (MO)", maxAgeHours:504, feeds:[
     // ─── ULTRALOCAL — Clinton, Henry County, Truman Lake area ───
@@ -1251,7 +1278,16 @@ const TICKER_DISPLAY = { "BZ=F":"BRENT","CL=F":"WTI","BTC-USD":"BITCOIN","XRP-US
 
 // ── SOURCE TRUST WEIGHTS ──
 const SOURCE_WEIGHT = {
-  "AP (via Google)":2.0,"Reuters (via Google)":2.0,
+  "AP":2.0,"AP (via Google)":2.0,"Reuters":2.0,"Reuters (via Google)":2.0,
+  "Defense News":2.0,"Breaking Defense":1.9,"USNI News":1.9,"Military Times":1.8,
+  "Stars and Stripes":1.7,"Air Force Times":1.6,"Army Times":1.6,"Navy Times":1.6,
+  "Task & Purpose":1.5,"DoD News":1.8,"Defense One":1.8,"War on the Rocks":1.7,
+  "Defense Contracts":1.6,"DoD Contracts":1.8,"Jane's":1.9,
+  "NBC News":1.5,"CBS News":1.5,"USA Today":1.4,"Vox":1.3,
+  "The Atlantic":1.5,"ProPublica":1.7,"France 24":1.5,"Sky News World":1.5,
+  "The Economist":1.8,"Foreign Policy":1.7,"Financial Times World":1.7,
+  "Associated Press Intl":2.0,"BBC World":1.9,"Guardian World":1.6,
+  "Washington Post World":1.5,"Axios AM":1.5,"WSJ":1.7,"DW":1.4,
   "BBC":1.9,"BBC Middle East":1.9,"BBC Europe":1.9,"BBC Asia":1.9,"BBC Business":1.9,"BBC Science":1.9,
   "NPR":1.7,
   "Guardian":1.6,"Guardian Ukraine":1.6,"Guardian ME":1.6,
@@ -1667,17 +1703,44 @@ function markTrending(items) {
   });
 }
 
+// Collapse same-story duplicates: keep only the top-ranked version per topic cluster,
+// fold the rest into sourceCount so the badge still shows "N sources".
+function collapseByTopic(items) {
+  const sets = items.map(i => wordSet(i.title));
+  const used = new Array(items.length).fill(false);
+  const result = [];
+  items.forEach((item, i) => {
+    if (used[i]) return;
+    used[i] = true;
+    let clusterSize = 1;
+    items.forEach((_, j) => {
+      if (used[j]) return;
+      const inter = [...sets[i]].filter(w => sets[j].has(w));
+      if (inter.length / Math.max(sets[i].size, sets[j].size, 1) >= 0.36) {
+        used[j] = true;
+        clusterSize++;
+      }
+    });
+    // Use the larger of cross-source count vs cluster size
+    item.sourceCount = Math.max(item.sourceCount || 1, clusterSize);
+    if (clusterSize >= 3) item.trending = true;
+    result.push(item);
+  });
+  return result;
+}
+
 // Auto-detect story topic from title keywords → returns { label, cls }
 const TOPIC_RULES = [
-  { label:"Politics",  cls:"topic-politics",  re:/\b(congress|senate|president|election|vote|democrat|republican|governor|legislation|white house|supreme court|trump|biden|harris|nato|treaty|sanction|tariff|policy)\b/i },
-  { label:"Conflict",  cls:"topic-conflict",  re:/\b(war|attack|troops|military|missile|bomb|airstrike|offensive|killed|soldier|invasion|strike|combat|ceasefire|weapon|hamas|russia|ukraine|israel|gaza|iran)\b/i },
-  { label:"Economy",   cls:"topic-economy",   re:/\b(economy|gdp|inflation|recession|fed|interest rate|market|stock|dow|nasdaq|unemployment|jobs|trade|tariff|deficit|budget|spending|earnings|revenue)\b/i },
-  { label:"Health",    cls:"topic-health",    re:/\b(health|hospital|disease|cancer|vaccine|covid|outbreak|fda|drug|medical|surgery|mental health|overdose|pandemic|virus|clinic)\b/i },
-  { label:"Climate",   cls:"topic-climate",   re:/\b(climate|flood|hurricane|tornado|wildfire|drought|earthquake|storm|emissions|carbon|renewable|epa|weather|disaster)\b/i },
-  { label:"Tech",      cls:"topic-tech",      re:/\b(ai|artificial intelligence|tech|software|apple|google|microsoft|meta|amazon|openai|startup|data|cyber|hack|robot|chip|semiconductor)\b/i },
-  { label:"Science",   cls:"topic-science",   re:/\b(nasa|space|scientist|study|research|discovery|planet|launch|rocket|experiment|fossil|gene|dna|quantum)\b/i },
-  { label:"Crime",     cls:"topic-crime",     re:/\b(arrested|charged|trial|convicted|shooting|murder|suspect|police|court|verdict|prison|fbi|investigation|fraud|scandal)\b/i },
-  { label:"Business",  cls:"topic-business",  re:/\b(company|merger|ceo|acquisition|ipo|revenue|profit|loss|layoff|bankruptcy|deal|contract|supply chain|industry)\b/i },
+  { label:"💥 Military", cls:"topic-military", re:/\b(pentagon|defense contract|army|navy|marines|air force|space force|national guard|special forces|seal|ranger|paratrooper|f-35|f-16|b-21|carrier|destroyer|submarine|hypersonic|drone strike|dod|department of defense|arms deal|weapons system|military aid|military base|fort|joint chiefs|chairman of the joint|secretary of defense|lockheed|raytheon|northrop|general dynamics|boeing defense|l3harris|bae systems|leidos|saic|booz allen|oshkosh defense|textron|huntington ingalls)\b/i },
+  { label:"💥 Conflict", cls:"topic-conflict",  re:/\b(war|battle|airstrike|offensive|killed|invasion|combat|ceasefire|missile|bomb|troops|soldier|casualt|attack|russia|ukraine|israel|gaza|hamas|hezbollah|iran|syria|sudan)\b/i },
+  { label:"🗳 Politics",  cls:"topic-politics",  re:/\b(congress|senate|president|election|vote|democrat|republican|governor|legislation|white house|supreme court|trump|biden|harris|nato|treaty|sanction|tariff|policy)\b/i },
+  { label:"📈 Economy",   cls:"topic-economy",   re:/\b(economy|gdp|inflation|recession|fed|interest rate|market|stock|dow|nasdaq|unemployment|jobs|trade|tariff|deficit|budget|spending|earnings|revenue)\b/i },
+  { label:"🏥 Health",    cls:"topic-health",    re:/\b(health|hospital|disease|cancer|vaccine|covid|outbreak|fda|drug|medical|surgery|mental health|overdose|pandemic|virus|clinic)\b/i },
+  { label:"🌪 Climate",   cls:"topic-climate",   re:/\b(climate|flood|hurricane|tornado|wildfire|drought|earthquake|storm|emissions|carbon|renewable|epa|weather|disaster)\b/i },
+  { label:"💻 Tech",      cls:"topic-tech",      re:/\b(ai|artificial intelligence|tech|software|apple|google|microsoft|meta|amazon|openai|startup|data|cyber|hack|robot|chip|semiconductor)\b/i },
+  { label:"🔭 Science",   cls:"topic-science",   re:/\b(nasa|space|scientist|study|research|discovery|planet|launch|rocket|experiment|fossil|gene|dna|quantum)\b/i },
+  { label:"🚔 Crime",     cls:"topic-crime",     re:/\b(arrested|charged|trial|convicted|shooting|murder|suspect|police|court|verdict|prison|fbi|investigation|fraud|scandal)\b/i },
+  { label:"🏢 Business",  cls:"topic-business",  re:/\b(company|merger|ceo|acquisition|ipo|revenue|profit|loss|layoff|bankruptcy|deal|contract|supply chain|industry)\b/i },
 ];
 function detectTopic(title) {
   for (const rule of TOPIC_RULES) {
@@ -7304,11 +7367,11 @@ async function loadCategory(force) {
   }
 
   markTrending(deduped);
-  // For world/usa news: re-sort after trending detection so big cross-source stories
-  // actually surface — trending gets 3× boost, breaking gets 5×.
-  if (cat.id === "world" || cat.id === "usa") {
+  // Collapse same-story duplicates and re-sort with importance boost for world/usa/military
+  if (cat.id === "world" || cat.id === "usa" || cat.id === "military") {
+    deduped = collapseByTopic(deduped);
     deduped.sort((a, b) => {
-      const boost = it => (isBreaking(it.title) ? 5 : 1) * (it.trending ? 3 : 1);
+      const boost = it => (isBreaking(it.title) ? 5 : 1) * (it.trending ? 3 : 1) * (it.sourceCount >= 4 ? 1.5 : 1);
       return (heatScore(b) * boost(b)) - (heatScore(a) * boost(a));
     });
   }

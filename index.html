@@ -1395,19 +1395,27 @@ function cycleFont(dir) {
 }
 const savedFont = localStorage.getItem("news.font") || "md";
 if (savedFont !== "md") applyFont(savedFont);
-document.getElementById("fontSmBtn").addEventListener("click", () => cycleFont(-1));
-document.getElementById("fontLgBtn").addEventListener("click", () => cycleFont(1));
-// Apply font-size via style tag since data-font doesn't cascade without CSS
+// Apply font-size by scaling key text elements via injected CSS
 const fontStyle = document.createElement("style");
 fontStyle.id = "fontStyle";
 document.head.appendChild(fontStyle);
 function setFontStyle(sz) {
-  const map = { sm:"13px", md:"16px", lg:"18px" };
-  fontStyle.textContent = "html { font-size:" + (map[sz]||"16px") + "; }";
+  if (sz === "md") { fontStyle.textContent = ""; return; }
+  const s = sz === "sm" ? 0.82 : 1.16;
+  fontStyle.textContent = [
+    `.title { font-size:${+(20*s).toFixed(1)}px !important; }`,
+    `.desc  { font-size:${+(14.5*s).toFixed(1)}px !important; }`,
+    `article.item.hero .title { font-size:${+(38*s).toFixed(1)}px !important; }`,
+    `article.item.hero .desc  { font-size:${+(17*s).toFixed(1)}px !important; }`,
+    `.brief-text { font-size:${+(14.5*s).toFixed(1)}px !important; }`,
+    `.kicker { font-size:${+(11*s).toFixed(1)}px !important; }`,
+    `.meta   { font-size:${+(12*s).toFixed(1)}px !important; }`,
+    `.source-chip { font-size:${+(10*s).toFixed(1)}px !important; }`,
+  ].join("\n");
 }
 setFontStyle(savedFont);
-document.getElementById("fontSmBtn").addEventListener("click", () => { const s = localStorage.getItem("news.font")||"md"; setFontStyle(s); });
-document.getElementById("fontLgBtn").addEventListener("click", () => { const s = localStorage.getItem("news.font")||"md"; setFontStyle(s); });
+document.getElementById("fontSmBtn").addEventListener("click", () => { cycleFont(-1); setFontStyle(localStorage.getItem("news.font")||"md"); });
+document.getElementById("fontLgBtn").addEventListener("click", () => { cycleFont(1);  setFontStyle(localStorage.getItem("news.font")||"md"); });
 
 // ========== SEARCH ==========
 const searchBtn   = document.getElementById("searchBtn");
@@ -2158,11 +2166,18 @@ function parseXmlFeed(xmlText, source) {
     const title=get("title"), desc=get("description")||get("summary")||get("content");
     const pubStr=get("pubDate")||get("published")||get("updated");
     const enclosure=el.querySelector("enclosure[url]");
+    // Try multiple image sources: enclosure → media:thumbnail → media:content → <img> in desc
+    const mediaThumbnail = el.querySelector("thumbnail[url]") || el.querySelector("*|thumbnail[url]");
+    const mediaContent   = el.querySelector("content[url]")   || el.querySelector("*|content[url]");
+    const thumbUrl = (enclosure && enclosure.getAttribute("url")) ||
+                     (mediaThumbnail && mediaThumbnail.getAttribute("url")) ||
+                     (mediaContent && mediaContent.getAttribute("url")) ||
+                     extractImg(desc) || "";
     return {
       title, link,
       description: stripHtml(desc).slice(0,240),
       pubDate: pubStr?new Date(pubStr).getTime():Date.now(),
-      thumbnail: (enclosure?enclosure.getAttribute("url"):extractImg(desc))||"",
+      thumbnail: thumbUrl,
       source
     };
   }).filter(x=>x.title&&x.link);
@@ -7227,6 +7242,14 @@ async function loadCategory(force) {
   }
 
   markTrending(deduped);
+  // For top news: re-sort after trending detection so big cross-source stories
+  // actually surface — trending gets 3× boost, breaking gets 5×.
+  if (cat.id === "top") {
+    deduped.sort((a, b) => {
+      const boost = it => (isBreaking(it.title) ? 5 : 1) * (it.trending ? 3 : 1);
+      return (heatScore(b) * boost(b)) - (heatScore(a) * boost(a));
+    });
+  }
   deduped.forEach(i => { i.isNew = lastVisit > 0 && i.pubDate > lastVisit; });
   currentItems = deduped;
   renderNews(deduped);

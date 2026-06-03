@@ -250,6 +250,29 @@
   .badge-breaking { background:#7f1d1d; color:#fecaca; }
   .badge-trending { background:color-mix(in srgb,var(--accent) 14%,transparent); color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 28%,transparent); }
   .badge-new { background:#14532d; color:#bbf7d0; }
+  /* Source count chip */
+  .badge-sources { background:color-mix(in srgb,#6366f1 13%,transparent); color:#6366f1; border:1px solid color-mix(in srgb,#6366f1 28%,transparent); font-variant-numeric:tabular-nums; }
+  [data-theme="dark"] .badge-sources { color:#a5b4fc; background:color-mix(in srgb,#a5b4fc 14%,transparent); border-color:color-mix(in srgb,#a5b4fc 28%,transparent); }
+  /* Topic tags */
+  .badge-topic { border-radius:999px; }
+  .topic-politics { background:#1e3a5f22; color:#1e6cbf; border:1px solid #1e6cbf44; }
+  .topic-conflict { background:#7f1d1d22; color:#b91c1c; border:1px solid #b91c1c44; }
+  .topic-economy  { background:#78350f22; color:#b45309; border:1px solid #b4530944; }
+  .topic-health   { background:#064e3b22; color:#059669; border:1px solid #05996944; }
+  .topic-climate  { background:#1e3a2f22; color:#16a34a; border:1px solid #16a34a44; }
+  .topic-tech     { background:#1e1b4b22; color:#7c3aed; border:1px solid #7c3aed44; }
+  .topic-science  { background:#0c4a6e22; color:#0284c7; border:1px solid #0284c744; }
+  .topic-crime    { background:#1c1917aa; color:#78716c; border:1px solid #78716c44; }
+  .topic-business { background:#13292222; color:#0f766e; border:1px solid #0f766e44; }
+  [data-theme="dark"] .topic-politics { color:#60a5fa; background:color-mix(in srgb,#60a5fa 12%,transparent); border-color:color-mix(in srgb,#60a5fa 28%,transparent); }
+  [data-theme="dark"] .topic-conflict { color:#f87171; background:color-mix(in srgb,#f87171 12%,transparent); border-color:color-mix(in srgb,#f87171 28%,transparent); }
+  [data-theme="dark"] .topic-economy  { color:#fbbf24; background:color-mix(in srgb,#fbbf24 12%,transparent); border-color:color-mix(in srgb,#fbbf24 28%,transparent); }
+  [data-theme="dark"] .topic-health   { color:#34d399; background:color-mix(in srgb,#34d399 12%,transparent); border-color:color-mix(in srgb,#34d399 28%,transparent); }
+  [data-theme="dark"] .topic-climate  { color:#86efac; background:color-mix(in srgb,#86efac 12%,transparent); border-color:color-mix(in srgb,#86efac 28%,transparent); }
+  [data-theme="dark"] .topic-tech     { color:#c4b5fd; background:color-mix(in srgb,#c4b5fd 12%,transparent); border-color:color-mix(in srgb,#c4b5fd 28%,transparent); }
+  [data-theme="dark"] .topic-science  { color:#7dd3fc; background:color-mix(in srgb,#7dd3fc 12%,transparent); border-color:color-mix(in srgb,#7dd3fc 28%,transparent); }
+  [data-theme="dark"] .topic-crime    { color:#a8a29e; background:color-mix(in srgb,#a8a29e 12%,transparent); border-color:color-mix(in srgb,#a8a29e 28%,transparent); }
+  [data-theme="dark"] .topic-business { color:#2dd4bf; background:color-mix(in srgb,#2dd4bf 12%,transparent); border-color:color-mix(in srgb,#2dd4bf 28%,transparent); }
   .title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:20px; font-weight:700; line-height:1.22; letter-spacing:-0.015em; color:var(--text); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
   .desc { margin-top:7px; font-size:14.5px; color:var(--text-muted); line-height:1.45; font-family:"Iowan Old Style","Palatino","Georgia",serif; font-style:italic; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .thumb { width:110px; height:110px; flex-shrink:0; border-radius:2px; background:var(--card-hover); object-fit:cover; }
@@ -917,37 +940,49 @@
 const WEATHER_LOCATION = { name:"Clinton, MO", lat:38.3686, lon:-93.7780, tz:"America/Chicago" };
 
 const CATEGORY_ICONS = {
-  saved:"🔖", stocks:"📈", top:"🌍", local:"📍", ukraine:"🇺🇦", iran:"🕌",
+  saved:"🔖", stocks:"📈", world:"🌍", usa:"🇺🇸", local:"📍", ukraine:"🇺🇦", iran:"🕌",
   scs:"⚓", tech:"💻", business:"💼", science:"🔬",
   philippines:"🇵🇭", cannabis:"🌿", outdoor:"🎣", garden:"🌱", market:"🐄"
 };
 
-// Quick-access tab bar — these show as pills at the top.
-// Outdoor used to be one big scroll (fishing advisor + mushroom + garden + cattle
-// + weekly market + news). Now split: outdoor keeps fishing report + news;
-// `garden` has garden + mushroom + week-by-week planter; `market` has cattle.
-const QUICK_TAB_IDS = ["top","local","outdoor","garden","market","tech","stocks","cannabis","saved"];
+// Quick-access tab bar
+const QUICK_TAB_IDS = ["world","usa","local","outdoor","garden","market","tech","stocks","cannabis","saved"];
 
 const CATEGORIES = [
   { id:"saved", label:"Saved", isSaved:true, feeds:[] },
   { id:"stocks", label:"Stocks", isStocks:true, feeds:[] },
-  { id:"top", label:"Top Stories", maxAgeHours:48, feeds:[
-    { source:"BBC", url:"https://feeds.bbci.co.uk/news/world/rss.xml" },
-    { source:"NPR", url:"https://feeds.npr.org/1001/rss.xml" },
-    { source:"AP (via Google)", url:"https://news.google.com/rss/search?q=when:1d+site:apnews.com&hl=en-US&gl=US&ceid=US:en" },
+  { id:"world", label:"World", maxAgeHours:48, feeds:[
+    { source:"BBC World", url:"https://feeds.bbci.co.uk/news/world/rss.xml" },
+    { source:"Reuters", url:"https://news.google.com/rss/search?q=when:1d+site:reuters.com&hl=en-US&gl=US&ceid=US:en" },
     { source:"Al Jazeera", url:"https://www.aljazeera.com/xml/rss/all.xml" },
-    { source:"Guardian", url:"https://www.theguardian.com/world/rss" },
-    { source:"CNN", url:"http://rss.cnn.com/rss/cnn_topstories.rss" },
+    { source:"Guardian World", url:"https://www.theguardian.com/world/rss" },
     { source:"NYT World", url:"https://rss.nytimes.com/services/xml/rss/nyt/World.xml" },
-    { source:"Reuters (via Google)", url:"https://news.google.com/rss/search?q=when:1d+site:reuters.com&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Washington Post", url:"https://feeds.washingtonpost.com/rss/world" },
+    { source:"Washington Post World", url:"https://feeds.washingtonpost.com/rss/world" },
+    { source:"DW", url:"https://rss.dw.com/rdf/rss-en-all" },
+    { source:"France 24", url:"https://www.france24.com/en/rss" },
+    { source:"The Economist", url:"https://news.google.com/rss/search?q=when:2d+site:economist.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Foreign Policy", url:"https://news.google.com/rss/search?q=when:2d+site:foreignpolicy.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Associated Press Intl", url:"https://news.google.com/rss/search?q=when:1d+site:apnews.com+world+OR+international+OR+europe+OR+asia+OR+africa&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Sky News World", url:"https://feeds.skynews.com/feeds/rss/world.xml" },
+    { source:"Financial Times World", url:"https://news.google.com/rss/search?q=when:1d+site:ft.com+world&hl=en-US&gl=US&ceid=US:en" },
+  ]},
+  { id:"usa", label:"USA", maxAgeHours:48, feeds:[
+    { source:"AP", url:"https://news.google.com/rss/search?q=when:1d+site:apnews.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"NPR", url:"https://feeds.npr.org/1001/rss.xml" },
+    { source:"CNN", url:"https://rss.cnn.com/rss/cnn_topstories.rss" },
     { source:"ABC News", url:"https://abcnews.go.com/abcnews/topstories" },
-    { source:"DW (Germany)", url:"https://rss.dw.com/rdf/rss-en-all" },
-    { source:"WSJ World", url:"https://news.google.com/rss/search?q=when:1d+site:wsj.com&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Axios", url:"https://api.axios.com/feed/" },
     { source:"PBS NewsHour", url:"https://www.pbs.org/newshour/feeds/rss/headlines" },
     { source:"Politico", url:"https://www.politico.com/rss/politics08.xml" },
-    { source:"The Hill", url:"https://thehill.com/feed/" }
+    { source:"The Hill", url:"https://thehill.com/feed/" },
+    { source:"Axios", url:"https://api.axios.com/feed/" },
+    { source:"WSJ", url:"https://news.google.com/rss/search?q=when:1d+site:wsj.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"USA Today", url:"https://rssfeeds.usatoday.com/UsatodaycomNation-TopStories" },
+    { source:"NBC News", url:"https://feeds.nbcnews.com/nbcnews/public/news" },
+    { source:"CBS News", url:"https://www.cbsnews.com/latest/rss/main" },
+    { source:"Axios AM", url:"https://api.axios.com/feed/top" },
+    { source:"ProPublica", url:"https://feeds.propublica.org/propublica/main" },
+    { source:"The Atlantic", url:"https://news.google.com/rss/search?q=when:2d+site:theatlantic.com&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Vox", url:"https://www.vox.com/rss/index.xml" },
   ]},
   { id:"local", label:"Local (MO)", maxAgeHours:504, feeds:[
     // ─── ULTRALOCAL — Clinton, Henry County, Truman Lake area ───
@@ -1340,7 +1375,9 @@ const CANNABIS_QUOTES = [
 ];
 
 // ========== STATE ==========
-let activeCat = localStorage.getItem("news.activeCat") || "top";
+let activeCat = localStorage.getItem("news.activeCat") || "world";
+// Migrate old "top" saved preference to "world"
+if (activeCat === "top") activeCat = "world";
 let currentItems = [];   // current rendered items for search/keyboard
 let kbIndex = -1;        // keyboard navigation index
 const listEl      = document.getElementById("list");
@@ -1625,8 +1662,28 @@ function markTrending(items) {
         seenSources.add(items[j].source);
       }
     });
+    item.sourceCount = matches + 1; // +1 for the item itself
     item.trending = matches >= 2;
   });
+}
+
+// Auto-detect story topic from title keywords → returns { label, cls }
+const TOPIC_RULES = [
+  { label:"Politics",  cls:"topic-politics",  re:/\b(congress|senate|president|election|vote|democrat|republican|governor|legislation|white house|supreme court|trump|biden|harris|nato|treaty|sanction|tariff|policy)\b/i },
+  { label:"Conflict",  cls:"topic-conflict",  re:/\b(war|attack|troops|military|missile|bomb|airstrike|offensive|killed|soldier|invasion|strike|combat|ceasefire|weapon|hamas|russia|ukraine|israel|gaza|iran)\b/i },
+  { label:"Economy",   cls:"topic-economy",   re:/\b(economy|gdp|inflation|recession|fed|interest rate|market|stock|dow|nasdaq|unemployment|jobs|trade|tariff|deficit|budget|spending|earnings|revenue)\b/i },
+  { label:"Health",    cls:"topic-health",    re:/\b(health|hospital|disease|cancer|vaccine|covid|outbreak|fda|drug|medical|surgery|mental health|overdose|pandemic|virus|clinic)\b/i },
+  { label:"Climate",   cls:"topic-climate",   re:/\b(climate|flood|hurricane|tornado|wildfire|drought|earthquake|storm|emissions|carbon|renewable|epa|weather|disaster)\b/i },
+  { label:"Tech",      cls:"topic-tech",      re:/\b(ai|artificial intelligence|tech|software|apple|google|microsoft|meta|amazon|openai|startup|data|cyber|hack|robot|chip|semiconductor)\b/i },
+  { label:"Science",   cls:"topic-science",   re:/\b(nasa|space|scientist|study|research|discovery|planet|launch|rocket|experiment|fossil|gene|dna|quantum)\b/i },
+  { label:"Crime",     cls:"topic-crime",     re:/\b(arrested|charged|trial|convicted|shooting|murder|suspect|police|court|verdict|prison|fbi|investigation|fraud|scandal)\b/i },
+  { label:"Business",  cls:"topic-business",  re:/\b(company|merger|ceo|acquisition|ipo|revenue|profit|loss|layoff|bankruptcy|deal|contract|supply chain|industry)\b/i },
+];
+function detectTopic(title) {
+  for (const rule of TOPIC_RULES) {
+    if (rule.re.test(title)) return rule;
+  }
+  return null;
 }
 
 // ========== READ / BOOKMARK ==========
@@ -7060,11 +7117,16 @@ function buildArticle(item, isHero) {
 
   const hasImg = item.thumbnail && /^https?:\/\//.test(item.thumbnail);
   const breaking = isBreaking(item.title);
-  const badgeHtml =
-    (breaking || item.trending || item.isNew)
+  const topic = detectTopic(item.title);
+  const srcCount = item.sourceCount || 1;
+  const showSrcBadge = srcCount >= 2;
+  const hasBadge = breaking || item.trending || item.isNew || topic || showSrcBadge;
+  const badgeHtml = hasBadge
     ? '<div class="badge-row">' +
-        (breaking ? '<span class="badge badge-breaking">Breaking</span>' : '') +
+        (breaking ? '<span class="badge badge-breaking">⚡ Breaking</span>' : '') +
         (item.trending ? '<span class="badge badge-trending">Trending</span>' : '') +
+        (showSrcBadge ? '<span class="badge badge-sources">'+srcCount+' sources</span>' : '') +
+        (topic ? '<span class="badge badge-topic '+topic.cls+'">'+topic.label+'</span>' : '') +
         (item.isNew ? '<span class="badge badge-new">New</span>' : '') +
       '</div>'
     : '';
@@ -7242,9 +7304,9 @@ async function loadCategory(force) {
   }
 
   markTrending(deduped);
-  // For top news: re-sort after trending detection so big cross-source stories
+  // For world/usa news: re-sort after trending detection so big cross-source stories
   // actually surface — trending gets 3× boost, breaking gets 5×.
-  if (cat.id === "top") {
+  if (cat.id === "world" || cat.id === "usa") {
     deduped.sort((a, b) => {
       const boost = it => (isBreaking(it.title) ? 5 : 1) * (it.trending ? 3 : 1);
       return (heatScore(b) * boost(b)) - (heatScore(a) * boost(a));

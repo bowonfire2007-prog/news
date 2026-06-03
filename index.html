@@ -861,6 +861,57 @@
     .sa-change { font-size:13px; }
     .sa-trend-card { grid-template-columns:repeat(2,1fr); }
   }
+
+  /* ══════════ DESIGN POLISH (added) ══════════ */
+  /* Hero drop cap — classic newspaper lead */
+  article.item.hero .desc { display:block; -webkit-line-clamp:unset; text-align:left; }
+  article.item.hero .desc::first-letter { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:3.4em; font-weight:900; line-height:0.7; float:left; padding:0.04em 0.12em 0 0; color:var(--accent); }
+
+  /* Section ornament — engraved ✦ before the label */
+  .section-label::before { content:"✦"; color:var(--accent); font-size:0.66em; vertical-align:2px; margin-right:9px; opacity:0.85; }
+
+  /* Topic-tinted kickers — quiet category color cue on the source line */
+  .item.kt-military .kicker{color:#d97706}.item.kt-military .kicker::after{background:#d97706}
+  .item.kt-conflict .kicker{color:#b91c1c}.item.kt-conflict .kicker::after{background:#b91c1c}
+  .item.kt-politics .kicker{color:#1e6cbf}.item.kt-politics .kicker::after{background:#1e6cbf}
+  .item.kt-economy  .kicker{color:#b45309}.item.kt-economy  .kicker::after{background:#b45309}
+  .item.kt-health   .kicker{color:#059669}.item.kt-health   .kicker::after{background:#059669}
+  .item.kt-climate  .kicker{color:#16a34a}.item.kt-climate  .kicker::after{background:#16a34a}
+  .item.kt-tech     .kicker{color:#7c3aed}.item.kt-tech     .kicker::after{background:#7c3aed}
+  .item.kt-science  .kicker{color:#0284c7}.item.kt-science  .kicker::after{background:#0284c7}
+  .item.kt-crime    .kicker{color:#78716c}.item.kt-crime    .kicker::after{background:#78716c}
+  .item.kt-business .kicker{color:#0f766e}.item.kt-business .kicker::after{background:#0f766e}
+  [data-theme="dark"] .item.kt-military .kicker{color:#fbbf24}[data-theme="dark"] .item.kt-military .kicker::after{background:#fbbf24}
+  [data-theme="dark"] .item.kt-conflict .kicker{color:#f87171}[data-theme="dark"] .item.kt-conflict .kicker::after{background:#f87171}
+  [data-theme="dark"] .item.kt-politics .kicker{color:#60a5fa}[data-theme="dark"] .item.kt-politics .kicker::after{background:#60a5fa}
+  [data-theme="dark"] .item.kt-economy  .kicker{color:#fbbf24}[data-theme="dark"] .item.kt-economy  .kicker::after{background:#fbbf24}
+  [data-theme="dark"] .item.kt-health   .kicker{color:#34d399}[data-theme="dark"] .item.kt-health   .kicker::after{background:#34d399}
+  [data-theme="dark"] .item.kt-climate  .kicker{color:#86efac}[data-theme="dark"] .item.kt-climate  .kicker::after{background:#86efac}
+  [data-theme="dark"] .item.kt-tech     .kicker{color:#c4b5fd}[data-theme="dark"] .item.kt-tech     .kicker::after{background:#c4b5fd}
+  [data-theme="dark"] .item.kt-science  .kicker{color:#7dd3fc}[data-theme="dark"] .item.kt-science  .kicker::after{background:#7dd3fc}
+  [data-theme="dark"] .item.kt-crime    .kicker{color:#a8a29e}[data-theme="dark"] .item.kt-crime    .kicker::after{background:#a8a29e}
+  [data-theme="dark"] .item.kt-business .kicker{color:#2dd4bf}[data-theme="dark"] .item.kt-business .kicker::after{background:#2dd4bf}
+
+  /* NEW / Breaking pulse */
+  @keyframes badgePulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+  .badge-new, .badge-breaking { animation:badgePulse 1.8s ease-in-out infinite; }
+
+  /* Gentle fade/rise as cards render */
+  @keyframes itemRise { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+  article.item { animation:itemRise .45s ease both; }
+  @media (prefers-reduced-motion:reduce){ article.item,.badge-new,.badge-breaking,.ticker-track{animation:none!important} article.item{opacity:1!important;transform:none!important} }
+
+  /* Markets ticker under the dateline */
+  .ticker-bar { max-width:760px; margin:0 auto; overflow:hidden; white-space:nowrap; border-bottom:1px solid var(--border); background:color-mix(in srgb,var(--accent) 4%,transparent); display:none; }
+  .ticker-bar.ready { display:block; }
+  .ticker-track { display:inline-block; padding:6px 0; animation:tickerScroll 42s linear infinite; font-size:12px; font-weight:700; letter-spacing:0.03em; }
+  .ticker-bar:hover .ticker-track { animation-play-state:paused; }
+  .ticker-item { margin:0 18px; color:var(--text-muted); }
+  .ticker-item b { color:var(--text); font-variant-numeric:tabular-nums; margin-left:5px; }
+  .ticker-sep { color:var(--text-soft); }
+  .tk-up { color:#15803d; } .tk-down { color:#b91c1c; }
+  [data-theme="dark"] .tk-up { color:#4ade80; } [data-theme="dark"] .tk-down { color:#f87171; }
+  @keyframes tickerScroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
 </style>
 </head>
 <body>
@@ -909,6 +960,8 @@
     <span class="dateline-volume">"All the news that's fit to scroll."</span>
     <span id="datelineEdition">Clinton, MO Edition</span>
   </div>
+
+  <div class="ticker-bar" id="tickerBar"><div class="ticker-track" id="tickerTrack"></div></div>
 
   <div class="weather loading" id="weather"><span class="spinner"></span><span>Loading weather…</span></div>
   <div class="quote-bar" id="quoteBar"></div>
@@ -7211,6 +7264,7 @@ function buildArticle(item, isHero) {
   const hasImg = item.thumbnail && /^https?:\/\//.test(item.thumbnail);
   const breaking = isBreaking(item.title);
   const topic = detectTopic(item.title);
+  if (topic && topic.cls) a.className += " kt-" + topic.cls.replace("topic-", "");
   const srcCount = item.sourceCount || 1;
   const showSrcBadge = srcCount >= 2;
   const hasBadge = breaking || item.trending || item.isNew || topic || showSrcBadge;
@@ -7460,6 +7514,33 @@ document.addEventListener("touchend", e=>{
   pulling=false;
 });
 
+// ── Markets ticker under the dateline (reuses fetchQuote + its proxy/cache layer) ──
+async function loadTicker() {
+  const SYMS = [["SPY","S&P 500"],["LE=F","LIVE CATTLE"],["GF=F","FEEDER"],["ZC=F","CORN"],["ZS=F","SOYBEANS"],["CL=F","WTI CRUDE"]];
+  const track = document.getElementById("tickerTrack");
+  const bar   = document.getElementById("tickerBar");
+  if (!track || !bar) return;
+  const parts = [];
+  for (const [sym, label] of SYMS) {
+    try {
+      const q = await fetchQuote(sym);
+      if (!q || !isFinite(q.price)) continue;
+      const pct = isFinite(q.changePct) ? q.changePct : 0;
+      const cls = pct >= 0 ? "tk-up" : "tk-down";
+      const arrow = pct >= 0 ? "▲" : "▼";
+      const priceStr = q.price >= 1000
+        ? Math.round(q.price).toLocaleString()
+        : q.price.toFixed(2);
+      parts.push('<span class="ticker-item">' + label + ' <b>' + priceStr + '</b> '
+        + '<span class="' + cls + '">' + arrow + Math.abs(pct).toFixed(1) + '%</span></span>');
+    } catch (e) { /* skip symbols that fail */ }
+  }
+  if (!parts.length) return; // nothing loaded — leave the bar hidden
+  const block = parts.join('<span class="ticker-sep">&middot;</span>');
+  track.innerHTML = block + '<span class="ticker-sep">&middot;</span>' + block; // duplicate = seamless loop
+  bar.classList.add("ready");
+}
+
 renderQuoteOfDay();
 renderDrawer();
 renderQuickTabs();
@@ -7467,6 +7548,8 @@ updateSectionLabel();
 fetchNWSAlerts();
 loadWeather();
 loadCategory();
+loadTicker();
+setInterval(loadTicker, 5 * 60 * 1000);
 
 // ── Hash routing: #stock-TICKER opens analysis view; browser Back returns to watchlist ──
 (function() {

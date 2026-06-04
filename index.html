@@ -1816,16 +1816,26 @@ function collapseByTopic(items) {
     items.forEach((other, j) => {
       if (used[j]) return;
       const inter = [...sets[i]].filter(w => sets[j].has(w));
-      const ratio = inter.length / Math.max(sets[i].size, sets[j].size, 1);
-      // Same story = 2+ matching key words AND ratio ≥ 0.15
-      if (inter.length >= 2 && ratio >= 0.15) {
+      const union    = (sets[i].size + sets[j].size - inter.length) || 1;
+      const smaller  = Math.min(sets[i].size, sets[j].size) || 1;
+      const jaccard  = inter.length / union;     // overlap across ALL distinct words
+      const coverage = inter.length / smaller;   // how much of the shorter headline is shared
+      // Same story needs a STRONG overlap, not just a shared name or common word:
+      //  • the shared words must cover at least half the shorter headline, AND
+      //  • a healthy Jaccard, AND
+      //  • if only 2 words match, demand even higher coverage (near-identical short headlines).
+      const sameStory =
+        inter.length >= 2 &&
+        coverage >= 0.5 &&
+        jaccard  >= 0.22 &&
+        (inter.length >= 3 || coverage >= 0.6);
+      if (sameStory) {
         used[j] = true;
         clusterSize++;
         // Keep the folded duplicate so the reader can expand to see who else is reporting it.
         others.push({ source: other.source, title: other.title, link: other.link, pubDate: other.pubDate });
       }
     });
-    item.sourceCount = Math.max(item.sourceCount || 1, clusterSize);
     // De-dupe by source name (one row per outlet) and keep newest first.
     if (others.length) {
       const bySource = new Map();
@@ -1833,7 +1843,10 @@ function collapseByTopic(items) {
             .forEach(o => { if (o.source !== item.source && !bySource.has(o.source)) bySource.set(o.source, o); });
       if (bySource.size) item.others = [...bySource.values()];
     }
-    if (clusterSize >= 3) item.trending = true;
+    // Badge count = the primary outlet + the distinct outlets we actually folded,
+    // so "N sources" always matches the expandable list exactly.
+    item.sourceCount = 1 + (item.others ? item.others.length : 0);
+    if (item.sourceCount >= 3) item.trending = true;
     result.push(item);
   });
   return result;

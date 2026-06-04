@@ -10,8 +10,10 @@
 <meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)">
 <title>Matt's Daily Read</title>
 <style>
-  :root { --bg:#f8f4ec; --text:#1a1410; --text-muted:#6b6258; --text-soft:#9a9286; --border:#e3ddcf; --accent:#b8331a; --sage:#7a8b6f; --mustard:#c49b3f; --card-hover:#ede8dc; }
+  :root { --bg:#f8f4ec; --text:#1a1410; --text-muted:#6b6258; --text-soft:#9a9286; --border:#e3ddcf; --accent:#b8331a; --sage:#7a8b6f; --mustard:#c49b3f; --card-hover:#ede8dc; --maxw:760px; }
   [data-theme="dark"] { --bg:#0f0e0d; --text:#f5f1e8; --text-muted:#a39c8f; --text-soft:#6b6258; --border:#2a2825; --accent:#ff6b4a; --sage:#9ab18d; --mustard:#e0b552; --card-hover:#1c1b19; }
+  /* Desktop: let the whole layout fill the window instead of a narrow centered strip. */
+  @media (min-width:1000px) { :root { --maxw:min(1180px, 94vw); } }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html { background-color:var(--bg); background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 500' preserveAspectRatio='xMidYMax slice'><path fill='%23a8b89a' fill-opacity='.38' d='M0 268c180-24 360-14 560 0s420 6 640-8 260 6 400 4v236H0z'/><path fill='%237a8b6f' fill-opacity='.5' d='M0 300c220-20 380 8 600 6s460-18 660-8 240 8 340 6v196H0z'/><g fill='%235e6e54' fill-opacity='.5'><polygon points='106,302 120,258 134,302'/><polygon points='134,302 152,250 170,302'/><polygon points='166,302 182,262 198,302'/><polygon points='456,302 472,256 488,302'/><polygon points='486,302 504,248 522,302'/><polygon points='518,302 532,262 546,302'/><polygon points='858,302 872,258 886,302'/><polygon points='886,302 904,248 922,302'/><polygon points='918,302 932,262 946,302'/><polygon points='1268,302 1284,256 1300,302'/><polygon points='1298,302 1316,248 1334,302'/><polygon points='1330,302 1344,262 1358,302'/></g><path fill='%239fb8b4' fill-opacity='.5' d='M0 366c240-14 480 8 760 4s500-18 840-8v138H0z'/><g stroke='%237a9b95' stroke-width='2' stroke-opacity='.35' fill='none' stroke-linecap='round'><path d='M120 392h70M320 410h96M620 430h70M980 414h80M1300 398h84M200 446h120M760 460h150M1180 452h120'/></g><g fill='%235e6e54' fill-opacity='.6' stroke='%235e6e54' stroke-opacity='.6' stroke-width='3' stroke-linecap='round'><path d='M86 500v-92'/><ellipse cx='86' cy='402' rx='5' ry='13'/><path d='M112 500v-72'/><ellipse cx='112' cy='424' rx='4.5' ry='11'/><path d='M1512 500v-96'/><ellipse cx='1512' cy='398' rx='5' ry='13'/><path d='M1486 500v-70'/><ellipse cx='1486' cy='426' rx='4.5' ry='11'/></g><path fill='%23472e1e' fill-opacity='.72' d='M946 406q50 22 100 0z'/><g stroke='%23472e1e' stroke-width='3' stroke-opacity='.72' fill='%23472e1e' fill-opacity='.72' stroke-linecap='round'><circle cx='986' cy='384' r='6'/><path d='M986 390l-3 16'/><path d='M984 400l34 -24'/></g><path d='M1018 376l5 30' stroke='%234a3924' stroke-width='1.2' stroke-opacity='.5' fill='none'/></svg>"); background-attachment:fixed; background-position:center bottom; background-repeat:no-repeat; background-size:100% auto; transition:background-color .25s ease; }
   html,body { color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.5; -webkit-font-smoothing:antialiased; transition:background-color .25s ease,color .25s ease; }
@@ -57,12 +59,12 @@
   .header-reveal.visible { display:flex; }
   .header-reveal svg { width:18px; height:18px; }
   .header-reveal:active { transform:scale(.94); }
-  .header-row { max-width:760px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:4px; }
+  .header-row { max-width:var(--maxw); margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:4px; }
   /* Masthead-style brand: large serif with real newspaper presence. */
   .brand { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:34px; font-weight:900; letter-spacing:-0.025em; line-height:0.95; color:var(--text); }
   .brand span { color:var(--accent); }
   /* Dateline strap under the masthead — NYT's most recognizable line. */
-  .dateline { max-width:760px; margin:0 auto; padding:6px 0 8px; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); font-weight:700; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+  .dateline { max-width:var(--maxw); margin:0 auto; padding:6px 0 8px; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); font-weight:700; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
   .dateline-volume { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-style:italic; letter-spacing:0.02em; text-transform:none; color:var(--text); font-weight:500; font-size:13px; flex:1; text-align:center; padding:0 8px; }
   .header-actions { display:flex; align-items:center; gap:5px; }
   @media (max-width:520px) {
@@ -77,7 +79,7 @@
   .font-btn:hover { background:var(--card-hover); color:var(--text); }
 
   /* ── SEARCH ── */
-  .search-wrap { max-width:760px; margin:0 auto; overflow:hidden; max-height:0; opacity:0; transition:max-height .2s ease,opacity .2s ease; }
+  .search-wrap { max-width:var(--maxw); margin:0 auto; overflow:hidden; max-height:0; opacity:0; transition:max-height .2s ease,opacity .2s ease; }
   .search-wrap.open { max-height:52px; opacity:1; }
   .search-inner { display:flex; gap:8px; padding-bottom:10px; }
   .search-input { flex:1; padding:7px 14px; border-radius:999px; border:1px solid var(--border); background:var(--card-hover); color:var(--text); font-size:14px; outline:none; font-family:inherit; }
@@ -85,7 +87,7 @@
   .search-clear { width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; font-size:17px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 
   /* ── WEATHER ── */
-  .weather { max-width:760px; margin:0 auto 2px; padding:10px 0; display:flex; flex-direction:column; gap:0; font-size:14px; }
+  .weather { max-width:var(--maxw); margin:0 auto 2px; padding:10px 0; display:flex; flex-direction:column; gap:0; font-size:14px; }
   .weather.loading { opacity:0.5; }
   /* Current conditions row */
   .w-current { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-bottom:8px; }
@@ -155,7 +157,7 @@
   .w-detail-prec { font-size:9px; min-height:12px; font-variant-numeric:tabular-nums; }
 
   /* ── QUOTE OF DAY ── */
-  .quote-bar { max-width:760px; margin:0 auto; padding:12px 0 12px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-bottom:6px; position:relative; }
+  .quote-bar { max-width:var(--maxw); margin:0 auto; padding:12px 0 12px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-bottom:6px; position:relative; }
   .quote-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.16em; color:var(--accent); margin-bottom:5px; display:flex; align-items:center; gap:8px; }
   .quote-label::before, .quote-label::after { content:""; flex:1; height:1px; background:color-mix(in srgb,var(--accent) 30%,transparent); }
   .quote-text { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:15px; color:var(--text); font-style:italic; line-height:1.55; text-align:center; padding:0 8px; }
@@ -163,7 +165,7 @@
   @media (max-width:520px) { .quote-text { font-size:14px; } }
 
   /* ── SECTION BAR (full newspaper section break with double rules top + bottom) ── */
-  .section-bar { max-width:760px; margin:14px auto 0; display:flex; align-items:center; justify-content:space-between; padding:10px 0 8px; border-top:3px double var(--text); border-bottom:1px solid var(--text); }
+  .section-bar { max-width:var(--maxw); margin:14px auto 0; display:flex; align-items:center; justify-content:space-between; padding:10px 0 8px; border-top:3px double var(--text); border-bottom:1px solid var(--text); }
   .section-left { display:flex; align-items:center; gap:8px; }
   .section-label { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:17px; font-weight:900; color:var(--text); letter-spacing:0.20em; text-transform:uppercase; font-style:normal; }
   .new-pill { font-size:10px; font-weight:700; color:var(--accent); background:color-mix(in srgb,var(--accent) 13%,transparent); padding:2px 7px; border-radius:999px; white-space:nowrap; }
@@ -171,14 +173,14 @@
   .section-menu-btn svg { width:14px; height:14px; }
 
   /* ── QUICK TABS ── */
-  .quick-tabs { max-width:760px; margin:0 auto; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; display:flex; gap:7px; padding:5px 0 10px; }
+  .quick-tabs { max-width:var(--maxw); margin:0 auto; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; display:flex; gap:7px; padding:5px 0 10px; }
   .quick-tabs::-webkit-scrollbar { display:none; }
   .qtab { flex-shrink:0; padding:5px 13px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:13px; font-weight:500; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .12s,color .12s,border-color .12s; }
   .qtab:hover { background:var(--card-hover); color:var(--text); }
   .qtab.active { background:var(--text); color:var(--bg); border-color:var(--text); font-weight:600; }
 
   /* ── MAIN ── */
-  main { max-width:760px; margin:0 auto; padding:8px 20px max(env(safe-area-inset-bottom),40px); background:color-mix(in srgb,var(--bg) 92%,transparent); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); position:relative; }
+  main { max-width:var(--maxw); margin:0 auto; padding:8px 20px max(env(safe-area-inset-bottom),40px); background:color-mix(in srgb,var(--bg) 92%,transparent); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); position:relative; }
   footer { background:color-mix(in srgb,var(--bg) 88%,transparent); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
   .status { padding:40px 20px; text-align:center; color:var(--text-muted); font-size:14px; line-height:1.6; }
   .spinner { display:inline-block; width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; vertical-align:middle; margin-right:8px; }
@@ -323,7 +325,7 @@
   .stock-news-loading { padding:20px 0; text-align:center; color:var(--text-muted); font-size:13px; }
 
   /* ── FOOTER ── */
-  footer { max-width:760px; margin:40px auto 0; padding:20px; text-align:center; color:var(--text-soft); font-size:12px; border-top:1px solid var(--border); }
+  footer { max-width:var(--maxw); margin:40px auto 0; padding:20px; text-align:center; color:var(--text-soft); font-size:12px; border-top:1px solid var(--border); }
   .retry-btn { margin-top:14px; padding:8px 18px; border-radius:999px; background:var(--accent); color:white; border:none; font-size:14px; font-weight:500; cursor:pointer; }
 
   /* ── RESPONSIVE (compact mobile — see more articles per screen) ── */
@@ -902,7 +904,7 @@
   @media (prefers-reduced-motion:reduce){ article.item,.badge-new,.badge-breaking,.ticker-track{animation:none!important} article.item{opacity:1!important;transform:none!important} }
 
   /* Markets ticker under the dateline */
-  .ticker-bar { max-width:760px; margin:0 auto; overflow:hidden; white-space:nowrap; border-bottom:1px solid var(--border); background:color-mix(in srgb,var(--accent) 4%,transparent); display:none; }
+  .ticker-bar { max-width:var(--maxw); margin:0 auto; overflow:hidden; white-space:nowrap; border-bottom:1px solid var(--border); background:color-mix(in srgb,var(--accent) 4%,transparent); display:none; }
   .ticker-bar.ready { display:block; }
   .ticker-track { display:inline-block; padding:6px 0; animation:tickerScroll 42s linear infinite; font-size:12px; font-weight:700; letter-spacing:0.03em; }
   .ticker-bar:hover .ticker-track { animation-play-state:paused; }
@@ -944,9 +946,45 @@
   .rail-item:hover .rail-title { color:var(--accent); }
   .rail-age { font-size:10.5px; color:var(--text-soft); margin-top:4px; letter-spacing:0.04em; }
   @media (min-width:900px) {
-    .front-grid { grid-template-columns:minmax(0,1fr) 212px; column-gap:28px; }
-    .front-rail { border-left:1px solid var(--border); padding-left:24px; }
+    .front-grid { grid-template-columns:minmax(0,1fr) 300px; column-gap:40px; }
+    .front-rail { border-left:1px solid var(--border); padding-left:28px; }
   }
+
+  /* ── Visible lake & timber banner (page bottom) ── */
+  .scene-banner { width:100%; max-width:var(--maxw); margin:38px auto 0; padding:0 20px; line-height:0; }
+  .scene-banner svg { width:100%; height:auto; display:block; }
+  .sb-tree  { fill:#a8b89a; opacity:.5; }
+  .sb-tree2 { fill:#5e6e54; opacity:.6; }
+  .sb-water { fill:#9fb8b4; opacity:.6; }
+  .sb-ripple{ stroke:#7a9b95; stroke-width:2; fill:none; opacity:.4; stroke-linecap:round; }
+  .sb-reed  { stroke:#5e6e54; stroke-width:3; fill:#5e6e54; opacity:.65; stroke-linecap:round; }
+  .sb-boat  { fill:#472e1e; opacity:.75; }
+  .sb-boat2 { stroke:#472e1e; stroke-width:3; fill:#472e1e; opacity:.75; stroke-linecap:round; }
+  .sb-line  { stroke:#4a3924; stroke-width:1.2; fill:none; opacity:.5; }
+  [data-theme="dark"] .sb-tree  { fill:#1f2a1c; }
+  [data-theme="dark"] .sb-tree2 { fill:#08100a; }
+  [data-theme="dark"] .sb-water { fill:#16302c; }
+  [data-theme="dark"] .sb-ripple{ stroke:#5a8b80; }
+  [data-theme="dark"] .sb-reed  { stroke:#08100a; fill:#08100a; }
+  [data-theme="dark"] .sb-boat  { fill:#000; }
+  [data-theme="dark"] .sb-boat2 { stroke:#000; fill:#000; }
+  [data-theme="dark"] .sb-line  { stroke:#ffd97a; }
+
+  /* ── Stock chart controls (added) ── */
+  .sa-rangechg { font-size:13px; font-weight:800; margin-left:8px; font-variant-numeric:tabular-nums; }
+  .sa-rangechg.up { color:#15803d; } .sa-rangechg.down { color:#b91c1c; }
+  [data-theme="dark"] .sa-rangechg.up { color:#4ade80; } [data-theme="dark"] .sa-rangechg.down { color:#f87171; }
+  .sa-div { display:inline-block; width:1px; height:18px; background:var(--border); margin:0 5px; vertical-align:middle; }
+  .sa-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:8px; margin:10px 0 6px; }
+  .sa-stat { background:var(--card-hover); border-radius:8px; padding:8px 10px; }
+  .sa-stat-l { font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-soft); }
+  .sa-stat-v { font-size:13.5px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--text); margin-top:2px; }
+  .sa-stat-v.up { color:#15803d; } .sa-stat-v.down { color:#b91c1c; }
+  [data-theme="dark"] .sa-stat-v.up { color:#4ade80; } [data-theme="dark"] .sa-stat-v.down { color:#f87171; }
+  .sa-chart-wrap { position:relative; }
+  .sa-tip { position:absolute; top:6px; left:6px; right:6px; z-index:5; background:color-mix(in srgb,var(--bg) 88%,transparent); border:1px solid var(--border); border-radius:7px; padding:5px 9px; font-size:11px; line-height:1.3; font-variant-numeric:tabular-nums; color:var(--text); pointer-events:none; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+  .sa-tip .up { color:#15803d; } .sa-tip .down { color:#b91c1c; }
+  [data-theme="dark"] .sa-tip .up { color:#4ade80; } [data-theme="dark"] .sa-tip .down { color:#f87171; }
 </style>
 </head>
 <body>
@@ -1022,6 +1060,19 @@
 <button class="header-reveal" id="headerReveal" aria-label="Show header">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
 </button>
+
+<div class="scene-banner" aria-hidden="true">
+<svg viewBox="0 0 1600 180" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+<path class="sb-tree" d="M0 78c180-16 360-8 560 2s420 4 640-6 260 4 400 2v102H0z"/>
+<g class="sb-tree2"><polygon points="110,90 124,52 138,90"/><polygon points="138,90 156,44 174,90"/><polygon points="170,90 186,56 202,90"/><polygon points="470,90 486,50 502,90"/><polygon points="500,90 518,42 536,90"/><polygon points="900,90 914,52 928,90"/><polygon points="928,90 946,44 964,90"/><polygon points="1330,90 1346,50 1362,90"/><polygon points="1360,90 1378,42 1396,90"/><polygon points="1392,90 1406,56 1420,90"/></g>
+<path class="sb-water" d="M0 100c240-10 480 6 760 3s500-14 840-6v83H0z"/>
+<g class="sb-ripple"><path d="M120 120h70M340 134h96M640 150h70M1020 132h80M1320 122h84M220 162h120M820 168h150"/></g>
+<g class="sb-reed"><path d="M80 180v-44"/><ellipse cx="80" cy="134" rx="5" ry="12"/><path d="M104 180v-32"/><ellipse cx="104" cy="146" rx="4" ry="9"/><path d="M1520 180v-46"/><ellipse cx="1520" cy="132" rx="5" ry="12"/><path d="M1496 180v-30"/><ellipse cx="1496" cy="148" rx="4" ry="9"/></g>
+<path class="sb-boat" d="M946 132q50 18 100 0z"/>
+<g class="sb-boat2"><circle cx="986" cy="112" r="6"/><path d="M986 118l-3 14"/><path d="M984 126l32 -22"/></g>
+<path class="sb-line" d="M1016 106l5 26"/>
+</svg>
+</div>
 
 <footer>Built for Matt · Pull-to-refresh or tap ↺ to refresh. · J/K navigate · B bookmark · Enter open</footer>
 
@@ -6608,6 +6659,57 @@ function saAccent() { return saIsDark() ? "#ff6b4a" : "#b8331a"; }
 // ── Chart state ──
 let _saCharts = [], _saCandles = [], _saOverlays = {}, _saIndicators = {};
 let _saSeriesMap = {};
+let _saRange   = "1Y";
+let _saStyle   = localStorage.getItem("sa.style") || "candle";  // candle | line | area
+let _saScale   = localStorage.getItem("sa.scale") || "normal";  // normal | percent | log
+let _saCompare = false;
+let _saSpyCache = {};
+function saScaleModeEnum() {
+  const M = (typeof LightweightCharts !== "undefined" && LightweightCharts.PriceScaleMode) || { Normal:0, Logarithmic:1, Percentage:2 };
+  return _saScale === "percent" ? M.Percentage : _saScale === "log" ? M.Logarithmic : M.Normal;
+}
+function saFmtVol(v) {
+  if (v == null) return "—";
+  if (v >= 1e9) return (v/1e9).toFixed(2) + "B";
+  if (v >= 1e6) return (v/1e6).toFixed(2) + "M";
+  if (v >= 1e3) return (v/1e3).toFixed(1) + "K";
+  return "" + v;
+}
+// Period stats + range %-change readout, computed from the loaded candles.
+function saUpdateStats() {
+  const el = document.getElementById("saStats");
+  if (!_saCandles.length) return;
+  const c = _saCandles, last = c[c.length-1], first = c[0];
+  const periodChg = first.close ? ((last.close - first.close) / first.close * 100) : 0;
+  const hi = Math.max(...c.map(x => x.high)), lo = Math.min(...c.map(x => x.low));
+  const avgVol = Math.round(c.reduce((s,x) => s + (x.volume||0), 0) / c.length);
+  const rc = document.getElementById("saRangeChg");
+  if (rc) {
+    rc.textContent = (periodChg>=0?"+":"") + periodChg.toFixed(2) + "% · " + _saRange;
+    rc.className = "sa-rangechg " + (periodChg>=0 ? "up" : "down");
+  }
+  if (!el) return;
+  const stat = (l,v,cls="") => '<div class="sa-stat"><div class="sa-stat-l">'+l+'</div><div class="sa-stat-v '+cls+'">'+v+'</div></div>';
+  el.innerHTML =
+    stat(_saRange+" change", (periodChg>=0?"+":"")+periodChg.toFixed(2)+"%", periodChg>=0?"up":"down") +
+    stat("Open", "$"+last.open.toFixed(2)) +
+    stat("Day range", "$"+last.low.toFixed(2)+" – $"+last.high.toFixed(2)) +
+    stat(_saRange+" high", "$"+hi.toFixed(2)) +
+    stat(_saRange+" low", "$"+lo.toFixed(2)) +
+    stat("Volume", saFmtVol(last.volume)) +
+    stat("Avg vol", saFmtVol(avgVol));
+}
+// Fetch + cache SPY candles for the "vs SPY" compare overlay.
+async function saEnsureSpy(range) {
+  if (_saSpyCache[range]) return;
+  try {
+    const res = await fetch(SA_BASE + "/stockcandles?ticker=SPY&range=" + range);
+    if (!res.ok) return;
+    const data = await res.json();
+    const cs = (data.candles || []).filter(c => c.close != null);
+    _saSpyCache[range] = cs.map(c => ({ time:c.time, value:c.close }));
+  } catch {}
+}
 
 function saDestroyCharts() {
   _saCharts.forEach(c => { try { c.remove(); } catch {} });
@@ -6658,31 +6760,70 @@ function saRenderCharts() {
   saDestroyCharts();
   if (!_saCandles.length) return;
   const isMob = window.innerWidth <= 520;
-  const mainChart = saBuildChart("saMainChart", isMob ? 220 : 280);
+  const mainChart = saBuildChart("saMainChart", isMob ? 240 : 320);
   if (!mainChart) return;
 
   const closes = _saCandles.map(c => c.close);
   const times  = _saCandles.map(c => c.time);
 
-  // Candlestick series
-  const cs = mainChart.addCandlestickSeries({
-    upColor: saUp(), downColor: saDown(),
-    borderUpColor: saUp(), borderDownColor: saDown(),
-    wickUpColor: saUp(), wickDownColor: saDown()
-  });
-  cs.setData(_saCandles.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close })));
-  _saSeriesMap.candles = cs;
+  // Price series — candle / line / area depending on the chosen view.
+  let priceSeries;
+  if (_saStyle === "line") {
+    priceSeries = mainChart.addLineSeries({ color: saAccent(), lineWidth:2, priceLineVisible:false });
+    priceSeries.setData(_saCandles.map(c => ({ time:c.time, value:c.close })));
+  } else if (_saStyle === "area") {
+    priceSeries = mainChart.addAreaSeries({ lineColor: saAccent(), topColor:"rgba(184,51,26,0.28)", bottomColor:"rgba(184,51,26,0.02)", lineWidth:2, priceLineVisible:false });
+    priceSeries.setData(_saCandles.map(c => ({ time:c.time, value:c.close })));
+  } else {
+    priceSeries = mainChart.addCandlestickSeries({
+      upColor: saUp(), downColor: saDown(),
+      borderUpColor: saUp(), borderDownColor: saDown(),
+      wickUpColor: saUp(), wickDownColor: saDown()
+    });
+    priceSeries.setData(_saCandles.map(c => ({ time:c.time, open:c.open, high:c.high, low:c.low, close:c.close })));
+  }
+  _saSeriesMap.candles = priceSeries;
 
-  // Volume histogram (own scale, bottom 15% of chart)
+  // Volume histogram — own scale pinned to the bottom ~22% of the chart, clearer color.
   const vs = mainChart.addHistogramSeries({
-    color: saGrid(), priceFormat: { type:"volume" }, priceScaleId:"vol",
-    scaleMargins: { top:0.85, bottom:0 }
+    priceFormat: { type:"volume" }, priceScaleId:"vol",
+    scaleMargins: { top:0.78, bottom:0 }
   });
-  vs.setData(_saCandles.map(c => ({ time:c.time, value:c.volume, color: c.close>=c.open?"rgba(74,222,128,0.25)":"rgba(248,113,113,0.25)" })));
+  vs.setData(_saCandles.map(c => ({ time:c.time, value:c.volume, color: c.close>=c.open ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)" })));
+
+  // "vs SPY" compare line (meaningful in % mode, which we switch to when enabled).
+  if (_saCompare && _saSpyCache[_saRange]) {
+    const s = mainChart.addLineSeries({ color:"#9aa0a6", lineWidth:1, priceLineVisible:false, lastValueVisible:false });
+    s.setData(_saSpyCache[_saRange]);
+    _saSeriesMap.spy = s;
+  }
 
   // Overlays (SMA/EMA/BB)
   saApplyOverlays(mainChart, closes, times);
+
+  // Axis scale mode: price / percent-from-start / log.
+  try { mainChart.priceScale("right").applyOptions({ mode: saScaleModeEnum() }); } catch {}
   mainChart.timeScale().fitContent();
+
+  // Hover readout (date · OHLC · volume · % from period start).
+  const tip = document.getElementById("saTip");
+  const byTime = new Map(_saCandles.map(c => [c.time, c]));
+  const firstClose = _saCandles[0].close;
+  mainChart.subscribeCrosshairMove(param => {
+    if (!tip) return;
+    if (!param.time || !param.point || param.point.x < 0) { tip.style.display = "none"; return; }
+    const c = byTime.get(param.time);
+    if (!c) { tip.style.display = "none"; return; }
+    const chg = firstClose ? ((c.close - firstClose) / firstClose * 100) : 0;
+    const d = new Date(typeof c.time === "number" ? c.time*1000 : Date.parse(c.time));
+    tip.innerHTML = "<b>" + d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}) + "</b> &nbsp; "
+      + "O " + c.open.toFixed(2) + " &nbsp; H " + c.high.toFixed(2) + " &nbsp; L " + c.low.toFixed(2) + " &nbsp; C " + c.close.toFixed(2)
+      + " &nbsp; Vol " + saFmtVol(c.volume)
+      + " &nbsp; <span class='" + (chg>=0?"up":"down") + "'>" + (chg>=0?"+":"") + chg.toFixed(1) + "% period</span>";
+    tip.style.display = "block";
+  });
+
+  saUpdateStats();
 
   // RSI pane
   const rsiEl = document.getElementById("saRsiChart");
@@ -6726,6 +6867,8 @@ async function openStockAnalysis(ticker) {
   _saOverlays = { sma20:false, sma50:false, ema20:false, ema50:false, bb:false };
   _saIndicators = { rsi:false, macd:false };
   _saCandles = [];
+  _saRange = localStorage.getItem("sa.range") || "1Y";
+  _saCompare = false;
   saDestroyCharts();
 
   history.pushState({ saView:ticker }, "", "#stock-" + ticker.replace(/[^A-Za-z0-9\-=.]/g,""));
@@ -6742,11 +6885,12 @@ async function openStockAnalysis(ticker) {
       <div class="sa-price-row">
         <span class="sa-price" id="saPrice">—</span>
         <span class="sa-change" id="saChg"></span>
+        <span class="sa-rangechg" id="saRangeChg"></span>
       </div>
       <div class="sa-meta-row" id="saMeta"></div>
     </div>
     <div class="sa-range-row" id="saRangeRow">
-      ${["1M","6M","1Y","5Y"].map(r=>`<button class="sa-range-btn${r==="1Y"?" active":""}" data-range="${r}">${r}</button>`).join("")}
+      ${["1M","6M","YTD","1Y","5Y","MAX"].map(r=>`<button class="sa-range-btn${r===_saRange?" active":""}" data-range="${r}">${r}</button>`).join("")}
     </div>
     <div class="sa-overlay-row" id="saOverlayRow">
       <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-soft);margin-right:2px">Overlays</span>
@@ -6756,7 +6900,16 @@ async function openStockAnalysis(ticker) {
       <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-soft);margin-right:2px">Panes</span>
       ${[["rsi","RSI 14"],["macd","MACD"]].map(([k,l])=>`<button class="sa-pill-btn" data-ind="${k}">${l}</button>`).join("")}
     </div>
-    <div id="saMainChart"></div>
+    <div class="sa-overlay-row" id="saViewRow">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-soft);margin-right:2px">View</span>
+      ${[["candle","Candle"],["line","Line"],["area","Area"]].map(([k,l])=>`<button class="sa-pill-btn${k===_saStyle?" active":""}" data-style="${k}">${l}</button>`).join("")}
+      <span class="sa-div"></span>
+      ${[["normal","$"],["percent","%"],["log","Log"]].map(([k,l])=>`<button class="sa-pill-btn${k===_saScale?" active":""}" data-scale="${k}">${l}</button>`).join("")}
+      <span class="sa-div"></span>
+      <button class="sa-pill-btn" data-cmp="1">vs SPY</button>
+    </div>
+    <div class="sa-stats" id="saStats"></div>
+    <div class="sa-chart-wrap"><div class="sa-tip" id="saTip" style="display:none"></div><div id="saMainChart"></div></div>
     <div class="sa-pane-wrap" id="saRsiWrap" style="display:none">
       <div class="sa-pane-label">RSI (14)</div><div class="sa-pane-chart" id="saRsiChart"></div>
     </div>
@@ -6782,8 +6935,44 @@ async function openStockAnalysis(ticker) {
     const btn = e.target.closest(".sa-range-btn");
     if (!btn) return;
     const range = btn.dataset.range;
+    _saRange = range;
+    localStorage.setItem("sa.range", range);
     listEl.querySelectorAll(".sa-range-btn").forEach(b => b.classList.toggle("active", b.dataset.range === range));
     saLoadCandles(ticker, range);
+  });
+
+  // Chart style (candle / line / area)
+  listEl.querySelectorAll(".sa-pill-btn[data-style]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      _saStyle = btn.dataset.style;
+      localStorage.setItem("sa.style", _saStyle);
+      listEl.querySelectorAll(".sa-pill-btn[data-style]").forEach(b => b.classList.toggle("active", b.dataset.style === _saStyle));
+      if (_saCandles.length) saRenderCharts();
+    });
+  });
+
+  // Axis scale (price / percent-from-start / log)
+  listEl.querySelectorAll(".sa-pill-btn[data-scale]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      _saScale = btn.dataset.scale;
+      localStorage.setItem("sa.scale", _saScale);
+      listEl.querySelectorAll(".sa-pill-btn[data-scale]").forEach(b => b.classList.toggle("active", b.dataset.scale === _saScale));
+      if (_saCandles.length) saRenderCharts();
+    });
+  });
+
+  // Compare vs SPY (forces % scale so the two lines are comparable)
+  const cmpBtn = listEl.querySelector(".sa-pill-btn[data-cmp]");
+  if (cmpBtn) cmpBtn.addEventListener("click", async () => {
+    _saCompare = !_saCompare;
+    cmpBtn.classList.toggle("active", _saCompare);
+    if (_saCompare) {
+      _saScale = "percent";
+      localStorage.setItem("sa.scale", _saScale);
+      listEl.querySelectorAll(".sa-pill-btn[data-scale]").forEach(b => b.classList.toggle("active", b.dataset.scale === _saScale));
+      await saEnsureSpy(_saRange);
+    }
+    if (_saCandles.length) saRenderCharts();
   });
 
   // Overlay toggles (SMA/EMA/BB)
@@ -6815,7 +7004,7 @@ async function openStockAnalysis(ticker) {
   // Load all data in parallel
   await Promise.all([
     saLoadQuote(ticker),
-    saLoadCandles(ticker, "1Y"),
+    saLoadCandles(ticker, _saRange),
     saLoadForecast(ticker),
     saLoadNews(ticker)
   ]);
@@ -6881,11 +7070,13 @@ function saRenderTrendCard(q) {
 async function saLoadCandles(ticker, range) {
   try {
     await loadLWC();
+    _saRange = range;
     const res = await fetch(SA_BASE + "/stockcandles?ticker=" + encodeURIComponent(ticker) + "&range=" + range);
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
     _saCandles = data.candles || [];
     if (!_saCandles.length) { saDestroyCharts(); return; }
+    if (_saCompare) await saEnsureSpy(range);
 
     // YoY return (only when showing 1Y chart)
     if (range === "1Y") {

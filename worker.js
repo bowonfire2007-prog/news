@@ -758,7 +758,7 @@ async function handleStockCandles(url, env, ctx) {
   if (cached) return jsonResponse({ ...(await cached.json()), cached: true });
 
   // Yahoo Finance chart API — free, no key, supports 1mo/6mo/1y/5y ranges
-  const RANGE_MAP = { "1M": "1mo", "6M": "6mo", "1Y": "1y", "5Y": "5y" };
+  const RANGE_MAP = { "1M": "1mo", "6M": "6mo", "YTD": "ytd", "1Y": "1y", "5Y": "5y", "MAX": "max" };
   const yhRange = RANGE_MAP[range] || "1y";
   const yhUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=${yhRange}`;
 

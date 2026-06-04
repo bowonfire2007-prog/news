@@ -912,6 +912,23 @@
   .tk-up { color:#15803d; } .tk-down { color:#b91c1c; }
   [data-theme="dark"] .tk-up { color:#4ade80; } [data-theme="dark"] .tk-down { color:#f87171; }
   @keyframes tickerScroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+  /* "N sources" expandable list */
+  .badge-sources.sources-toggle { cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:5px; }
+  .badge-sources.sources-toggle:hover { filter:brightness(1.08); }
+  .src-chev { font-size:9px; line-height:1; }
+  .sources-panel { max-height:0; overflow:hidden; transition:max-height .3s ease; margin:2px 0 6px; border-left:2px solid color-mix(in srgb,#6366f1 45%,var(--border)); }
+  [data-theme="dark"] .sources-panel { border-left-color:color-mix(in srgb,#a5b4fc 45%,var(--border)); }
+  .sources-panel.open { max-height:640px; overflow-y:auto; }
+  .sources-panel-head { font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-soft); padding:9px 0 5px 12px; }
+  .src-row { display:flex; align-items:baseline; gap:9px; padding:7px 12px; border-top:1px solid var(--border); }
+  .src-row:hover { background:var(--card-hover); }
+  .src-row-name { font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; color:#6366f1; white-space:nowrap; flex-shrink:0; min-width:104px; }
+  [data-theme="dark"] .src-row-name { color:#a5b4fc; }
+  .src-row-title { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:13.5px; color:var(--text); line-height:1.3; flex:1; min-width:0; }
+  .src-row:hover .src-row-title { color:var(--accent); }
+  .src-row-age { font-size:10.5px; color:var(--text-soft); white-space:nowrap; flex-shrink:0; }
+  @media (max-width:520px) { .src-row { flex-wrap:wrap; gap:2px 9px; } .src-row-name { min-width:0; } .src-row-age { width:100%; } }
 </style>
 </head>
 <body>
@@ -1795,7 +1812,8 @@ function collapseByTopic(items) {
     if (used[i]) return;
     used[i] = true;
     let clusterSize = 1;
-    items.forEach((_, j) => {
+    const others = [];
+    items.forEach((other, j) => {
       if (used[j]) return;
       const inter = [...sets[i]].filter(w => sets[j].has(w));
       const ratio = inter.length / Math.max(sets[i].size, sets[j].size, 1);
@@ -1803,9 +1821,18 @@ function collapseByTopic(items) {
       if (inter.length >= 2 && ratio >= 0.15) {
         used[j] = true;
         clusterSize++;
+        // Keep the folded duplicate so the reader can expand to see who else is reporting it.
+        others.push({ source: other.source, title: other.title, link: other.link, pubDate: other.pubDate });
       }
     });
     item.sourceCount = Math.max(item.sourceCount || 1, clusterSize);
+    // De-dupe by source name (one row per outlet) and keep newest first.
+    if (others.length) {
+      const bySource = new Map();
+      others.sort((x, y) => y.pubDate - x.pubDate)
+            .forEach(o => { if (o.source !== item.source && !bySource.has(o.source)) bySource.set(o.source, o); });
+      if (bySource.size) item.others = [...bySource.values()];
+    }
     if (clusterSize >= 3) item.trending = true;
     result.push(item);
   });
@@ -7272,7 +7299,11 @@ function buildArticle(item, isHero) {
     ? '<div class="badge-row">' +
         (breaking ? '<span class="badge badge-breaking">⚡ Breaking</span>' : '') +
         (item.trending ? '<span class="badge badge-trending">Trending</span>' : '') +
-        (showSrcBadge ? '<span class="badge badge-sources">'+srcCount+' sources</span>' : '') +
+        (showSrcBadge ? (
+          (item.others && item.others.length)
+            ? '<button type="button" class="badge badge-sources sources-toggle" aria-expanded="false" title="Show other outlets reporting this">'+srcCount+' sources <span class="src-chev">▾</span></button>'
+            : '<span class="badge badge-sources">'+srcCount+' sources</span>'
+        ) : '') +
         (topic ? '<span class="badge badge-topic '+topic.cls+'">'+topic.label+'</span>' : '') +
         (item.isNew ? '<span class="badge badge-new">New</span>' : '') +
       '</div>'
@@ -7300,18 +7331,48 @@ function buildArticle(item, isHero) {
   const panel = document.createElement("div");
   panel.className = "brief-panel";
 
+  // "N sources" expandable list — other outlets reporting the same story.
+  // Built as a sibling (not nested) so its <a> links aren't illegally inside the article's <a>.
+  let srcPanel = null;
+  if (item.others && item.others.length) {
+    srcPanel = document.createElement("div");
+    srcPanel.className = "sources-panel";
+    srcPanel.innerHTML =
+      '<div class="sources-panel-head">Also reporting this story</div>' +
+      item.others.map(o =>
+        '<a class="src-row" href="'+escapeHtml(o.link)+'" target="_blank" rel="noopener noreferrer">' +
+          '<span class="src-row-name">'+escapeHtml(o.source)+'</span>' +
+          '<span class="src-row-title">'+escapeHtml(o.title)+'</span>' +
+          '<span class="src-row-age">'+relativeTime(o.pubDate)+'</span>' +
+        '</a>'
+      ).join('');
+  }
+
   wrap.appendChild(a);
   wrap.appendChild(panel);
+  if (srcPanel) wrap.appendChild(srcPanel);
 
   // Mark read on click — but ignore clicks on action buttons
   a.addEventListener("click", e => {
-    if (e.target.closest(".bkmk-btn") || e.target.closest(".brief-btn")) {
+    if (e.target.closest(".bkmk-btn") || e.target.closest(".brief-btn") || e.target.closest(".sources-toggle")) {
       e.preventDefault();
       return;
     }
     markRead(item.link);
     a.classList.add("read");
   });
+
+  // Sources expand/collapse toggle
+  const srcToggle = a.querySelector(".sources-toggle");
+  if (srcToggle && srcPanel) {
+    srcToggle.addEventListener("click", e => {
+      e.preventDefault(); e.stopPropagation();
+      const open = srcPanel.classList.toggle("open");
+      srcToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      const chev = srcToggle.querySelector(".src-chev");
+      if (chev) chev.textContent = open ? "▴" : "▾";
+    });
+  }
 
   // Bookmark button (lives in the meta row now)
   const bkmkBtn = a.querySelector(".bkmk-btn");

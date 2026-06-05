@@ -43,6 +43,17 @@ async function runWheelerScheduled(env, ctx) {
   } catch (_) {}
 }
 
+// Wednesday ~9am CST: pull Kingsville's USDA weighted-average PDF, parse, save to KV.
+async function runKingsvilleScheduled(env, ctx) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    await caches.default.delete(
+      new Request("https://cattleprice-cache.local/" + encodeURIComponent("cattleprice:kingsville:" + today))
+    );
+    await handleUsdaCattle(env, { waitUntil: (p) => p }, "kingsville", "https://www.ams.usda.gov/mnreports/ams_1815.pdf");
+  } catch (_) {}
+}
+
 // Monday ~9am CST: download newest Missouri weekly PDF, extract with Claude, save to KV.
 //
 // IMPORTANT — why we don't just hit /Market/pdf/weeklysummary.pdf:
@@ -237,6 +248,216 @@ async function handleWeeklyRefresh(request, env, ctx) {
 }
 
 
+// ─────────────── BILL TRACKER ────────────────────────────────────────────────
+// Polls LegiScan for a small set of Missouri bills, detects status changes via
+// change_hash, generates plain-English summaries via Claude, and notifies.
+//
+// Config: edit TRACKED_BILLS_CONFIG to add/remove bills.
+// Secrets needed: LEGISCAN_API_KEY, ANTHROPIC_API_KEY (already bound), NOTIFY_TARGET (optional).
+// KV: BILLS_KV (bound in wrangler.toml).
+//
+// To add Fitzwater's regulatory bill once you know the number:
+//   { key:"hb_fitzwater", bill_number:"HB XXXX", sponsor:"Fitzwater", description:"Regulatory solar bill", legiScanSearch:"HBXXXX" }
+
+const TRACKED_BILLS_CONFIG = [
+  {
+    key:            "sb849",
+    bill_number:    "SB 849",
+    sponsor:        "O'Laughlin",
+    description:    "Statewide moratorium on new & ongoing commercial solar (has emergency clause)",
+    legiScanSearch: "SB849",
+    priority:       true
+  },
+  {
+    key:            "sb933",
+    bill_number:    "SB 933",
+    sponsor:        "Crawford",
+    description:    "Parallel commercial solar moratorium",
+    legiScanSearch: "SB933",
+    priority:       false
+  }
+];
+
+const LEGISCAN_BASE = "https://api.legiscan.com/";
+
+const LEGISCAN_STATUS_MAP = {
+  1:"Introduced", 2:"Engrossed", 3:"Enrolled", 4:"Passed",
+  5:"Vetoed", 6:"Failed", 7:"Override", 8:"Chaptered",
+  9:"Referred to Committee", 10:"Reported Pass", 11:"Reported Do Not Pass", 12:"Draft"
+};
+
+async function legiScanCall(op, params, apiKey) {
+  const u = new URL(LEGISCAN_BASE);
+  u.searchParams.set("key", apiKey);
+  u.searchParams.set("op", op);
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
+  const res = await fetch(u.toString());
+  if (!res.ok) throw new Error("LegiScan " + op + " HTTP " + res.status);
+  const data = await res.json();
+  if (data.status !== "OK") throw new Error("LegiScan " + op + " error: " + JSON.stringify(data.alert || data).slice(0, 200));
+  return data;
+}
+
+async function discoverBillId(cfg, apiKey) {
+  const data = await legiScanCall("getSearch", { state: "MO", query: cfg.legiScanSearch, year: 2 }, apiKey);
+  const results = Object.values(data.searchresult || {}).filter(r => typeof r === "object" && r.bill_id);
+  const normalized = cfg.legiScanSearch.replace(/\s+/g, "").toUpperCase();
+  const match = results.find(r => (r.bill_number || "").replace(/\s+/g, "").toUpperCase() === normalized) || results[0];
+  if (!match) throw new Error("No LegiScan results for " + cfg.legiScanSearch);
+  return { legiscan_id: match.bill_id, session_id: match.session_id };
+}
+
+async function generateBillSummary(bill, apiKey) {
+  const lastAction = (bill.history || []).slice(-1)[0] || {};
+  const statusText = LEGISCAN_STATUS_MAP[bill.status] || ("Status " + bill.status);
+  const sponsors = (bill.sponsors || []).map(s => s.name).join(", ") || "Unknown";
+  const prompt = `You are summarizing a Missouri legislative update for a general reader who is following whether large-scale solar farms on farmland will be paused.
+
+Bill: ${bill.bill_number} — ${bill.title}
+Sponsor: ${sponsors}
+Current status: ${statusText} (as of ${bill.status_date || "unknown"})
+Last action: ${lastAction.action || "none"} on ${lastAction.date || "unknown"}
+
+In 3-4 sentences, plainly state what just happened to this bill, what stage it is at now, and what the practical next step or risk is. No legalese. If this change moves the bill closer to halting ongoing solar construction, say so directly.`;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 400,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim() || null;
+}
+
+async function sendBillNotification(message, env) {
+  const target = env.NOTIFY_TARGET;
+  if (!target) return;
+  try {
+    await fetch(target, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      body: message
+    });
+  } catch (_) {}
+}
+
+async function runBillsScheduled(env, ctx, force = false) {
+  if (!env.BILLS_KV)          return { error: "BILLS_KV not bound" };
+  if (!env.LEGISCAN_API_KEY)  return { error: "LEGISCAN_API_KEY not set" };
+
+  // Load stored ID map (bill key → legiscan_id)
+  const idMapRaw = await env.BILLS_KV.get("bills:id_map");
+  const idMap = idMapRaw ? JSON.parse(idMapRaw) : {};
+
+  const results = [];
+
+  for (const cfg of TRACKED_BILLS_CONFIG) {
+    try {
+      // Discover legiscan_id if not yet stored
+      if (!idMap[cfg.key]) {
+        const found = await discoverBillId(cfg, env.LEGISCAN_API_KEY);
+        idMap[cfg.key] = found.legiscan_id;
+        await env.BILLS_KV.put("bills:id_map", JSON.stringify(idMap));
+      }
+
+      const legiscan_id = idMap[cfg.key];
+      const billData = await legiScanCall("getBill", { id: legiscan_id }, env.LEGISCAN_API_KEY);
+      const bill = billData.bill;
+      const newHash = bill.change_hash;
+
+      const storedHash = await env.BILLS_KV.get("bills:hash:" + cfg.key);
+      const changed = force || storedHash !== newHash;
+
+      const lastAction = (bill.history || []).slice(-1)[0] || {};
+      const statusText = LEGISCAN_STATUS_MAP[bill.status] || ("Status " + bill.status);
+
+      let summary = null;
+      if (changed && env.ANTHROPIC_API_KEY) {
+        summary = await generateBillSummary(bill, env.ANTHROPIC_API_KEY);
+      }
+
+      // Load existing stored data for history
+      const existingRaw = await env.BILLS_KV.get("bills:data:" + cfg.key);
+      const existing = existingRaw ? JSON.parse(existingRaw) : { history: [] };
+      const history = existing.history || [];
+
+      if (changed) {
+        history.push({
+          date: new Date().toISOString().slice(0, 10),
+          action: lastAction.action || "Updated",
+          status: statusText,
+          summary: summary || existing.summary || null
+        });
+        if (history.length > 20) history.splice(0, history.length - 20);
+      }
+
+      const record = {
+        key:             cfg.key,
+        bill_number:     bill.bill_number,
+        title:           bill.title,
+        sponsor:         cfg.sponsor,
+        description:     cfg.description,
+        status:          bill.status,
+        status_text:     statusText,
+        status_date:     bill.status_date,
+        last_action:     lastAction.action || null,
+        last_action_date:lastAction.date   || null,
+        summary:         changed && summary ? summary : (existing.summary || null),
+        summary_date:    changed && summary ? new Date().toISOString() : (existing.summary_date || null),
+        legiscan_id,
+        legiscan_url:    "https://legiscan.com/MO/bill/" + encodeURIComponent(bill.bill_number.replace(/\s+/g,"")) + "/2026",
+        mo_senate_url:   "https://www.senate.mo.gov/26info/BTS_Web/Bill.aspx?SessionType=R&BillID=" + legiscan_id,
+        change_hash:     newHash,
+        last_checked:    new Date().toISOString(),
+        history,
+        priority:        cfg.priority
+      };
+
+      await env.BILLS_KV.put("bills:data:" + cfg.key, JSON.stringify(record), { expirationTtl: 2 * 365 * 24 * 3600 });
+
+      if (changed) {
+        await env.BILLS_KV.put("bills:hash:" + cfg.key, newHash);
+        const notifyMsg = `[Bill Update] ${bill.bill_number} — ${statusText}\n${lastAction.action || ""}\n${summary || ""}`;
+        ctx.waitUntil(sendBillNotification(notifyMsg, env));
+      }
+
+      results.push({ key: cfg.key, bill_number: bill.bill_number, changed, status: statusText });
+    } catch (err) {
+      results.push({ key: cfg.key, error: err.message });
+    }
+  }
+
+  return { results, ran_at: new Date().toISOString() };
+}
+
+// GET /local-bills — returns all stored bill records (read by frontend)
+async function handleLocalBills(url, env) {
+  if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
+  const bills = [];
+  for (const cfg of TRACKED_BILLS_CONFIG) {
+    const raw = await env.BILLS_KV.get("bills:data:" + cfg.key);
+    if (raw) bills.push(JSON.parse(raw));
+  }
+  bills.sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
+  return jsonResponse({ bills, fetched_at: new Date().toISOString() });
+}
+
+// GET /bills-refresh[?force=1] — manual trigger; ?force=1 re-summarizes even if hash unchanged
+async function handleBillsRefresh(request, url, env, ctx) {
+  const force = url.searchParams.get("force") === "1";
+  const result = await runBillsScheduled(env, ctx, force);
+  return jsonResponse(result);
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
@@ -294,6 +515,8 @@ export default {
     if (url.pathname === "/stocknews")    return handleStockNews(url, env, ctx);
     if (url.pathname === "/stockforecast") return handleStockForecast(url, env, ctx);
     if (url.pathname === "/stockbrief")   return handleStockBrief(request, env, ctx);
+    if (url.pathname === "/local-bills")   return handleLocalBills(url, env);
+    if (url.pathname === "/bills-refresh") return handleBillsRefresh(request, url, env, ctx);
     return handleRssProxy(url);
   },
 
@@ -304,9 +527,10 @@ export default {
   //   "0 18 * * 2"  →  Tuesday  noon CST / 1 pm CDT  — backup pull (holiday weeks)
   async scheduled(event, env, ctx) {
     const cron = event.cron;
-    if (cron === "0 21 * * 5") ctx.waitUntil(runWheelerScheduled(env, ctx));
+    if (cron === "0 21 * * 5") { ctx.waitUntil(runWheelerScheduled(env, ctx)); ctx.waitUntil(runKingsvilleScheduled(env, ctx)); }
     if (cron === "0 15 * * 1") ctx.waitUntil(runMissouriScheduled(env, ctx));
     if (cron === "0 18 * * 2") ctx.waitUntil(runMissouriScheduled(env, ctx));
+    if (cron === "0 13 * * *" || cron === "0 1 * * *") ctx.waitUntil(runBillsScheduled(env, ctx));
   }
 };
 
@@ -1648,7 +1872,9 @@ async function hashKey(input) {
 //   returns: { barn, sale_date, weight_class, head_count, avg_cwt, low_cwt, high_cwt, frame_grade, notes, image_url, model, generated_at, cached }
 async function handleCattlePrice(url, env, ctx) {
   const barn = url.searchParams.get("barn") || "wheeler";
-  if (barn !== "wheeler") return jsonResponse({ error: "Only 'wheeler' is supported right now." }, 400);
+  if (barn === "kingsville") return handleUsdaCattle(env, ctx, "kingsville", "https://www.ams.usda.gov/mnreports/ams_1815.pdf");
+  if (barn === "wheeler")    return handleUsdaCattle(env, ctx, "wheeler",    "https://www.ams.usda.gov/mnreports/ams_3917.pdf");
+  return jsonResponse({ error: "Unknown barn '" + barn + "'." }, 400);
   if (!env.ANTHROPIC_API_KEY) return jsonResponse({ error: "ANTHROPIC_API_KEY secret is not set" }, 500);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -1835,8 +2061,13 @@ async function handleCattlePrice(url, env, ctx) {
     '  "low_cwt": <low_price>,\n' +
     '  "high_cwt": <TOP_DOLLAR_HIGH_PRICE>,\n' +
     '  "frame_grade": "<exact grade as shown, e.g. \\"Med & Lg 1\\" or \\"M&L 1-2\\">",\n' +
-    '  "notes": "<one sentence: which line you picked and why, including grade + weight + whether you fell back from M&L 1 because none existed>"\n' +
+    '  "notes": "<one sentence: which line you picked and why>",\n' +
+    '  "steer_curve": [{"wt":<avg wt>,"avg":<avg $/cwt>,"low":<low>,"high":<high>,"head":<head>}],\n' +
+    '  "receipts_this": <total head this week_or_null>, "receipts_last": <last week_or_null>, "receipts_year": <last year_or_null>,\n' +
+    '  "cull_breaker": <avg $/cwt slaughter cow Breaker_or_null>, "cull_boner": <Boner_or_null>, "cull_lean": <Lean_or_null>,\n' +
+    '  "direction_note": "<the market comparison sentence if present, else empty>"\n' +
     '}\n' +
+    "For steer_curve, include EVERY Medium & Large 1 feeder STEER line on the report (all weight classes). receipts_* come from the auction receipts/summary box. cull_* come from the Slaughter Cows section (Breaker 75-80% / Boner 80-85% / Lean 85-90% average price). Use null for anything not shown. " +
     "If no feeder steer data is visible at all, return {\"error\":\"no feeder steer data found\"}.";
   const promptDirect     = "This is a livestock auction market report from Wheeler Livestock Auction in Osceola, MO. " + commonPromptBody;
   const promptScreenshot = "This is a screenshot of Wheeler Livestock Auction's website. The page shows their latest scanned market report from their auction in Osceola, MO. Look at the market report image embedded on the page and read it carefully. " + commonPromptBody;
@@ -2033,7 +2264,7 @@ async function handleCattlePrice(url, env, ctx) {
   ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
   // Auto-save to KV so every browser and every scheduled run sees this result
   if (env.WEEKLY_KV && result.sale_date) {
-    const kvPrice = parseFloat(result.high_cwt || result.avg_cwt);
+    const kvPrice = parseFloat(result.avg_cwt || result.high_cwt);
     if (kvPrice > 0) ctx.waitUntil(addCattlePriceToKV(env, barn, kvPrice, result.sale_date, result));
   }
   return jsonResponse({ ...result, cached: false });
@@ -2146,9 +2377,13 @@ async function addCattlePriceToKV(env, barn, priceNum, date, extra) {
   const raw = await env.WEEKLY_KV.get(CATTLE_HISTORY_KV_KEY);
   const hist = raw ? JSON.parse(raw) : {};
   if (!Array.isArray(hist[barn])) hist[barn] = [];
-  if (hist[barn].some(e => e.date === date && parseFloat(e.price) === priceNum)) return; // no-op duplicate
+  const existing = hist[barn].find(e => e.date === date);
+  if (existing && parseFloat(existing.price) === priceNum) return; // identical reading — no-op
+  hist[barn] = hist[barn].filter(e => e.date !== date); // a corrected reading replaces an earlier same-date one
   const entry = { date, price: priceNum, recorded_at: new Date().toISOString() };
-  for (const k of ["weight_class", "head_count", "avg_cwt", "low_cwt", "high_cwt", "frame_grade", "notes", "fetched_via"]) {
+  for (const k of ["weight_class", "head_count", "avg_cwt", "low_cwt", "high_cwt", "frame_grade", "notes", "fetched_via",
+                   "avg_500_wt", "steer_curve", "receipts_this", "receipts_last", "receipts_year",
+                   "cull_breaker", "cull_boner", "cull_lean", "direction_note", "report_url"]) {
     if (extra && extra[k] != null) entry[k] = extra[k];
   }
   hist[barn].push(entry);
@@ -2177,6 +2412,82 @@ async function handleCattleRecord(request, env, ctx) {
   await addCattlePriceToKV(env, barn, priceNum, date, body);
   const updated = await env.WEEKLY_KV.get(CATTLE_HISTORY_KV_KEY);
   return jsonResponse({ ok: true, history: updated ? JSON.parse(updated) : {} });
+}
+
+// ─────────────── USDA WEIGHTED-AVERAGE CATTLE REPORTS (Wheeler + Kingsville) ────
+// Both barns are covered by the Missouri Dept of Ag / USDA AMS "Livestock Weighted
+// Average Report" — clean machine-readable PDFs we parse with Claude's PDF support.
+// This is far more reliable than scraping Wheeler's scanned Wix image.
+//   Wheeler   = ams_3917.pdf   Kingsville = ams_1815.pdf
+// Tracked number = AVERAGE $/cwt for the M&L 1 steer line nearest 500 lb (the frontend
+// then interpolates a true 500 lb value from the full steer_curve).
+async function handleUsdaCattle(env, ctx, barn, pdfUrl) {
+  const model = env.AI_MODEL || "claude-sonnet-4-5";
+  const today = new Date().toISOString().slice(0, 10);
+  const cacheReq = new Request("https://cattleprice-cache.local/" + encodeURIComponent("cattleprice:" + barn + ":" + today));
+  const cached = await caches.default.match(cacheReq);
+  if (cached) return jsonResponse({ ...(await cached.json()), cached: true });
+
+  let pdfBase64;
+  try {
+    const pdfRes = await fetch(pdfUrl, { headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/pdf,*/*" } });
+    if (!pdfRes.ok) return jsonResponse({ error: barn + " PDF HTTP " + pdfRes.status }, 502);
+    pdfBase64 = arrayBufferToBase64(await pdfRes.arrayBuffer());
+  } catch (e) {
+    return jsonResponse({ error: barn + " PDF fetch failed: " + (e && e.message) }, 502);
+  }
+
+  const prompt =
+    "You are reading a USDA/Missouri Livestock Weighted Average Report for a Missouri cattle auction. " +
+    "Extract the feeder STEER data the user tracks.\n\n" +
+    "TRACKED NUMBER: avg_500_wt = the AVERAGE price ($/cwt) for the 'STEERS - Medium and Large 1' line whose Avg Wt is CLOSEST to 500 lb " +
+    "(smallest |AvgWt - 500|). Read the 'Avg Price' column for that line.\n\n" +
+    "Also extract:\n" +
+    "- sale_date: report sale date as YYYY-MM-DD (from the 'Day Mon DD, YYYY' line near the top).\n" +
+    "- steer_curve: array for EVERY 'STEERS - Medium and Large 1' line (NOT M&L 1-2 or 2): {wt:<avg wt>, avg:<avg price>, low:<low of range>, high:<high of range>, head:<head count>}.\n" +
+    "- receipts_this / receipts_last / receipts_year: the Total Receipts numbers (This Week / Last Reported / Last Year).\n" +
+    "- cull_breaker / cull_boner / cull_lean: the Average price for SLAUGHTER COWS Breaker / Boner / Lean lines (Average dressing if more than one). null if absent.\n" +
+    "- direction_note: the one-sentence market comparison (e.g. 'Compared to last week, steers sold mostly steady...').\n\n" +
+    "Return ONLY valid JSON, no markdown:\n" +
+    '{"barn":"' + barn + '","sale_date":"YYYY-MM-DD","avg_500_wt":<num>,"weight_class":"<wt range of chosen line>","head_count":<num_or_null>,' +
+    '"avg_cwt":<same as avg_500_wt>,"low_cwt":<low of chosen line>,"high_cwt":<high of chosen line>,' +
+    '"steer_curve":[{"wt":0,"avg":0,"low":0,"high":0,"head":0}],' +
+    '"receipts_this":<num_or_null>,"receipts_last":<num_or_null>,"receipts_year":<num_or_null>,' +
+    '"cull_breaker":<num_or_null>,"cull_boner":<num_or_null>,"cull_lean":<num_or_null>,"direction_note":"<text_or_empty>"}\n' +
+    "If no M&L 1 steer data is found, return {\"error\":\"no steer data found\"}.";
+
+  let claudeData;
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "anthropic-beta": "pdfs-2024-09-25", "content-type": "application/json" },
+      body: JSON.stringify({
+        model, max_tokens: 1600,
+        messages: [{ role: "user", content: [
+          { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
+          { type: "text", text: prompt }
+        ] }]
+      })
+    });
+    if (!r.ok) { const t = await r.text(); return jsonResponse({ error: "Claude API " + r.status, details: t.slice(0, 400) }, 502); }
+    claudeData = await r.json();
+  } catch (e) {
+    return jsonResponse({ error: "Claude fetch failed: " + (e && e.message) }, 502);
+  }
+
+  const text = (claudeData.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+  let parsed;
+  try { parsed = JSON.parse(text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")); }
+  catch (e) { return jsonResponse({ error: "Could not parse Claude JSON", raw: text.slice(0, 400) }, 502); }
+  if (parsed.error) return jsonResponse({ ...parsed, model, fetched_via: "usda-pdf" }, 200);
+
+  const result = { ...parsed, barn, report_url: pdfUrl, model, fetched_via: "usda-pdf", generated_at: new Date().toISOString() };
+  const price = parseFloat(parsed.avg_500_wt != null ? parsed.avg_500_wt : parsed.avg_cwt);
+  if (price > 0 && parsed.sale_date && /^\d{4}-\d{2}-\d{2}$/.test(parsed.sale_date)) {
+    ctx.waitUntil(addCattlePriceToKV(env, barn, price, parsed.sale_date, result));
+  }
+  ctx.waitUntil(caches.default.put(cacheReq, new Response(JSON.stringify(result), { headers: { "content-type": "application/json" } })));
+  return jsonResponse(result);
 }
 
 

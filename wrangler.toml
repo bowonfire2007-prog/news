@@ -27,8 +27,12 @@ id = "0f86e3f7503f41279b0af5e8f132cacd"
 #                    (Memorial Day, Labor Day, etc. when MDA is closed Monday).
 #                    Safe to run weekly: it's a no-op if Monday already grabbed it.
 #
+[[kv_namespaces]]
+binding = "BILLS_KV"
+id = "77445f232f1e4bc6a3dd1cf86c888979"
+
 [triggers]
-crons = ["0 21 * * 5", "0 15 * * 1", "0 18 * * 2"]
+crons = ["0 21 * * 5", "0 15 * * 1", "0 18 * * 2", "0 13 * * *", "0 1 * * *"]
 
 # ── Secrets (set in Cloudflare dashboard or via wrangler secret put) ──────────
 # ANTHROPIC_API_KEY  — Claude API key for PDF parsing and cattle price OCR

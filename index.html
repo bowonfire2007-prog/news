@@ -1164,8 +1164,6 @@
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
 </button>
 
-<section class="farm-news" id="farmNews"></section>
-
 <div class="scene-banner" aria-hidden="true">
 <svg viewBox="0 0 1600 180" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
 <path class="sb-tree" d="M0 78c180-16 360-8 560 2s420 4 640-6 260 4 400 2v102H0z"/>
@@ -5491,19 +5489,27 @@ function renderCattleExtras() {
 // ══════════ FARM & CATTLE NEWS — heat-ranked (US recency × MO/Henry local boost) ══════════
 const FARM_NEWS_FEEDS = [
   // National cattle / cow-calf / beef
-  { source:"Cattle (Google)", url:"https://news.google.com/rss/search?q=(%22cow-calf%22%20OR%20%22feeder%20cattle%22%20OR%20%22cattle%20market%22%20OR%20%22beef%20cattle%22%20OR%20%22cattle%20prices%22%20OR%20stocker)%20when:21d&hl=en-US&gl=US&ceid=US:en" },
+  { source:"Cattle (Google)", url:"https://news.google.com/rss/search?q=(%22cow-calf%22%20OR%20%22feeder%20cattle%22%20OR%20%22cattle%20market%22%20OR%20%22beef%20cattle%22%20OR%20%22cattle%20prices%22%20OR%20stocker%20OR%20cattlemen)%20when:30d&hl=en-US&gl=US&ceid=US:en" },
+  // Farming concerns — farm economy, input costs, land, policy, trade
+  { source:"Farm Economy (Google)", url:"https://news.google.com/rss/search?q=(%22farm%20income%22%20OR%20%22input%20costs%22%20OR%20fertilizer%20OR%20%22farmland%20prices%22%20OR%20%22farm%20bill%22%20OR%20%22crop%20insurance%22%20OR%20tariffs%20OR%20%22farm%20economy%22%20OR%20%22ag%20economy%22)%20(farmer%20OR%20agriculture%20OR%20ranch%20OR%20rural)%20when:30d&hl=en-US&gl=US&ceid=US:en" },
   // Grain / hay / inputs / drought
-  { source:"Crops (Google)", url:"https://news.google.com/rss/search?q=(corn%20OR%20soybean%20OR%20hay%20OR%20%22grain%20prices%22%20OR%20drought%20OR%20pasture%20OR%20forage)%20(farmer%20OR%20Midwest%20OR%20cattle%20OR%20ranch)%20when:21d&hl=en-US&gl=US&ceid=US:en" },
+  { source:"Crops (Google)", url:"https://news.google.com/rss/search?q=(corn%20OR%20soybean%20OR%20wheat%20OR%20hay%20OR%20%22grain%20prices%22%20OR%20drought%20OR%20pasture%20OR%20forage%20OR%20planting%20OR%20harvest)%20(farmer%20OR%20Midwest%20OR%20cattle%20OR%20ranch)%20when:30d&hl=en-US&gl=US&ceid=US:en" },
   // USDA / policy / reports
-  { source:"USDA (Google)", url:"https://news.google.com/rss/search?q=(USDA%20OR%20%22farm%20bill%22%20OR%20%22cattle%20on%20feed%22%20OR%20%22beef%20demand%22%20OR%20%22cattle%20inventory%22%20OR%20%22cattle%20futures%22)%20when:21d&hl=en-US&gl=US&ceid=US:en" },
-  // Missouri agriculture
-  { source:"Missouri Ag (Google)", url:"https://news.google.com/rss/search?q=Missouri%20(farm%20OR%20agriculture%20OR%20cattle%20OR%20%22farm%20bureau%22%20OR%20ranch%20OR%20crops%20OR%20drought%20OR%20livestock%20OR%20%22MU%20Extension%22)%20when:30d&hl=en-US&gl=US&ceid=US:en" },
-  // Henry County / Clinton / Truman / west-central MO farming
-  { source:"Henry Co (Google)", url:"https://news.google.com/rss/search?q=(%22Henry%20County%22%20Missouri%20OR%20%22Clinton%2C%20Missouri%22%20OR%20%22Truman%20Lake%22%20OR%20%22west%20central%20Missouri%22%20OR%20Sedalia%20OR%20Warrensburg)%20(farm%20OR%20cattle%20OR%20agriculture%20OR%20crops%20OR%20livestock%20OR%20hay%20OR%20drought)%20when:45d&hl=en-US&gl=US&ceid=US:en" },
+  { source:"USDA (Google)", url:"https://news.google.com/rss/search?q=(USDA%20OR%20%22cattle%20on%20feed%22%20OR%20%22beef%20demand%22%20OR%20%22cattle%20inventory%22%20OR%20%22cattle%20futures%22%20OR%20WASDE%20OR%20%22prospective%20plantings%22)%20when:30d&hl=en-US&gl=US&ceid=US:en" },
+  // Missouri agriculture — broad
+  { source:"Missouri Ag (Google)", url:"https://news.google.com/rss/search?q=Missouri%20(farm%20OR%20farming%20OR%20agriculture%20OR%20cattle%20OR%20ranch%20OR%20crops%20OR%20drought%20OR%20livestock%20OR%20%22farm%20bureau%22%20OR%20%22MU%20Extension%22%20OR%20soybean%20OR%20corn%20OR%20hay)%20when:45d&hl=en-US&gl=US&ceid=US:en" },
+  // Missouri farm orgs / policy
+  { source:"MO Farm Orgs (Google)", url:"https://news.google.com/rss/search?q=(%22Missouri%20Department%20of%20Agriculture%22%20OR%20%22Missouri%20Farm%20Bureau%22%20OR%20%22Missouri%20Cattlemen%22%20OR%20%22Missouri%20Soybean%22%20OR%20%22Missouri%20Corn%22%20OR%20%22Missouri%20farmers%22)%20when:60d&hl=en-US&gl=US&ceid=US:en" },
+  // Henry County / west-central MO farming
+  { source:"Henry Co (Google)", url:"https://news.google.com/rss/search?q=(%22Henry%20County%22%20Missouri%20OR%20%22Clinton%2C%20Missouri%22%20OR%20%22Truman%20Lake%22%20OR%20%22west%20central%20Missouri%22%20OR%20Sedalia%20OR%20Warrensburg%20OR%20Osceola%20OR%20%22Bates%20County%22%20OR%20%22St.%20Clair%20County%22)%20(farm%20OR%20cattle%20OR%20agriculture%20OR%20crops%20OR%20livestock%20OR%20hay%20OR%20drought%20OR%20fair)%20when:60d&hl=en-US&gl=US&ceid=US:en" },
+  // MU Extension
+  { source:"MU Extension (Google)", url:"https://news.google.com/rss/search?q=(%22University%20of%20Missouri%20Extension%22%20OR%20site:extension.missouri.edu)%20(cattle%20OR%20crops%20OR%20drought%20OR%20farm%20OR%20forage%20OR%20hay)%20when:90d&hl=en-US&gl=US&ceid=US:en" },
   // Publisher feeds — skipped silently if a feed is unavailable
   { source:"Brownfield Ag", url:"https://www.brownfieldagnews.com/feed/" },
   { source:"Drovers", url:"https://www.drovers.com/feed/" },
   { source:"BEEF Magazine", url:"https://www.beefmagazine.com/rss.xml" },
+  { source:"AgWeb", url:"https://www.agweb.com/rss.xml" },
+  { source:"Successful Farming", url:"https://www.agriculture.com/feeds/all.rss" },
   { source:"Missouri Farmer Today", url:"https://www.agupdate.com/search/?f=rss&t=article&c[]=mo_news*&l=50&s=start_time&sd=desc" }
 ];
 function farmNewsParts(it) {
@@ -5524,7 +5530,7 @@ function farmTier(item) {
 // Heat = US-style recency decay × local relevance multiplier × breaking boost.
 function farmHeat(item) {
   const ageH = (Date.now() - item.pubDate) / 3600000;
-  const decay = Math.exp(-ageH / 30); // ~30h half-life: blends US recency with local-tab patience
+  const decay = Math.exp(-ageH / 90); // ~90h half-life: keeps several days of farm news, not just today
   const tier = farmTier(item).lvl;
   const breaking = isBreaking(item.title) ? 1.5 : 1;
   return decay * (1 + tier * 1.4) * breaking;
@@ -5550,7 +5556,7 @@ async function loadFarmNews() {
     const cutoff = Date.now() - 45 * 86400000;
     items = items.filter(it => it.pubDate >= cutoff);
     items.sort((a, b) => farmHeat(b) - farmHeat(a));
-    items = items.slice(0, 14);
+    items = items.slice(0, 22);
     if (!items.length) { el.innerHTML = '<div class="farm-news-empty">No farm news right now — check back soon.</div>'; return; }
     el.innerHTML = items.map(it => {
       const p = farmNewsParts(it);
@@ -6648,7 +6654,8 @@ async function loadMarket(force) {
       renderHerdCalendarCard() +
       renderUsdaReportsCard() +
       renderHayDroughtCard() +
-      renderCullSaleCard();
+      renderCullSaleCard() +
+      '<div class="farm-news" style="margin-top:18px;padding:0">' + renderFarmNewsShell() + '</div>';
   };
   renderMarket([]);
   listEl.appendChild(wrap);
@@ -6664,6 +6671,7 @@ async function loadMarket(force) {
   wireHayDroughtCard();
   // Pull cattle history from KV on first load so all browsers stay in sync
   syncCattleHistoryFromKV();
+  loadFarmNews();
 
   try {
     const records = await fetchWeeklyData();
@@ -6677,6 +6685,7 @@ async function loadMarket(force) {
     wireBreakEvenCard(records);
     wireHerdCalendarCard();
     wireHayDroughtCard();
+    loadFarmNews();
   } catch {}
 }
 
@@ -8284,14 +8293,6 @@ loadWeather();
 loadCategory();
 loadTicker();
 setInterval(loadTicker, 5 * 60 * 1000);
-
-// Farm & cattle news at the page bottom (heat-ranked, Henry County / Missouri first)
-(function initFarmNews(){
-  const fn = document.getElementById("farmNews");
-  if (!fn) return;
-  fn.innerHTML = renderFarmNewsShell();
-  loadFarmNews();
-})();
 
 // ── Hash routing: #stock-TICKER opens analysis view; browser Back returns to watchlist ──
 (function() {

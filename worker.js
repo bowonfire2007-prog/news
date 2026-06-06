@@ -2372,13 +2372,29 @@ function arrayBufferToBase64(buffer) {
 //                                   records an entry and returns updated history
 
 const CATTLE_HISTORY_KV_KEY = "cattle:history";
+// Wheeler stays on the legacy combined key; every other barn gets its own key so
+// concurrent read-modify-write saves to different barns can't clobber each other
+// (KV isn't read-your-writes consistent).
+const CATTLE_PERBARN = ["kingsville"];
+function cattleKvKey(barn) { return barn === "wheeler" ? CATTLE_HISTORY_KV_KEY : CATTLE_HISTORY_KV_KEY + ":" + barn; }
+async function readAllCattleHistory(env) {
+  const merged = {};
+  const legacy = await env.WEEKLY_KV.get(CATTLE_HISTORY_KV_KEY);
+  if (legacy) { try { Object.assign(merged, JSON.parse(legacy)); } catch {} }
+  for (const barn of CATTLE_PERBARN) {
+    const raw = await env.WEEKLY_KV.get(cattleKvKey(barn));
+    if (raw) { try { const o = JSON.parse(raw); if (Array.isArray(o[barn])) merged[barn] = o[barn]; } catch {} }
+  }
+  return merged;
+}
 
 // Shared helper — write one price entry into WEEKLY_KV cattle history.
 // Used by handleCattleRecord (HTTP endpoint), handleCattlePrice (auto-save),
 // and the cron-triggered runWheelerScheduled.
 async function addCattlePriceToKV(env, barn, priceNum, date, extra) {
   if (!env.WEEKLY_KV) return;
-  const raw = await env.WEEKLY_KV.get(CATTLE_HISTORY_KV_KEY);
+  const key = cattleKvKey(barn);
+  const raw = await env.WEEKLY_KV.get(key);
   const hist = raw ? JSON.parse(raw) : {};
   if (!Array.isArray(hist[barn])) hist[barn] = [];
   const existing = hist[barn].find(e => e.date === date);
@@ -2393,13 +2409,12 @@ async function addCattlePriceToKV(env, barn, priceNum, date, extra) {
   hist[barn].push(entry);
   hist[barn].sort((a, b) => a.date.localeCompare(b.date));
   if (hist[barn].length > 52) hist[barn] = hist[barn].slice(-52);
-  await env.WEEKLY_KV.put(CATTLE_HISTORY_KV_KEY, JSON.stringify(hist), { expirationTtl: 4 * 365 * 24 * 3600 });
+  await env.WEEKLY_KV.put(key, JSON.stringify(hist), { expirationTtl: 4 * 365 * 24 * 3600 });
 }
 
 async function handleCattleHistory(url, env, ctx) {
   if (!env.WEEKLY_KV) return jsonResponse({ error: "WEEKLY_KV not bound" }, 500);
-  const raw = await env.WEEKLY_KV.get(CATTLE_HISTORY_KV_KEY);
-  const hist = raw ? JSON.parse(raw) : {};
+  const hist = await readAllCattleHistory(env);
   return jsonResponse({ history: hist }, 200, { "Cache-Control": "no-store" });
 }
 
@@ -2414,8 +2429,8 @@ async function handleCattleRecord(request, env, ctx) {
   const priceNum = parseFloat(price);
   if (!isFinite(priceNum) || priceNum <= 0) return jsonResponse({ error: "Invalid price value" }, 400);
   await addCattlePriceToKV(env, barn, priceNum, date, body);
-  const updated = await env.WEEKLY_KV.get(CATTLE_HISTORY_KV_KEY);
-  return jsonResponse({ ok: true, history: updated ? JSON.parse(updated) : {} });
+  const updated = await readAllCattleHistory(env);
+  return jsonResponse({ ok: true, history: updated });
 }
 
 // ─────────────── KINGSVILLE LIVESTOCK — own website reports (current) ──────────
@@ -2485,7 +2500,8 @@ function ksExtractReportUrls(indexHtml) {
 // consistent, so per-entry saves in a loop clobber each other during backfill).
 async function addCattlePricesBatch(env, barn, recs) {
   if (!env.WEEKLY_KV || !recs.length) return [];
-  const raw = await env.WEEKLY_KV.get(CATTLE_HISTORY_KV_KEY);
+  const key = cattleKvKey(barn);
+  const raw = await env.WEEKLY_KV.get(key);
   const hist = raw ? JSON.parse(raw) : {};
   if (!Array.isArray(hist[barn])) hist[barn] = [];
   const saved = [];
@@ -2503,7 +2519,7 @@ async function addCattlePricesBatch(env, barn, recs) {
   }
   hist[barn].sort((a, b) => a.date.localeCompare(b.date));
   if (hist[barn].length > 60) hist[barn] = hist[barn].slice(-60);
-  await env.WEEKLY_KV.put(CATTLE_HISTORY_KV_KEY, JSON.stringify(hist), { expirationTtl: 4 * 365 * 24 * 3600 });
+  await env.WEEKLY_KV.put(key, JSON.stringify(hist), { expirationTtl: 4 * 365 * 24 * 3600 });
   return saved;
 }
 

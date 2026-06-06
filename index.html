@@ -10,8 +10,8 @@
 <meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)">
 <title>Matt's Daily Read</title>
 <style>
-  :root { --bg:#f8f4ec; --text:#1a1410; --text-muted:#6b6258; --text-soft:#9a9286; --border:#e3ddcf; --accent:#b8331a; --sage:#7a8b6f; --mustard:#c49b3f; --card-hover:#ede8dc; --maxw:760px; }
-  [data-theme="dark"] { --bg:#0f0e0d; --text:#f5f1e8; --text-muted:#a39c8f; --text-soft:#6b6258; --border:#2a2825; --accent:#ff6b4a; --sage:#9ab18d; --mustard:#e0b552; --card-hover:#1c1b19; }
+  :root { --bg:#f8f4ec; --text:#1a1410; --text-muted:#6b6258; --text-soft:#9a9286; --border:#e3ddcf; --accent:#b8331a; --sage:#7a8b6f; --mustard:#c49b3f; --card-hover:#ede8dc; --maxw:760px; --shadow:0 6px 18px rgba(40,30,20,.12); }
+  [data-theme="dark"] { --bg:#0f0e0d; --text:#f5f1e8; --text-muted:#a39c8f; --text-soft:#6b6258; --border:#2a2825; --accent:#ff6b4a; --sage:#9ab18d; --mustard:#e0b552; --card-hover:#1c1b19; --shadow:0 8px 24px rgba(0,0,0,.45); }
   /* Desktop: let the whole layout fill the window instead of a narrow centered strip. */
   @media (min-width:1000px) { :root { --maxw:min(1180px, 94vw); } }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
@@ -173,11 +173,11 @@
   .section-menu-btn svg { width:14px; height:14px; }
 
   /* ── QUICK TABS ── */
-  .quick-tabs { max-width:var(--maxw); margin:0 auto; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; display:flex; gap:7px; padding:5px 0 10px; }
-  .quick-tabs::-webkit-scrollbar { display:none; }
-  .qtab { flex-shrink:0; padding:5px 13px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text-muted); font-size:13px; font-weight:500; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .12s,color .12s,border-color .12s; }
-  .qtab:hover { background:var(--card-hover); color:var(--text); }
-  .qtab.active { background:var(--text); color:var(--bg); border-color:var(--text); font-weight:600; }
+  /* Colorful wrapped category pills — no horizontal scroll, every section visible */
+  .quick-tabs { max-width:var(--maxw); margin:0 auto; display:flex; flex-wrap:wrap; gap:8px; padding:8px 0 12px; }
+  .qtab { --qc:var(--text-muted); padding:6px 14px; border-radius:999px; border:1.5px solid var(--qc); background:transparent; color:var(--qc); font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; white-space:nowrap; transition:transform .1s ease, box-shadow .15s ease, background .12s; }
+  .qtab:hover { transform:translateY(-1px); }
+  .qtab.active { background:var(--qc); color:var(--bg); box-shadow:var(--shadow); }
 
   /* ── MAIN ── */
   main { max-width:var(--maxw); margin:0 auto; padding:8px 20px max(env(safe-area-inset-bottom),40px); background:color-mix(in srgb,var(--bg) 92%,transparent); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); position:relative; }
@@ -1073,6 +1073,21 @@
   .farm-breaking { color:var(--accent); font-weight:800; }
   .farm-news-empty { font-size:12.5px; color:var(--text-muted); padding:10px 0; }
   @media (max-width:520px) { .farm-news { padding:0 14px; } }
+
+  /* ══════════ POP — color, depth, energy ══════════ */
+  header { position:sticky; } /* ensure ::before anchors */
+  header::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--accent),var(--mustard) 55%,var(--sage)); z-index:1; }
+  /* Filled accent section label */
+  .section-label { background:var(--accent); color:var(--bg); padding:3px 12px; border-radius:6px; letter-spacing:0.12em; box-shadow:var(--shadow); }
+  .section-label::before { display:none; }
+  /* Depth on images + a little lift on hover */
+  .thumb { box-shadow:var(--shadow); }
+  article.item { transition:transform .12s ease; }
+  article.item:hover { transform:translateY(-2px); }
+  article.item.hero .thumb { box-shadow:0 12px 32px rgba(0,0,0,.18); }
+  [data-theme="dark"] article.item.hero .thumb { box-shadow:0 14px 38px rgba(0,0,0,.55); }
+  /* Lead-story label as a filled accent tag */
+  article.item.hero::before { background:var(--accent); color:var(--bg); display:inline-block; align-self:center; padding:4px 14px; border-radius:6px; border-bottom:none; box-shadow:var(--shadow); }
 </style>
 </head>
 <body>
@@ -1174,6 +1189,14 @@ const CATEGORY_ICONS = {
   saved:"🔖", stocks:"📈", world:"🌍", usa:"🇺🇸", military:"💥", local:"📍", ukraine:"🇺🇦", iran:"🕌",
   scs:"⚓", tech:"💻", business:"💼", science:"🔬",
   philippines:"🇵🇭", cannabis:"🌿", outdoor:"🎣", garden:"🌱", market:"🐄"
+};
+
+// Per-category pill colors (readable on both light & dark)
+const CATEGORY_COLOR = {
+  world:"#3b82f6", usa:"#e0533a", military:"#d4901f", local:"#3d9e4e", ukraine:"#3b82f6",
+  iran:"#d4901f", scs:"#2f9fd0", tech:"#8b5cf6", business:"#14a08c", science:"#2f9fd0",
+  philippines:"#3b82f6", cannabis:"#5aa53a", outdoor:"#2f9fd0", garden:"#3d9e4e",
+  market:"#b5763a", stocks:"#14a08c", saved:"#8a857c"
 };
 
 // Quick-access tab bar
@@ -1760,6 +1783,7 @@ function renderQuickTabs() {
     if (!cat) return;
     const btn = document.createElement("button");
     btn.className = "qtab" + (id === activeCat ? " active" : "");
+    btn.style.setProperty("--qc", CATEGORY_COLOR[id] || "var(--text-muted)");
     btn.textContent = (CATEGORY_ICONS[id] || "") + " " + cat.label;
     btn.addEventListener("click", () => {
       if (activeCat === id) return;
@@ -8307,10 +8331,10 @@ setInterval(()=>{ localStorage.removeItem("news.nws.alerts"); fetchNWSAlerts(); 
   }
   function onScroll(){
     const y = window.scrollY || 0;
-    const delta = y - lastY;
-    if (y < SHOW_NEAR_TOP) setHidden(false);
-    else if (delta > DOWN_DELTA) setHidden(true);
-    else if (delta < -UP_DELTA) setHidden(false);
+    // Only reveal the (tall) header when you're back near the very top. A small
+    // scroll-up mid-article no longer slams the whole masthead down over the news —
+    // use the floating ↑ pill (bottom-right) to jump back to the top/menu on demand.
+    setHidden(y >= SHOW_NEAR_TOP);
     lastY = y;
     ticking = false;
   }

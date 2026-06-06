@@ -280,8 +280,9 @@ const TRACKED_BILLS_CONFIG = [
   }
 ];
 
-const BTS_BASE    = "https://www.senate.mo.gov/26info/BTS_Web/";
-const BTS_UA      = { "User-Agent": "Mozilla/5.0 (compatible; MoBillTracker/1.0)" };
+const LEGISCAN_YEAR = 2026; // MO regular session year — bump each January
+const BTS_UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" };
+function legiscanUrl(billNumber, year) { return "https://legiscan.com/MO/bill/" + String(billNumber).replace(/\s+/g, "") + "/" + year; }
 
 // Strip HTML tags and decode common entities
 function htxt(s) {
@@ -294,103 +295,70 @@ function htxt(s) {
     .replace(/\s+/g, " ").trim();
 }
 
-// Scrape BTS bill list page and find the internal BillID for a given bill number.
-// Only needed when bts_bill_id is null in config.
-async function findBtsBillId(billNumber) {
-  const res = await fetch(BTS_BASE + "BillList.aspx?SessionType=R", {
-    headers: BTS_UA, cf: { cacheTtl: 7200 }
-  });
-  if (!res.ok) throw new Error("BTS list page HTTP " + res.status);
-  const html = await res.text();
-
-  const [pfx, num] = billNumber.trim().toUpperCase().split(/\s+/);
-  const n = parseInt(num, 10);
-
-  // Links look like: href="Bill.aspx?SessionType=R&BillID=462">SB 849
-  const pats = [
-    new RegExp('BillID=(\\d+)[^"]*"[^>]*>\\s*' + pfx + '\\s*0*' + n + '\\s*<', 'i'),
-    new RegExp('href="[^"]*BillID=(\\d+)[^"]*"[^>]*>[^<]*' + pfx + '\\s*0*' + n + '[^<]*<', 'i'),
-  ];
-  for (const p of pats) {
-    const m = html.match(p);
-    if (m) return parseInt(m[1], 10);
+// Fetch + parse a bill's PUBLIC LegiScan page (no API key). Falls back through a proxy
+// if LegiScan blocks the Worker's direct request.
+async function scrapeLegiscanBill(billNumber, year) {
+  const url = legiscanUrl(billNumber, year);
+  let html = null, lastErr = "no attempt";
+  for (const u of [url, "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)]) {
+    try {
+      const r = await fetch(u, { headers: BTS_UA, cf: { cacheTtl: 0 } });
+      if (!r.ok) { lastErr = "HTTP " + r.status; continue; }
+      const t = await r.text();
+      if (t && t.length > 800) { html = t; break; }
+      lastErr = "short/empty body";
+    } catch (e) { lastErr = (e && e.message) || String(e); }
   }
-  throw new Error("BTS BillID not found for " + billNumber + " — check BillList page structure");
-}
+  if (!html) throw new Error("LegiScan fetch failed for " + billNumber + ": " + lastErr);
 
-// Fetch and parse a BTS bill detail page
-async function scrapeBtsBill(bts_bill_id) {
-  const url = BTS_BASE + "Bill.aspx?SessionType=R&BillID=" + bts_bill_id;
-  const res = await fetch(url, { headers: BTS_UA, cf: { cacheTtl: 0 } });
-  if (!res.ok) throw new Error("BTS bill page HTTP " + res.status + " (BillID=" + bts_bill_id + ")");
-  const html = await res.text();
+  const grabMeta = (prop) =>
+    (html.match(new RegExp('<meta[^>]+(?:property|name)="' + prop + '"[^>]*content="([^"]*)"', "i")) ||
+     html.match(new RegExp('<meta[^>]+content="([^"]*)"[^>]*(?:property|name)="' + prop + '"', "i")) || [])[1];
 
-  // Pull first match from an ordered list of label→value patterns
-  const grab = (...pats) => {
-    for (const p of pats) {
-      const m = html.match(p);
-      if (m?.[1]) return htxt(m[1]);
-    }
-    return null;
-  };
+  const ogDesc   = htxt(grabMeta("og:description") || "");
+  const metaDesc = htxt(grabMeta("description") || "");
+  const text     = htxt(html);
 
-  const bill_number = grab(
-    /Bill\s+Number\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,30}?)<\//i,
-    />((?:SB|HB|SJR|HJR)\s*\d+)</i
-  );
-  const title = grab(
-    /Bill\s+Description\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,500}?)<\//i,
-    /Bill\s+Title\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,500}?)<\//i,
-    /Short\s+Description\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,500}?)<\//i,
-    /Description\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,500}?)<\//i
-  );
-  const sponsor = grab(
-    /(?:Primary\s+)?Sponsor\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,150}?)<\//i,
-    /Introduced\s+By\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,150}?)<\//i
-  );
-  const status_text = grab(
-    /Senate\s+Status\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,250}?)<\//i,
-    /Current\s+Status\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,250}?)<\//i,
-    /(?:Bill\s+)?Status\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,250}?)<\//i
-  );
-  const status_date = grab(
-    /Senate\s+Status\s+Date\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,40}?)<\//i,
-    /Status\s+Date\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,40}?)<\//i
-  );
+  // Summary / title — strip the "Summary (date)" prefix and "[last action]" suffix.
+  let title = ogDesc.replace(/^Summary\s*\([^)]*\)\s*/i, "").replace(/\s*\[[^\]]*\]\s*$/, "").trim();
+  if (!title && metaDesc) title = metaDesc.replace(/^.*?\(Summary\)\s*/i, "").trim();
 
-  // Parse action rows — any <tr> containing a date like MM/DD/YYYY
-  const actions = [];
-  for (const trMatch of html.matchAll(/<tr[\s\S]*?<\/tr>/gi)) {
-    const row = trMatch[0];
-    const dateM = row.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/);
-    if (!dateM) continue;
-    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)]
-      .map(c => htxt(c[1])).filter(Boolean);
-    if (cells.length) {
-      const actionText = cells.find(c => c !== dateM[1]) || cells[0];
-      if (actionText && actionText.length > 2) {
-        actions.push({ date: dateM[1], action: actionText });
-      }
-    }
+  // "Status: Introduced on January 7 2026 - 25% progression"
+  const statusM = text.match(/Status:\s*(.+?)(?:\s*Action:|\s*Pending:|\s*Text:|\s*Summary|$)/i);
+  const status_text = statusM ? statusM[1].trim() : null;
+
+  // History table rows: "YYYY-MM-DD Senate|House <action>" (newest first on LegiScan)
+  const history = [];
+  const histRe = /(\d{4}-\d{2}-\d{2})\s+(Senate|House)\s+(.+?)(?=\s+\d{4}-\d{2}-\d{2}\s+(?:Senate|House)\b|\s+Missouri State Sources|\s+LegiScan|$)/gi;
+  let hm;
+  while ((hm = histRe.exec(text)) && history.length < 25) {
+    history.push({ date: hm[1], chamber: hm[2], action: hm[3].trim().slice(0, 200) });
   }
-  const lastAction = actions.length ? actions[actions.length - 1] : null;
+  const actionM = text.match(/Action:\s*(\d{4}-\d{2}-\d{2})\s*-?\s*(.+?)(?:\s*Pending:|\s*Text:|\s*Summary|$)/i);
+  const last_action_date = (history[0] && history[0].date)   || (actionM ? actionM[1] : null);
+  const last_action      = (history[0] && history[0].action) || (actionM ? actionM[2].trim() : null);
 
-  // Stable fingerprint for change detection
-  const changeFingerprint =
-    (status_text || "") + "|" + (status_date || "") + "|" +
-    (lastAction?.date || "") + "|" + (lastAction?.action || "");
+  // Sponsor: "Sen. Sandy Crawford [R]"
+  const spM = text.match(/\b(Sen\.|Rep\.|Senator|Representative)\s+([A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,3})\s*\[(R|D|I)\]/);
+  const sponsor = spM ? (spM[1] + " " + spM[2] + " [" + spM[3] + "]").replace(/\s+/g, " ").trim() : null;
 
+  // Authoritative MO Senate source link (with billid) if shown on the page
+  const moM = html.match(/senate\.mo\.gov\/BillTracking\/Bills\/Billinformation\?year=\d+&billid=(\d+)/i);
+  const mo_senate_url = moM
+    ? "https://www.senate.mo.gov/BillTracking/Bills/Billinformation?year=" + year + "&billid=" + moM[1]
+    : url;
+
+  const changeFingerprint = (status_text || "") + "|" + (last_action_date || "") + "|" + (last_action || "");
   return {
-    bts_bill_id,
-    bts_url:          url,
-    bill_number:      bill_number         || null,
-    title:            title               || null,
-    sponsor:          sponsor             || null,
-    status_text:      status_text         || null,
-    status_date:      status_date         || null,
-    last_action:      lastAction?.action  || null,
-    last_action_date: lastAction?.date    || null,
-    actions:          actions.slice(-20),
+    legiscan_url: url, mo_senate_url,
+    bill_number: String(billNumber || "").toUpperCase().replace(/\s+/g, " ").trim(),
+    title: title || null,
+    sponsor: sponsor || null,
+    status_text: status_text || null,
+    status_date: last_action_date || null,
+    last_action: last_action || null,
+    last_action_date: last_action_date || null,
+    actions: history,
     changeFingerprint
   };
 }
@@ -439,22 +407,11 @@ async function sendBillNotification(message, env) {
 async function runBillsScheduled(env, ctx, force = false) {
   if (!env.BILLS_KV) return { error: "BILLS_KV not bound" };
 
-  // KV cache: bill key → resolved bts_bill_id (so discovery only runs once)
-  const idMapRaw = await env.BILLS_KV.get("bills:id_map");
-  const idMap = idMapRaw ? JSON.parse(idMapRaw) : {};
   const results = [];
 
   for (const cfg of TRACKED_BILLS_CONFIG) {
     try {
-      // Resolve BTS ID: config → KV cache → auto-discover from bill list
-      let bts_bill_id = cfg.bts_bill_id || idMap[cfg.key] || null;
-      if (!bts_bill_id) {
-        bts_bill_id = await findBtsBillId(cfg.bill_number);
-        idMap[cfg.key] = bts_bill_id;
-        await env.BILLS_KV.put("bills:id_map", JSON.stringify(idMap));
-      }
-
-      const scraped = await scrapeBtsBill(bts_bill_id);
+      const scraped = await scrapeLegiscanBill(cfg.bill_number, LEGISCAN_YEAR);
 
       // Change detection via content hash
       const newHash  = await hashKey(scraped.changeFingerprint);
@@ -496,8 +453,8 @@ async function runBillsScheduled(env, ctx, force = false) {
         last_action_date: scraped.last_action_date || null,
         summary,
         summary_date,
-        bts_bill_id,
-        mo_senate_url:    BTS_BASE + "Bill.aspx?SessionType=R&BillID=" + bts_bill_id,
+        legiscan_url:     scraped.legiscan_url,
+        mo_senate_url:    scraped.mo_senate_url,
         last_checked:     new Date().toISOString(),
         change_history,
         priority:         cfg.priority
@@ -512,7 +469,7 @@ async function runBillsScheduled(env, ctx, force = false) {
         ctx.waitUntil(sendBillNotification(msg, env));
       }
 
-      results.push({ key: cfg.key, bill_number: record.bill_number, bts_bill_id, changed, status: record.status_text });
+      results.push({ key: cfg.key, bill_number: record.bill_number, changed, status: record.status_text });
     } catch (err) {
       results.push({ key: cfg.key, error: err.message });
     }

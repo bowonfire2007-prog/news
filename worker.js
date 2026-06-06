@@ -246,100 +246,189 @@ async function handleWeeklyRefresh(request, env, ctx) {
 
 
 // ─────────────── BILL TRACKER ────────────────────────────────────────────────
-// Polls LegiScan for a small set of Missouri bills, detects status changes via
-// change_hash, generates plain-English summaries via Claude, and notifies.
+// Scrapes Missouri Senate BTS (senate.mo.gov) — no API key needed, public site.
+// Detects changes by hashing status + last-action fields.
+// Generates plain-English summaries via Claude when a change is detected.
 //
 // Config: edit TRACKED_BILLS_CONFIG to add/remove bills.
-// Secrets needed: LEGISCAN_API_KEY, ANTHROPIC_API_KEY (already bound), NOTIFY_TARGET (optional).
-// KV: BILLS_KV (bound in wrangler.toml).
+//   bts_bill_id: the ?BillID= number from senate.mo.gov BTS URLs.
+//   Set to null to auto-discover on first run.
 //
-// To add Fitzwater's regulatory bill once you know the number:
-//   { key:"hb_fitzwater", bill_number:"HB XXXX", sponsor:"Fitzwater", description:"Regulatory solar bill", legiScanSearch:"HBXXXX" }
+// To add Fitzwater's regulatory bill once you know the bill number:
+//   { key:"hb_fitzwater", bill_number:"HB XXXX", sponsor:"Fitzwater",
+//     description:"Regulatory solar bill", bts_bill_id: null, priority: false }
+//
+// Secrets needed: ANTHROPIC_API_KEY (already bound), NOTIFY_TARGET (optional).
+// KV: BILLS_KV (bound in wrangler.toml).
 
 const TRACKED_BILLS_CONFIG = [
   {
-    key:            "sb849",
-    bill_number:    "SB 849",
-    sponsor:        "O'Laughlin",
-    description:    "Statewide moratorium on new & ongoing commercial solar (has emergency clause)",
-    legiScanSearch: "SB849",
-    priority:       true
+    key:         "sb849",
+    bill_number: "SB 849",
+    sponsor:     "O'Laughlin",
+    description: "Statewide moratorium on new & ongoing commercial solar (has emergency clause)",
+    bts_bill_id: null,   // auto-discovered from bill list on first run
+    priority:    true
   },
   {
-    key:            "sb933",
-    bill_number:    "SB 933",
-    sponsor:        "Crawford",
-    description:    "Parallel commercial solar moratorium",
-    legiScanSearch: "SB933",
-    priority:       false
+    key:         "sb933",
+    bill_number: "SB 933",
+    sponsor:     "Crawford",
+    description: "Parallel commercial solar moratorium",
+    bts_bill_id: 547,    // confirmed from senate.mo.gov BTS
+    priority:    false
   }
 ];
 
-const LEGISCAN_BASE = "https://api.legiscan.com/";
+const BTS_BASE    = "https://www.senate.mo.gov/26info/BTS_Web/";
+const BTS_UA      = { "User-Agent": "Mozilla/5.0 (compatible; MoBillTracker/1.0)" };
 
-const LEGISCAN_STATUS_MAP = {
-  1:"Introduced", 2:"Engrossed", 3:"Enrolled", 4:"Passed",
-  5:"Vetoed", 6:"Failed", 7:"Override", 8:"Chaptered",
-  9:"Referred to Committee", 10:"Reported Pass", 11:"Reported Do Not Pass", 12:"Draft"
-};
-
-async function legiScanCall(op, params, apiKey) {
-  const u = new URL(LEGISCAN_BASE);
-  u.searchParams.set("key", apiKey);
-  u.searchParams.set("op", op);
-  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
-  const res = await fetch(u.toString());
-  if (!res.ok) throw new Error("LegiScan " + op + " HTTP " + res.status);
-  const data = await res.json();
-  if (data.status !== "OK") throw new Error("LegiScan " + op + " error: " + JSON.stringify(data.alert || data).slice(0, 200));
-  return data;
+// Strip HTML tags and decode common entities
+function htxt(s) {
+  return (s || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi,  "<").replace(/&gt;/gi,  ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/\s+/g, " ").trim();
 }
 
-async function discoverBillId(cfg, apiKey) {
-  const data = await legiScanCall("getSearch", { state: "MO", query: cfg.legiScanSearch, year: 2 }, apiKey);
-  const results = Object.values(data.searchresult || {}).filter(r => typeof r === "object" && r.bill_id);
-  const normalized = cfg.legiScanSearch.replace(/\s+/g, "").toUpperCase();
-  const match = results.find(r => (r.bill_number || "").replace(/\s+/g, "").toUpperCase() === normalized) || results[0];
-  if (!match) throw new Error("No LegiScan results for " + cfg.legiScanSearch);
-  return { legiscan_id: match.bill_id, session_id: match.session_id };
+// Scrape BTS bill list page and find the internal BillID for a given bill number.
+// Only needed when bts_bill_id is null in config.
+async function findBtsBillId(billNumber) {
+  const res = await fetch(BTS_BASE + "BillList.aspx?SessionType=R", {
+    headers: BTS_UA, cf: { cacheTtl: 7200 }
+  });
+  if (!res.ok) throw new Error("BTS list page HTTP " + res.status);
+  const html = await res.text();
+
+  const [pfx, num] = billNumber.trim().toUpperCase().split(/\s+/);
+  const n = parseInt(num, 10);
+
+  // Links look like: href="Bill.aspx?SessionType=R&BillID=462">SB 849
+  const pats = [
+    new RegExp('BillID=(\\d+)[^"]*"[^>]*>\\s*' + pfx + '\\s*0*' + n + '\\s*<', 'i'),
+    new RegExp('href="[^"]*BillID=(\\d+)[^"]*"[^>]*>[^<]*' + pfx + '\\s*0*' + n + '[^<]*<', 'i'),
+  ];
+  for (const p of pats) {
+    const m = html.match(p);
+    if (m) return parseInt(m[1], 10);
+  }
+  throw new Error("BTS BillID not found for " + billNumber + " — check BillList page structure");
 }
 
-async function generateBillSummary(bill, apiKey) {
-  const lastAction = (bill.history || []).slice(-1)[0] || {};
-  const statusText = LEGISCAN_STATUS_MAP[bill.status] || ("Status " + bill.status);
-  const sponsors = (bill.sponsors || []).map(s => s.name).join(", ") || "Unknown";
+// Fetch and parse a BTS bill detail page
+async function scrapeBtsBill(bts_bill_id) {
+  const url = BTS_BASE + "Bill.aspx?SessionType=R&BillID=" + bts_bill_id;
+  const res = await fetch(url, { headers: BTS_UA, cf: { cacheTtl: 0 } });
+  if (!res.ok) throw new Error("BTS bill page HTTP " + res.status + " (BillID=" + bts_bill_id + ")");
+  const html = await res.text();
+
+  // Pull first match from an ordered list of label→value patterns
+  const grab = (...pats) => {
+    for (const p of pats) {
+      const m = html.match(p);
+      if (m?.[1]) return htxt(m[1]);
+    }
+    return null;
+  };
+
+  const bill_number = grab(
+    /Bill\s+Number\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,30}?)<\//i,
+    />((?:SB|HB|SJR|HJR)\s*\d+)</i
+  );
+  const title = grab(
+    /Bill\s+Description\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,500}?)<\//i,
+    /Bill\s+Title\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,500}?)<\//i,
+    /Short\s+Description\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,500}?)<\//i,
+    /Description\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,500}?)<\//i
+  );
+  const sponsor = grab(
+    /(?:Primary\s+)?Sponsor\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,150}?)<\//i,
+    /Introduced\s+By\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,150}?)<\//i
+  );
+  const status_text = grab(
+    /Senate\s+Status\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,250}?)<\//i,
+    /Current\s+Status\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,250}?)<\//i,
+    /(?:Bill\s+)?Status\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,250}?)<\//i
+  );
+  const status_date = grab(
+    /Senate\s+Status\s+Date\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,40}?)<\//i,
+    /Status\s+Date\s*:?<\/[^>]+>\s*<[^>]+>([\s\S]{1,40}?)<\//i
+  );
+
+  // Parse action rows — any <tr> containing a date like MM/DD/YYYY
+  const actions = [];
+  for (const trMatch of html.matchAll(/<tr[\s\S]*?<\/tr>/gi)) {
+    const row = trMatch[0];
+    const dateM = row.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/);
+    if (!dateM) continue;
+    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)]
+      .map(c => htxt(c[1])).filter(Boolean);
+    if (cells.length) {
+      const actionText = cells.find(c => c !== dateM[1]) || cells[0];
+      if (actionText && actionText.length > 2) {
+        actions.push({ date: dateM[1], action: actionText });
+      }
+    }
+  }
+  const lastAction = actions.length ? actions[actions.length - 1] : null;
+
+  // Stable fingerprint for change detection
+  const changeFingerprint =
+    (status_text || "") + "|" + (status_date || "") + "|" +
+    (lastAction?.date || "") + "|" + (lastAction?.action || "");
+
+  return {
+    bts_bill_id,
+    bts_url:          url,
+    bill_number:      bill_number         || null,
+    title:            title               || null,
+    sponsor:          sponsor             || null,
+    status_text:      status_text         || null,
+    status_date:      status_date         || null,
+    last_action:      lastAction?.action  || null,
+    last_action_date: lastAction?.date    || null,
+    actions:          actions.slice(-20),
+    changeFingerprint
+  };
+}
+
+async function generateBillSummary(scraped, cfg, anthropicKey) {
   const prompt = `You are summarizing a Missouri legislative update for a general reader who is following whether large-scale solar farms on farmland will be paused.
 
-Bill: ${bill.bill_number} — ${bill.title}
-Sponsor: ${sponsors}
-Current status: ${statusText} (as of ${bill.status_date || "unknown"})
-Last action: ${lastAction.action || "none"} on ${lastAction.date || "unknown"}
+Bill: ${scraped.bill_number || cfg.bill_number} — ${scraped.title || cfg.description}
+Sponsor: ${scraped.sponsor || cfg.sponsor}
+Current status: ${scraped.status_text || "Unknown"} (as of ${scraped.status_date || "unknown"})
+Last action: ${scraped.last_action || "none"} on ${scraped.last_action_date || "unknown"}
 
 In 3-4 sentences, plainly state what just happened to this bill, what stage it is at now, and what the practical next step or risk is. No legalese. If this change moves the bill closer to halting ongoing solar construction, say so directly.`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 400,
-      messages: [{ role: "user", content: prompt }]
-    })
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim() || null;
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 400,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim() || null;
+  } catch { return null; }
 }
 
 async function sendBillNotification(message, env) {
-  const target = env.NOTIFY_TARGET;
-  if (!target) return;
+  if (!env.NOTIFY_TARGET) return;
   try {
-    await fetch(target, {
+    await fetch(env.NOTIFY_TARGET, {
       method: "POST",
       headers: { "Content-Type": "text/plain; charset=utf-8" },
       body: message
@@ -348,86 +437,82 @@ async function sendBillNotification(message, env) {
 }
 
 async function runBillsScheduled(env, ctx, force = false) {
-  if (!env.BILLS_KV)          return { error: "BILLS_KV not bound" };
-  if (!env.LEGISCAN_API_KEY)  return { error: "LEGISCAN_API_KEY not set" };
+  if (!env.BILLS_KV) return { error: "BILLS_KV not bound" };
 
-  // Load stored ID map (bill key → legiscan_id)
+  // KV cache: bill key → resolved bts_bill_id (so discovery only runs once)
   const idMapRaw = await env.BILLS_KV.get("bills:id_map");
   const idMap = idMapRaw ? JSON.parse(idMapRaw) : {};
-
   const results = [];
 
   for (const cfg of TRACKED_BILLS_CONFIG) {
     try {
-      // Discover legiscan_id if not yet stored
-      if (!idMap[cfg.key]) {
-        const found = await discoverBillId(cfg, env.LEGISCAN_API_KEY);
-        idMap[cfg.key] = found.legiscan_id;
+      // Resolve BTS ID: config → KV cache → auto-discover from bill list
+      let bts_bill_id = cfg.bts_bill_id || idMap[cfg.key] || null;
+      if (!bts_bill_id) {
+        bts_bill_id = await findBtsBillId(cfg.bill_number);
+        idMap[cfg.key] = bts_bill_id;
         await env.BILLS_KV.put("bills:id_map", JSON.stringify(idMap));
       }
 
-      const legiscan_id = idMap[cfg.key];
-      const billData = await legiScanCall("getBill", { id: legiscan_id }, env.LEGISCAN_API_KEY);
-      const bill = billData.bill;
-      const newHash = bill.change_hash;
+      const scraped = await scrapeBtsBill(bts_bill_id);
 
-      const storedHash = await env.BILLS_KV.get("bills:hash:" + cfg.key);
-      const changed = force || storedHash !== newHash;
+      // Change detection via content hash
+      const newHash  = await hashKey(scraped.changeFingerprint);
+      const prevHash = await env.BILLS_KV.get("bills:hash:" + cfg.key);
+      const changed  = force || prevHash !== newHash;
 
-      const lastAction = (bill.history || []).slice(-1)[0] || {};
-      const statusText = LEGISCAN_STATUS_MAP[bill.status] || ("Status " + bill.status);
+      // Load existing record to preserve history + old summary
+      const existingRaw = await env.BILLS_KV.get("bills:data:" + cfg.key);
+      const existing    = existingRaw ? JSON.parse(existingRaw) : { change_history: [] };
+      const change_history = existing.change_history || [];
 
-      let summary = null;
+      let summary      = existing.summary      || null;
+      let summary_date = existing.summary_date || null;
+
       if (changed && env.ANTHROPIC_API_KEY) {
-        summary = await generateBillSummary(bill, env.ANTHROPIC_API_KEY);
+        const fresh = await generateBillSummary(scraped, cfg, env.ANTHROPIC_API_KEY);
+        if (fresh) { summary = fresh; summary_date = new Date().toISOString(); }
       }
 
-      // Load existing stored data for history
-      const existingRaw = await env.BILLS_KV.get("bills:data:" + cfg.key);
-      const existing = existingRaw ? JSON.parse(existingRaw) : { history: [] };
-      const history = existing.history || [];
-
       if (changed) {
-        history.push({
-          date: new Date().toISOString().slice(0, 10),
-          action: lastAction.action || "Updated",
-          status: statusText,
-          summary: summary || existing.summary || null
+        change_history.push({
+          detected_at:      new Date().toISOString().slice(0, 10),
+          status:           scraped.status_text      || null,
+          last_action:      scraped.last_action      || null,
+          last_action_date: scraped.last_action_date || null
         });
-        if (history.length > 20) history.splice(0, history.length - 20);
+        if (change_history.length > 20) change_history.splice(0, change_history.length - 20);
       }
 
       const record = {
-        key:             cfg.key,
-        bill_number:     bill.bill_number,
-        title:           bill.title,
-        sponsor:         cfg.sponsor,
-        description:     cfg.description,
-        status:          bill.status,
-        status_text:     statusText,
-        status_date:     bill.status_date,
-        last_action:     lastAction.action || null,
-        last_action_date:lastAction.date   || null,
-        summary:         changed && summary ? summary : (existing.summary || null),
-        summary_date:    changed && summary ? new Date().toISOString() : (existing.summary_date || null),
-        legiscan_id,
-        legiscan_url:    "https://legiscan.com/MO/bill/" + encodeURIComponent(bill.bill_number.replace(/\s+/g,"")) + "/2026",
-        mo_senate_url:   "https://www.senate.mo.gov/26info/BTS_Web/Bill.aspx?SessionType=R&BillID=" + legiscan_id,
-        change_hash:     newHash,
-        last_checked:    new Date().toISOString(),
-        history,
-        priority:        cfg.priority
+        key:              cfg.key,
+        bill_number:      scraped.bill_number      || cfg.bill_number,
+        title:            scraped.title            || cfg.description,
+        sponsor:          scraped.sponsor          || cfg.sponsor,
+        description:      cfg.description,
+        status_text:      scraped.status_text      || null,
+        status_date:      scraped.status_date      || null,
+        last_action:      scraped.last_action      || null,
+        last_action_date: scraped.last_action_date || null,
+        summary,
+        summary_date,
+        bts_bill_id,
+        mo_senate_url:    BTS_BASE + "Bill.aspx?SessionType=R&BillID=" + bts_bill_id,
+        last_checked:     new Date().toISOString(),
+        change_history,
+        priority:         cfg.priority
       };
 
-      await env.BILLS_KV.put("bills:data:" + cfg.key, JSON.stringify(record), { expirationTtl: 2 * 365 * 24 * 3600 });
+      await env.BILLS_KV.put("bills:data:" + cfg.key, JSON.stringify(record),
+        { expirationTtl: 2 * 365 * 24 * 3600 });
 
       if (changed) {
         await env.BILLS_KV.put("bills:hash:" + cfg.key, newHash);
-        const notifyMsg = `[Bill Update] ${bill.bill_number} — ${statusText}\n${lastAction.action || ""}\n${summary || ""}`;
-        ctx.waitUntil(sendBillNotification(notifyMsg, env));
+        const msg = `[Bill Update] ${record.bill_number} — ${record.status_text || "status changed"}\n${record.last_action || ""}\n${summary || ""}`.trim();
+        ctx.waitUntil(sendBillNotification(msg, env));
       }
 
-      results.push({ key: cfg.key, bill_number: bill.bill_number, changed, status: statusText });
+      results.push({ key: cfg.key, bill_number: record.bill_number, bts_bill_id, changed, status: record.status_text });
     } catch (err) {
       results.push({ key: cfg.key, error: err.message });
     }
@@ -436,7 +521,7 @@ async function runBillsScheduled(env, ctx, force = false) {
   return { results, ran_at: new Date().toISOString() };
 }
 
-// GET /local-bills — returns all stored bill records (read by frontend)
+// GET /local-bills — frontend reads this to render the bill tracker
 async function handleLocalBills(url, env) {
   if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
   const bills = [];
@@ -448,7 +533,8 @@ async function handleLocalBills(url, env) {
   return jsonResponse({ bills, fetched_at: new Date().toISOString() });
 }
 
-// GET /bills-refresh[?force=1] — manual trigger; ?force=1 re-summarizes even if hash unchanged
+// GET /bills-refresh[?force=1] — manual trigger for dev/testing
+// ?force=1 re-generates AI summary even if nothing changed (useful for first run)
 async function handleBillsRefresh(request, url, env, ctx) {
   const force = url.searchParams.get("force") === "1";
   const result = await runBillsScheduled(env, ctx, force);

@@ -6880,8 +6880,8 @@ function buildBillCard(b) {
   const statusCls   = BILL_STATUS_CLASS[b.status]  || "s-intro";
   const statusLabel = BILL_STATUS_LABEL[b.status] || b.status_text || "Unknown";
 
-  const historyHtml = (b.history || []).slice().reverse().slice(0, 8).map(h =>
-    `<div class="bill-history-item"><span class="bill-history-date">${escapeHtml(h.date||"")}</span><span>${escapeHtml(h.action||h.status||"")}</span></div>`
+  const historyHtml = (b.change_history || []).slice().reverse().slice(0, 8).map(h =>
+    `<div class="bill-history-item"><span class="bill-history-date">${escapeHtml(h.detected_at||h.date||"")}</span><span>${escapeHtml(h.last_action||h.action||h.status||"")}</span></div>`
   ).join("");
 
   const checkedAgo = b.last_checked ? relativeTime(new Date(b.last_checked).getTime()) : "";

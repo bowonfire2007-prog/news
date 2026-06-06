@@ -1879,11 +1879,13 @@ async function handleCattlePrice(url, env, ctx) {
   const cacheKey = "cattleprice:" + barn + ":" + today;
   const cache = caches.default;
   const cacheReq = new Request("https://cattleprice-cache.local/" + encodeURIComponent(cacheKey), { method: "GET" });
-  const cached = await cache.match(cacheReq);
+  const fresh = url.searchParams.get("fresh") === "1";
+  const cached = fresh ? null : await cache.match(cacheReq);
   if (cached) {
     const cachedJson = await cached.json();
     return jsonResponse({ ...cachedJson, cached: true });
   }
+  if (fresh) await cache.delete(cacheReq); // drop any stale (e.g. cron-written) entry for today
 
   // Fetch Wheeler's market report page
   const wheelerUrl = "https://www.wheelerlivestock.com/market-report-1";
@@ -2262,7 +2264,11 @@ async function handleCattlePrice(url, env, ctx) {
   ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
   // Auto-save to KV so every browser and every scheduled run sees this result
   if (env.WEEKLY_KV && result.sale_date) {
-    const kvPrice = parseFloat(result.avg_cwt || result.high_cwt);
+    let kvPrice = parseFloat(result.avg_cwt || result.high_cwt);
+    // Prefer a true 500 lb value interpolated from the full curve (matches the frontend),
+    // so the cron and the manual button agree instead of clobbering each other.
+    const interp = ksInterp500(Array.isArray(result.steer_curve) ? result.steer_curve : []);
+    if (interp != null && interp > 0) kvPrice = interp;
     if (kvPrice > 0) ctx.waitUntil(addCattlePriceToKV(env, barn, kvPrice, result.sale_date, result));
   }
   return jsonResponse({ ...result, cached: false });
@@ -2473,6 +2479,32 @@ function ksExtractReportUrls(indexHtml) {
   const re = /https:\/\/kingsvillelivestock\.com\/[a-z]+-\d{1,2}-\d{4}-market-report\//g;
   let m; while ((m = re.exec(indexHtml))) if (!out.includes(m[0])) out.push(m[0]);
   return out;
+}
+
+// Write many price entries to KV in ONE read-modify-write (KV isn't read-your-writes
+// consistent, so per-entry saves in a loop clobber each other during backfill).
+async function addCattlePricesBatch(env, barn, recs) {
+  if (!env.WEEKLY_KV || !recs.length) return [];
+  const raw = await env.WEEKLY_KV.get(CATTLE_HISTORY_KV_KEY);
+  const hist = raw ? JSON.parse(raw) : {};
+  if (!Array.isArray(hist[barn])) hist[barn] = [];
+  const saved = [];
+  for (const r of recs) {
+    const priceNum = parseFloat(r.avg_500_wt != null ? r.avg_500_wt : r.avg_cwt);
+    const date = r.sale_date;
+    if (!(priceNum > 0) || !date) continue;
+    hist[barn] = hist[barn].filter(e => e.date !== date);
+    const entry = { date, price: priceNum, recorded_at: new Date().toISOString() };
+    for (const k of ["weight_class","steer_curve","receipts_this","receipts_last","receipts_year","cull_breaker","cull_boner","cull_lean","direction_note","report_url","fetched_via","avg_cwt"]) {
+      if (r[k] != null) entry[k] = r[k];
+    }
+    hist[barn].push(entry);
+    saved.push({ date, price: priceNum });
+  }
+  hist[barn].sort((a, b) => a.date.localeCompare(b.date));
+  if (hist[barn].length > 60) hist[barn] = hist[barn].slice(-60);
+  await env.WEEKLY_KV.put(CATTLE_HISTORY_KV_KEY, JSON.stringify(hist), { expirationTtl: 4 * 365 * 24 * 3600 });
+  return saved;
 }
 
 // GET /cattleprice?barn=kingsville[&backfill=N] — scrape latest (and N past) reports.

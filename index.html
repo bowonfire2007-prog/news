@@ -5710,7 +5710,7 @@ function wireCattleMarket() {
       autoResult.className = "cattle-fetch-result";
       autoResult.innerHTML = '<div class="cattle-fetch-loading"><span class="spinner"></span> Fetching latest Wheeler report &amp; running Claude vision OCR…</div>';
       try {
-        const res = await fetch(CF_WORKER.replace(/\/$/, "") + "/cattleprice?barn=wheeler", { method:"GET" });
+        const res = await fetch(CF_WORKER.replace(/\/$/, "") + "/cattleprice?barn=wheeler&fresh=1", { method:"GET" });
         const ct  = res.headers.get("content-type") || "";
         let data;
         if (ct.includes("application/json")) {

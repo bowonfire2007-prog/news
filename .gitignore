@@ -7,3 +7,17 @@ index.html.new
 
 # Standalone debug page
 lake-debug.html
+
+# npm / wrangler tooling — auto-generated, deploy uses global wrangler
+node_modules/
+package.json
+package-lock.json
+
+# Local safety backups (never part of the live site)
+index.backup-*.html
+
+# Design preview mockups (reference only, not the site)
+pop-layout.html
+feed-layout-ideas.html
+nav-layout-ideas.html
+mockup-ideas.html

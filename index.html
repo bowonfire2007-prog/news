@@ -1088,6 +1088,46 @@
   [data-theme="dark"] article.item.hero .thumb { box-shadow:0 14px 38px rgba(0,0,0,.55); }
   /* Lead-story label as a filled accent tag */
   article.item.hero::before { background:var(--accent); color:var(--bg); display:inline-block; align-self:center; padding:4px 14px; border-radius:6px; border-bottom:none; box-shadow:var(--shadow); }
+
+  /* ══════════ FORECAST TAB ══════════ */
+  .fc-hero { display:flex; align-items:center; gap:18px; padding:8px 0 16px; border-bottom:2px solid var(--border); }
+  .fc-hero-temp { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:64px; font-weight:900; line-height:1; letter-spacing:-0.03em; }
+  .fc-hero-cond { font-size:17px; font-weight:700; }
+  .fc-hero-sub { font-size:12.5px; color:var(--text-muted); margin-top:4px; }
+  .fc-hero-loc { font-size:11px; color:var(--text-soft); margin-top:3px; letter-spacing:.04em; text-transform:uppercase; font-weight:700; }
+  .fc-smart { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin:16px 0 4px; }
+  .fc-card { border:1px solid var(--border); border-left:4px solid var(--text-soft); border-radius:10px; padding:11px 13px; background:var(--card-hover); box-shadow:var(--shadow); }
+  .fc-card.fc-good { border-left-color:#2f9e44; } .fc-card.fc-info { border-left-color:#2f6fd0; }
+  .fc-card.fc-warn { border-left-color:var(--mustard); } .fc-card.fc-bad { border-left-color:var(--accent); }
+  .fc-card-top { display:flex; align-items:center; gap:8px; }
+  .fc-card-icon { font-size:18px; }
+  .fc-card-title { font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); }
+  .fc-card-text { font-size:13.5px; line-height:1.4; margin-top:5px; color:var(--text); }
+  .fc-sec { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:13px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:var(--bg); background:var(--accent); display:inline-block; padding:4px 12px; border-radius:6px; margin:22px 0 12px; box-shadow:var(--shadow); }
+  .fc-periods { display:grid; gap:10px; }
+  .fc-period { border:1px solid var(--border); border-radius:10px; padding:11px 13px; }
+  .fc-period.fc-pnight { background:color-mix(in srgb,#2f6fd0 7%,var(--card-hover)); }
+  .fc-period.fc-pday { background:color-mix(in srgb,var(--mustard) 9%,var(--card-hover)); }
+  .fc-period-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .fc-period-name { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:16px; font-weight:800; }
+  .fc-period-temp { font-size:16px; font-weight:900; font-variant-numeric:tabular-nums; }
+  .fc-period-short { font-size:12px; color:var(--text-muted); font-weight:600; margin:3px 0 5px; }
+  .fc-period-detail { font-size:13px; line-height:1.45; color:var(--text); font-family:"Iowan Old Style","Palatino","Georgia",serif; }
+  .fc-empty { font-size:12.5px; color:var(--text-muted); padding:8px 0; }
+  .fc-hourly { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:4px; }
+  .fc-hourly::-webkit-scrollbar { display:none; }
+  .fc-hr { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:3px; background:var(--card-hover); border:1px solid var(--border); border-radius:9px; padding:8px 10px; min-width:54px; }
+  .fc-hr-t { font-size:10.5px; font-weight:700; color:var(--text-muted); }
+  .fc-hr-i { font-size:17px; } .fc-hr-d { font-size:13px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .fc-hr-p { font-size:10px; min-height:13px; color:var(--text-soft); } .fc-hr-p.wet { color:#3b82f6; font-weight:700; }
+  [data-theme="dark"] .fc-hr-p.wet { color:#60a5fa; }
+  .fc-tenday { display:flex; flex-direction:column; }
+  .fc-d { display:grid; grid-template-columns:64px 28px 44px 1fr; align-items:center; gap:8px; padding:8px 2px; border-bottom:1px solid var(--border); font-size:13.5px; }
+  .fc-d:last-child { border-bottom:none; }
+  .fc-d-day { font-weight:700; } .fc-d-i { font-size:16px; text-align:center; }
+  .fc-d-p { font-size:11px; color:#3b82f6; font-weight:700; text-align:right; } [data-theme="dark"] .fc-d-p { color:#60a5fa; }
+  .fc-d-hl { text-align:right; font-variant-numeric:tabular-nums; color:var(--text-muted); } .fc-d-hl b { color:var(--text); }
+  .fc-radar { display:inline-block; margin-top:14px; padding:8px 16px; border-radius:8px; background:var(--accent); color:var(--bg); font-weight:800; font-size:13px; box-shadow:var(--shadow); }
 </style>
 </head>
 <body>
@@ -1186,7 +1226,7 @@ const WEATHER_LOCATION = { name:"Clinton, MO", lat:38.3686, lon:-93.7780, tz:"Am
 const CATEGORY_ICONS = {
   saved:"🔖", stocks:"📈", world:"🌍", usa:"🇺🇸", military:"💥", local:"📍", ukraine:"🇺🇦", iran:"🕌",
   scs:"⚓", tech:"💻", business:"💼", science:"🔬",
-  philippines:"🇵🇭", cannabis:"🌿", outdoor:"🎣", garden:"🌱", market:"🐄"
+  philippines:"🇵🇭", cannabis:"🌿", outdoor:"🎣", garden:"🌱", market:"🐄", forecast:"⛅"
 };
 
 // Per-category pill colors (readable on both light & dark)
@@ -1194,11 +1234,11 @@ const CATEGORY_COLOR = {
   world:"#3b82f6", usa:"#e0533a", military:"#d4901f", local:"#3d9e4e", ukraine:"#3b82f6",
   iran:"#d4901f", scs:"#2f9fd0", tech:"#8b5cf6", business:"#14a08c", science:"#2f9fd0",
   philippines:"#3b82f6", cannabis:"#5aa53a", outdoor:"#2f9fd0", garden:"#3d9e4e",
-  market:"#b5763a", stocks:"#14a08c", saved:"#8a857c"
+  market:"#b5763a", stocks:"#14a08c", saved:"#8a857c", forecast:"#2f9fd0"
 };
 
 // Quick-access tab bar
-const QUICK_TAB_IDS = ["world","usa","military","local","outdoor","garden","market","tech","stocks","cannabis","saved"];
+const QUICK_TAB_IDS = ["world","usa","military","local","forecast","outdoor","garden","market","tech","stocks","cannabis","saved"];
 
 const CATEGORIES = [
   { id:"saved", label:"Saved", isSaved:true, feeds:[] },
@@ -1460,7 +1500,8 @@ const CATEGORIES = [
   // Garden tab — cards-only; no news feed. Cuts the Outdoor scroll length.
   { id:"garden", label:"Garden", isGarden:true, maxAgeHours:168, feeds:[] },
   // Market tab — cattle market summary + weekly cattle market PDF data.
-  { id:"market", label:"Market", isMarket:true, maxAgeHours:168, feeds:[] }
+  { id:"market", label:"Market", isMarket:true, maxAgeHours:168, feeds:[] },
+  { id:"forecast", label:"Forecast", isForecast:true, feeds:[] }
 ];
 
 // Map tickers to Google News query terms (ticker + company name aliases for better hits).
@@ -2356,6 +2397,167 @@ function findTodayIndex(times, tz) {
   const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: tz });
   const idx = times.indexOf(todayStr);
   return idx >= 0 ? idx : 0;
+}
+
+// ══════════════ FORECAST TAB — Weather-Channel-style dashboard, ad-free ══════════════
+function fcDayLabel(dateStr) {
+  try { return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", { weekday:"short", timeZone:WEATHER_LOCATION.tz }); } catch { return dateStr; }
+}
+function fcWhen(iso) {
+  try { return new Date(iso).toLocaleString("en-US", { weekday:"short", hour:"numeric", timeZone:WEATHER_LOCATION.tz }).replace(" AM","a").replace(" PM","p"); } catch { return ""; }
+}
+// Farm-smart insights computed from the Open-Meteo data
+function computeSmartForecast(data) {
+  const d = data.daily || {}, h = data.hourly || {}, out = [];
+  const tIdx = findTodayIndex(d.time || [], WEATHER_LOCATION.tz);
+  const now = Date.now();
+
+  // 1) HAY WINDOW — best 3-day dry/drying stretch
+  if (d.time && d.precipitation_sum) {
+    const dry = i => (d.precipitation_sum[i] ?? 9) < 0.1 && (d.precipitation_probability_max?.[i] ?? 100) < 40;
+    let bs=-1, bl=0, rs=-1, rl=0;
+    for (let i=tIdx;i<d.time.length;i++){ if(dry(i)){ if(rl===0)rs=i; rl++; if(rl>bl){bl=rl;bs=rs;} } else rl=0; }
+    if (bl>=3) {
+      let s=0,n=0; for(let i=bs;i<bs+bl;i++){ if(isFinite(d.wind_speed_10m_max?.[i])){s+=d.wind_speed_10m_max[i];n++;} }
+      const wa=n?s/n:0, qual = wa>=9?"good drying (breezy)":wa>=5?"fair drying":"slow drying (light wind)";
+      out.push({ icon:"🌾", lvl: bs===tIdx?"good":"info", title:"Hay window", text:"Best cut "+fcDayLabel(d.time[bs])+"–"+fcDayLabel(d.time[bs+bl-1])+" · "+bl+" dry days · "+qual+"." });
+    } else {
+      out.push({ icon:"🌾", lvl:"warn", title:"Hay window", text:"No clean 3-day dry window in the 10-day (longest dry stretch: "+(bl||0)+" day"+(bl===1?"":"s")+")." });
+    }
+  }
+  // 2) CATTLE HEAT / COLD STRESS (next 48h)
+  if (h.time && h.temperature_2m) {
+    let peakTHI=-99, thiWhen=null, minApp=999, appWhen=null;
+    for (let i=0;i<h.time.length;i++){ const t=new Date(h.time[i]).getTime(); if(t<now-3600000||t>now+48*3600000)continue;
+      const T=h.temperature_2m[i], RH=h.relative_humidity_2m?.[i];
+      if(isFinite(T)&&isFinite(RH)){ const thi=T-(0.55-0.0055*RH)*(T-58); if(thi>peakTHI){peakTHI=thi;thiWhen=h.time[i];} }
+      const a=h.apparent_temperature?.[i]; if(isFinite(a)&&a<minApp){minApp=a;appWhen=h.time[i];}
+    }
+    if (peakTHI>=79) out.push({icon:"🐄",lvl:"bad",title:"Cattle heat stress",text:"THI peaks ~"+Math.round(peakTHI)+" "+fcWhen(thiWhen)+" — danger. Water, shade, don't work cattle midday."});
+    else if (peakTHI>=75) out.push({icon:"🐄",lvl:"warn",title:"Cattle heat alert",text:"THI ~"+Math.round(peakTHI)+" "+fcWhen(thiWhen)+" — keep water & shade available."});
+    else if (minApp<=5) out.push({icon:"🐄",lvl:"bad",title:"Cattle cold stress",text:"Wind-chill ~"+Math.round(minApp)+"°F "+fcWhen(appWhen)+" — bedding, windbreak, extra energy feed."});
+    else if (minApp<=20) out.push({icon:"🐄",lvl:"warn",title:"Cattle cold",text:"Wind-chill ~"+Math.round(minApp)+"°F "+fcWhen(appWhen)+" — watch fresh calves, add hay."});
+    else out.push({icon:"🐄",lvl:"good",title:"Cattle comfort",text:"No heat or cold stress in the next 48 hours."});
+  }
+  // 3) FROST / FREEZE (next 6 nights)
+  if (d.time && d.temperature_2m_min) {
+    for (let i=tIdx;i<Math.min(tIdx+6,d.time.length);i++){ const mn=d.temperature_2m_min[i]; if(!isFinite(mn))continue;
+      if(mn<=36){ out.push({icon: mn<=32?"❄️":"🌡️", lvl: mn<=32?"bad":"warn", title: mn<=32?"Freeze coming":"Frost coming", text:(mn<=32?"Freeze":"Frost")+" "+fcDayLabel(d.time[i])+" night (~"+Math.round(mn)+"°F) — protect tender plants."}); break; }
+    }
+  }
+  // 4) RAIN OUTLOOK + SPRAY WINDOW (hourly)
+  if (h.time && h.precipitation) {
+    let nextRain=null, accum=0;
+    for (let i=0;i<h.time.length;i++){ const t=new Date(h.time[i]).getTime(); if(t<now)continue; if(t>now+72*3600000)break;
+      accum+=h.precipitation[i]||0;
+      if(!nextRain && ((h.precipitation[i]||0)>=0.02 || (h.precipitation_probability?.[i]??0)>=55)) nextRain=h.time[i];
+    }
+    let rainTxt=(nextRain?"Next rain "+fcWhen(nextRain):"Dry next 3 days")+" · "+(accum>=0.05?accum.toFixed(2)+'" expected (72h)':"minimal accumulation");
+    out.push({icon:"🌧️",lvl: nextRain?"info":"good",title:"Rain outlook",text:rainTxt});
+
+    let sStart=null,sLen=0,spray=null;
+    for (let i=0;i<h.time.length;i++){ const t=new Date(h.time[i]); const ms=t.getTime(); if(ms<now-3600000||ms>now+48*3600000)continue;
+      const hr=+t.toLocaleTimeString("en-US",{hour:"2-digit",hour12:false,timeZone:WEATHER_LOCATION.tz});
+      const calm=(h.wind_speed_10m?.[i]??99)<10 && (h.wind_gusts_10m?.[i]??99)<15 && (h.precipitation?.[i]??0)<0.01 && (h.precipitation_probability?.[i]??0)<30 && hr>=7 && hr<=19;
+      if(calm){ if(sLen===0)sStart=h.time[i]; sLen++; if(sLen>=3&&!spray){spray={start:sStart,end:h.time[i]};} } else sLen=0;
+    }
+    if (spray) out.push({icon:"💨",lvl:"good",title:"Spray window",text:"Calm & dry "+fcWhen(spray.start)+"–"+(new Date(spray.end).toLocaleTimeString("en-US",{hour:"numeric",timeZone:WEATHER_LOCATION.tz}).replace(" AM","a").replace(" PM","p"))+" (wind under 10 mph)."});
+    else out.push({icon:"💨",lvl:"warn",title:"Spray window",text:"No calm, dry 3-hour window in the next 48h (too windy or wet)."});
+  }
+  return out;
+}
+function renderSmartCard(o) {
+  return '<div class="fc-card fc-'+o.lvl+'"><div class="fc-card-top"><span class="fc-card-icon">'+o.icon+'</span><span class="fc-card-title">'+escapeHtml(o.title)+'</span></div><div class="fc-card-text">'+escapeHtml(o.text)+'</div></div>';
+}
+// NWS day/night narrative forecast (api.weather.gov, CORS-enabled, no key)
+let _nwsForecastUrl = null;
+async function fetchNwsForecast() {
+  try {
+    if (!_nwsForecastUrl) {
+      const pr = await fetch("https://api.weather.gov/points/"+WEATHER_LOCATION.lat+","+WEATHER_LOCATION.lon, { headers:{ "Accept":"application/geo+json" } });
+      if (!pr.ok) return null;
+      _nwsForecastUrl = (await pr.json())?.properties?.forecast;
+    }
+    if (!_nwsForecastUrl) return null;
+    const fr = await fetch(_nwsForecastUrl, { headers:{ "Accept":"application/geo+json" } });
+    if (!fr.ok) return null;
+    return (await fr.json())?.properties?.periods || null;
+  } catch { return null; }
+}
+function renderNwsPeriods(periods) {
+  if (!periods || !periods.length) return '<div class="fc-empty">72-hour day/night forecast unavailable right now.</div>';
+  return periods.slice(0,6).map(p => {
+    const pop = p.probabilityOfPrecipitation && p.probabilityOfPrecipitation.value;
+    return '<div class="fc-period '+(p.isDaytime?"fc-pday":"fc-pnight")+'">' +
+      '<div class="fc-period-head"><span class="fc-period-name">'+escapeHtml(p.name)+'</span>' +
+        '<span class="fc-period-temp">'+(p.isDaytime?"↑":"↓")+' '+p.temperature+'°'+(p.temperatureUnit||"F")+'</span></div>' +
+      '<div class="fc-period-short">'+escapeHtml(p.shortForecast||"")+(isFinite(pop)&&pop>0?' · '+pop+'% rain':'')+(p.windSpeed?' · '+escapeHtml(p.windSpeed)+' '+escapeHtml(p.windDirection||""):'')+'</div>' +
+      '<div class="fc-period-detail">'+escapeHtml(p.detailedForecast||"")+'</div></div>';
+  }).join("");
+}
+const WEATHER_NEWS_FEEDS = [
+  { source:"MO Weather", url:"https://news.google.com/rss/search?q=(Missouri%20weather%20OR%20%22Kansas%20City%22%20weather%20OR%20%22west%20central%20Missouri%22%20OR%20Sedalia%20OR%20%22Henry%20County%22%20Missouri)%20(storm%20OR%20severe%20OR%20tornado%20OR%20forecast%20OR%20heat%20OR%20snow%20OR%20flood%20OR%20drought%20OR%20weather)%20when:7d&hl=en-US&gl=US&ceid=US:en" },
+  { source:"NWS Pleasant Hill", url:"https://news.google.com/rss/search?q=(%22National%20Weather%20Service%22%20Missouri%20OR%20%22NWS%20Kansas%20City%22%20OR%20%22NWS%20Pleasant%20Hill%22%20OR%20%22Missouri%20storms%22)%20when:7d&hl=en-US&gl=US&ceid=US:en" }
+];
+async function loadForecastWeatherNews() {
+  const el = document.getElementById("fcNewsList"); if (!el) return;
+  try {
+    const results = await Promise.all(WEATHER_NEWS_FEEDS.map(f => fetchFeed(f).catch(()=>[])));
+    let items = [].concat(...results);
+    const seen = new Set();
+    items = items.filter(it => { const k=(it.title||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim().slice(0,60); if(!k||seen.has(k))return false; seen.add(k); return true; });
+    items = items.filter(it => it.pubDate >= Date.now()-10*86400000).sort((a,b)=>b.pubDate-a.pubDate).slice(0,10);
+    if (!items.length) { el.innerHTML = '<div class="farm-news-empty">No local weather news right now.</div>'; return; }
+    el.innerHTML = items.map(it => { const p=farmNewsParts(it); return '<a class="farm-news-item" href="'+escapeHtml(it.link)+'" target="_blank" rel="noopener noreferrer"><span class="farm-news-body"><span class="farm-news-headline">'+escapeHtml(p.headline)+'</span><span class="farm-news-meta">'+escapeHtml(p.pub)+' · '+relativeTime(it.pubDate)+'</span></span></a>'; }).join("");
+  } catch { el.innerHTML = '<div class="farm-news-empty">Couldn\'t load weather news.</div>'; }
+}
+async function loadForecast() {
+  listEl.innerHTML = '<div class="status" style="padding:20px 0"><span class="spinner"></span> Loading forecast…</div>';
+  let data = getCachedWeather();
+  if (!data || !data.daily) { try { await loadWeather(); data = getCachedWeather(); } catch {} }
+  if (!data || !data.daily) { listEl.innerHTML = '<div class="status" style="padding:24px">Forecast unavailable — check your connection.</div>'; return; }
+  const c=data.current||{}, d=data.daily||{}, h=data.hourly||{};
+  const tIdx=findTodayIndex(d.time||[], WEATHER_LOCATION.tz);
+  const entry=WEATHER_CODE_MAP[c.weather_code]||["—","🌡️"];
+  const hi=isFinite(d.temperature_2m_max?.[tIdx])?Math.round(d.temperature_2m_max[tIdx]):"—";
+  const lo=isFinite(d.temperature_2m_min?.[tIdx])?Math.round(d.temperature_2m_min[tIdx]):"—";
+  const insights = computeSmartForecast(data);
+
+  let hourly='<div class="fc-hourly">';
+  if (h.time && h.temperature_2m) { const now=Date.now(); let n=0;
+    for (let i=0;i<h.time.length&&n<18;i++){ const t=new Date(h.time[i]).getTime(); if(t<now-1800000)continue; n++;
+      const he=WEATHER_CODE_MAP[h.weather_code?.[i]]||["","🌡️"], tp=Math.round(h.temperature_2m[i]), pop=h.precipitation_probability?.[i];
+      const lbl=n===1?"Now":new Date(h.time[i]).toLocaleTimeString("en-US",{hour:"numeric",timeZone:WEATHER_LOCATION.tz}).replace(" AM","a").replace(" PM","p");
+      hourly+='<div class="fc-hr"><div class="fc-hr-t">'+lbl+'</div><div class="fc-hr-i">'+he[1]+'</div><div class="fc-hr-d">'+tp+'°</div><div class="fc-hr-p'+(isFinite(pop)&&pop>0?' wet':'')+'">'+(isFinite(pop)&&pop>0?pop+'%':'')+'</div></div>';
+    }
+  }
+  hourly+='</div>';
+
+  let tenday='<div class="fc-tenday">';
+  if (d.time) { for (let i=tIdx;i<d.time.length;i++){ const de=WEATHER_CODE_MAP[d.weather_code?.[i]]||["","🌡️"];
+      const dl=i===tIdx?"Today":new Date(d.time[i]+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",timeZone:WEATHER_LOCATION.tz});
+      const hh=Math.round(d.temperature_2m_max?.[i]), ll=Math.round(d.temperature_2m_min?.[i]), pp=d.precipitation_probability_max?.[i];
+      tenday+='<div class="fc-d"><span class="fc-d-day">'+dl+'</span><span class="fc-d-i">'+de[1]+'</span><span class="fc-d-p">'+(isFinite(pp)&&pp>0?pp+'%':'')+'</span><span class="fc-d-hl"><b>'+hh+'°</b> '+ll+'°</span></div>';
+  } }
+  tenday+='</div>';
+
+  const radarHref="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My43NzgsMzguMzY4Nl0sImxvY2F0aW9uIjpudWxsLCJ6b29tIjo4LCJmaWx0ZXJpbmciOnRydWUsImxheWVyIjoiYnJlZiIsInN0YXRpb24iOiJLRUFYIn19";
+
+  listEl.innerHTML =
+    '<div class="fc-hero"><div class="fc-hero-temp">'+(isFinite(c.temperature_2m)?Math.round(c.temperature_2m):"—")+'°</div>'+
+      '<div class="fc-hero-meta"><div class="fc-hero-cond">'+entry[1]+' '+escapeHtml(entry[0])+'</div>'+
+      '<div class="fc-hero-sub">Feels '+(isFinite(c.apparent_temperature)?Math.round(c.apparent_temperature):"—")+'° · H '+hi+'° / L '+lo+'° · '+compassFromDegrees(c.wind_direction_10m)+' '+(isFinite(c.wind_speed_10m)?Math.round(c.wind_speed_10m):"—")+' mph · '+(isFinite(c.relative_humidity_2m)?c.relative_humidity_2m:"—")+'% RH</div>'+
+      '<div class="fc-hero-loc">'+escapeHtml(WEATHER_LOCATION.name)+'</div></div></div>'+
+    '<div class="fc-smart">'+insights.map(renderSmartCard).join("")+'</div>'+
+    '<div class="fc-sec">Next 72 Hours · Day &amp; Night</div>'+
+    '<div id="fcPeriods" class="fc-periods"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading NWS day/night forecast…</div></div>'+
+    '<div class="fc-sec">Next 24 Hours</div>'+hourly+
+    '<div class="fc-sec">10-Day</div>'+tenday+
+    '<a class="fc-radar" href="'+radarHref+'" target="_blank" rel="noopener">📡 Open Live Radar →</a>'+
+    '<div class="farm-news" style="margin-top:18px;padding:0"><div class="farm-news-inner"><div class="farm-news-head"><span class="farm-news-title">🌩️ Local Weather News</span></div><div id="fcNewsList"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading…</div></div></div></div>';
+
+  fetchNwsForecast().then(periods => { const el=document.getElementById("fcPeriods"); if(el) el.innerHTML=renderNwsPeriods(periods); });
+  loadForecastWeatherNews();
 }
 
 function renderWeather(data, lake) {
@@ -8104,6 +8306,7 @@ async function loadCategory(force) {
   if (cat.isOutdoor) return loadOutdoor(force);
   if (cat.isGarden)  return loadGarden(force);
   if (cat.isMarket)  return loadMarket(force);
+  if (cat.isForecast) return loadForecast(force);
 
   if (cat.isSaved) {
     statusEl.style.display = "none";

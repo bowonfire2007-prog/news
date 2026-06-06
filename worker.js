@@ -47,10 +47,7 @@ async function runWheelerScheduled(env, ctx) {
 async function runKingsvilleScheduled(env, ctx) {
   try {
     const today = new Date().toISOString().slice(0, 10);
-    await caches.default.delete(
-      new Request("https://cattleprice-cache.local/" + encodeURIComponent("cattleprice:kingsville:" + today))
-    );
-    await handleUsdaCattle(env, { waitUntil: (p) => p }, "kingsville", "https://www.ams.usda.gov/mnreports/ams_1815.pdf");
+    await handleKingsvilleWeb(env, { waitUntil: (p) => p }, 1);
   } catch (_) {}
 }
 
@@ -1872,9 +1869,10 @@ async function hashKey(input) {
 //   returns: { barn, sale_date, weight_class, head_count, avg_cwt, low_cwt, high_cwt, frame_grade, notes, image_url, model, generated_at, cached }
 async function handleCattlePrice(url, env, ctx) {
   const barn = url.searchParams.get("barn") || "wheeler";
-  if (barn === "kingsville") return handleUsdaCattle(env, ctx, "kingsville", "https://www.ams.usda.gov/mnreports/ams_1815.pdf");
-  if (barn === "wheeler")    return handleUsdaCattle(env, ctx, "wheeler",    "https://www.ams.usda.gov/mnreports/ams_3917.pdf");
-  return jsonResponse({ error: "Unknown barn '" + barn + "'." }, 400);
+  if (barn === "kingsville") return handleKingsvilleWeb(env, ctx, parseInt(url.searchParams.get("backfill") || "1", 10));
+  if (barn !== "wheeler") return jsonResponse({ error: "Unknown barn '" + barn + "'." }, 400);
+  // wheeler → fall through to the proven scanned-report flow below (USDA blocks the Worker's
+  // direct PDF fetch, so we keep Wheeler on its own report rather than ams_3917).
   if (!env.ANTHROPIC_API_KEY) return jsonResponse({ error: "ANTHROPIC_API_KEY secret is not set" }, 500);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -2414,6 +2412,98 @@ async function handleCattleRecord(request, env, ctx) {
   return jsonResponse({ ok: true, history: updated ? JSON.parse(updated) : {} });
 }
 
+// ─────────────── KINGSVILLE LIVESTOCK — own website reports (current) ──────────
+// Kingsville stopped feeding USDA but posts clean weekly reports on their WordPress
+// site. Each report's og:description carries date + receipts + market direction +
+// the steer price brackets — reliable to parse, and the archive lets us backfill.
+const KINGSVILLE_SITE = "https://kingsvillelivestock.com";
+const KS_MONTHS = { january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12 };
+
+async function ksFetch(url) {
+  const tries = [url, "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)];
+  for (const u of tries) {
+    try {
+      const r = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" } });
+      if (r.ok) { const t = await r.text(); if (t && t.length > 200) return t; }
+    } catch (_) {}
+  }
+  return null;
+}
+
+function ksInterp500(curve) {
+  const pts = curve.filter(c => isFinite(c.wt) && isFinite(c.avg)).sort((a,b)=>a.wt-b.wt);
+  if (!pts.length) return null;
+  let lo = null, hi = null;
+  for (const p of pts) { if (p.wt <= 500) lo = p; if (p.wt >= 500 && hi === null) hi = p; }
+  if (lo && hi) { if (lo.wt === hi.wt) return lo.avg; const t = (500 - lo.wt) / (hi.wt - lo.wt); return +(lo.avg + t * (hi.avg - lo.avg)).toFixed(2); }
+  return lo ? lo.avg : (hi ? hi.avg : null);
+}
+
+function ksParseOgDesc(desc) {
+  if (!desc) return null;
+  const dm = desc.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})/);
+  let sale_date = null;
+  if (dm) { const mo = KS_MONTHS[dm[1].toLowerCase()]; if (mo) sale_date = dm[3] + "-" + String(mo).padStart(2,"0") + "-" + String(+dm[2]).padStart(2,"0"); }
+  const toN = s => s ? parseInt(String(s).replace(/,/g,""),10) : null;
+  const rm = desc.match(/([\d,]+)\s*HD;?\s*Last\s*(?:Week|Sale)\s*([\d,]+)\s*hd\s*([\d,]+)\s*a year ago/i);
+  const afterRec = desc.split(/a year ago\.?/i)[1] || "";
+  const direction_note = (afterRec.split(/Office|STEERS/)[0] || "").trim().replace(/\s+/g," ");
+  // Case-SENSITIVE "STEERS" so we hit the uppercase table header, not lowercase "feeder steers"
+  // in the commentary; bound it before the HEIFERS table so we only read steer brackets.
+  const steerPart = (desc.split(/STEERS/)[1] || "").split(/HEIFERS/)[0];
+  const curve = [];
+  const re = /(\d{3,4})\s*-\s*(\d{3,4})\s*\$?([\d.]+)\s*-\s*\$?([\d.]+)/g;
+  let m;
+  while ((m = re.exec(steerPart))) {
+    const w1=+m[1], w2=+m[2], p1=+m[3], p2=+m[4];
+    if (w2 > w1 && w2 <= 1600 && p1 > 50 && p2 >= p1) curve.push({ wt:(w1+w2)/2, avg:+((p1+p2)/2).toFixed(2), low:p1, high:p2, head:null });
+  }
+  const avg_500_wt = ksInterp500(curve);
+  if (!sale_date || avg_500_wt == null) return null;
+  return {
+    sale_date, avg_500_wt, avg_cwt: avg_500_wt, weight_class: "500 lb (interp)",
+    steer_curve: curve,
+    receipts_this: rm ? toN(rm[1]) : null, receipts_last: rm ? toN(rm[2]) : null, receipts_year: rm ? toN(rm[3]) : null,
+    direction_note
+  };
+}
+
+function ksExtractReportUrls(indexHtml) {
+  const out = [];
+  const re = /https:\/\/kingsvillelivestock\.com\/[a-z]+-\d{1,2}-\d{4}-market-report\//g;
+  let m; while ((m = re.exec(indexHtml))) if (!out.includes(m[0])) out.push(m[0]);
+  return out;
+}
+
+// GET /cattleprice?barn=kingsville[&backfill=N] — scrape latest (and N past) reports.
+async function handleKingsvilleWeb(env, ctx, backfill) {
+  const n = Math.max(1, Math.min(40, backfill || 1));
+  let urls = [];
+  for (let page = 1; urls.length < n && page <= 6; page++) {
+    const idx = await ksFetch(KINGSVILLE_SITE + "/market-reports/" + (page > 1 ? "page/" + page + "/" : ""));
+    if (!idx) break;
+    for (const u of ksExtractReportUrls(idx)) if (!urls.includes(u)) urls.push(u);
+  }
+  if (!urls.length) return jsonResponse({ error: "Could not list Kingsville reports" }, 502);
+  urls = urls.slice(0, n);
+
+  const saved = [];
+  let latest = null;
+  for (const u of urls) {
+    const html = await ksFetch(u);
+    if (!html) continue;
+    const ogm = html.match(/<meta[^>]+property=["']og:description["'][^>]*?content="([^"]*)"/i)
+             || html.match(/<meta[^>]+content="([^"]*)"[^>]*?property=["']og:description["']/i);
+    const parsed = ksParseOgDesc(ogm ? ogm[1].replace(/&amp;/g,"&").replace(/&nbsp;/g," ").replace(/&#8211;|&#8217;/g,"-") : null);
+    if (!parsed) continue;
+    const rec = { ...parsed, barn: "kingsville", report_url: u, fetched_via: "kingsville-web" };
+    if (parsed.avg_500_wt > 0) { await addCattlePriceToKV(env, "kingsville", parsed.avg_500_wt, parsed.sale_date, rec); saved.push({ date: parsed.sale_date, price: parsed.avg_500_wt }); }
+    if (!latest) latest = { ...rec, model: "regex", generated_at: new Date().toISOString() };
+  }
+  if (!latest) return jsonResponse({ error: "Could not parse any Kingsville report" }, 502);
+  return jsonResponse({ ...latest, saved_count: saved.length, saved });
+}
+
 // ─────────────── USDA WEIGHTED-AVERAGE CATTLE REPORTS (Wheeler + Kingsville) ────
 // Both barns are covered by the Missouri Dept of Ag / USDA AMS "Livestock Weighted
 // Average Report" — clean machine-readable PDFs we parse with Claude's PDF support.
@@ -2428,14 +2518,24 @@ async function handleUsdaCattle(env, ctx, barn, pdfUrl) {
   const cached = await caches.default.match(cacheReq);
   if (cached) return jsonResponse({ ...(await cached.json()), cached: true });
 
-  let pdfBase64;
-  try {
-    const pdfRes = await fetch(pdfUrl, { headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/pdf,*/*" } });
-    if (!pdfRes.ok) return jsonResponse({ error: barn + " PDF HTTP " + pdfRes.status }, 502);
-    pdfBase64 = arrayBufferToBase64(await pdfRes.arrayBuffer());
-  } catch (e) {
-    return jsonResponse({ error: barn + " PDF fetch failed: " + (e && e.message) }, 502);
+  // ams.usda.gov blocks direct Worker fetches, so try direct first, then public proxies.
+  let pdfBase64 = null, lastErr = "no attempt";
+  const fetchUrls = [
+    pdfUrl,
+    "https://api.allorigins.win/raw?url=" + encodeURIComponent(pdfUrl),
+    "https://corsproxy.io/?url=" + encodeURIComponent(pdfUrl)
+  ];
+  for (const u of fetchUrls) {
+    try {
+      const pdfRes = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/pdf,*/*" } });
+      if (!pdfRes.ok) { lastErr = "HTTP " + pdfRes.status; continue; }
+      const buf = await pdfRes.arrayBuffer();
+      if (!buf || buf.byteLength < 1000) { lastErr = "empty/too small response"; continue; }
+      pdfBase64 = arrayBufferToBase64(buf);
+      break;
+    } catch (e) { lastErr = (e && e.message) || String(e); }
   }
+  if (!pdfBase64) return jsonResponse({ error: barn + " PDF fetch failed (direct + proxies): " + lastErr }, 502);
 
   const prompt =
     "You are reading a USDA/Missouri Livestock Weighted Average Report for a Missouri cattle auction. " +

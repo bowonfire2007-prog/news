@@ -5378,7 +5378,7 @@ function wireMarketSubNav() {
 // ──────────────────────────────────────────────────────────────────────────────
 const CATTLE_BARNS = [
   { id:"wheeler",    name:"Wheeler Livestock",    location:"Osceola, MO · St. Clair Co.", isBuddy:true, reportUrl:"https://www.wheelerlivestock.com/market-report-1", saleDay:"Thursdays", color:"#b8331a" },
-  { id:"kingsville", name:"Kingsville Livestock", location:"Kingsville, MO · Johnson Co.", isBuddy:true, reportUrl:"https://www.ams.usda.gov/mnreports/ams_1815.pdf",   saleDay:"Tuesdays", color:"#1e6cbf" }
+  { id:"kingsville", name:"Kingsville Livestock", location:"Kingsville, MO · Johnson Co.", isBuddy:true, reportUrl:"https://kingsvillelivestock.com/market-reports/", saleDay:"Tuesdays", color:"#1e6cbf" }
 ];
 
 const CATTLE_HISTORY_KEY = "news.cattle.history.v1";
@@ -5776,7 +5776,7 @@ function wireCattleMarket() {
       autoResult.className = "cattle-fetch-result";
       autoResult.innerHTML = '<div class="cattle-fetch-loading"><span class="spinner"></span> Fetching Kingsville USDA PDF &amp; parsing with Claude…</div>';
       try {
-        const res = await fetch(CF_WORKER.replace(/\/$/, "") + "/cattleprice?barn=kingsville", { method:"GET" });
+        const res = await fetch(CF_WORKER.replace(/\/$/, "") + "/cattleprice?barn=kingsville&backfill=14", { method:"GET" });
         const ct = res.headers.get("content-type") || "";
         let data;
         if (ct.includes("application/json")) data = await res.json();
@@ -5806,6 +5806,7 @@ function wireCattleMarket() {
         const newCard = document.querySelector(".outdoor-card.cattle");
         const newResult = newCard && newCard.querySelector("#cattleAutoResult");
         if (newResult) { newResult.style.display = "block"; newResult.className = "cattle-fetch-result cattle-fetch-success"; newResult.innerHTML = detail; }
+        _cattleKvSynced = false; syncCattleHistoryFromKV(); // pull the backfilled weeks into the chart
       } catch (err) {
         autoResult.className = "cattle-fetch-result cattle-fetch-error";
         autoResult.innerHTML = '⚠ Kingsville auto-fetch failed: ' + escapeHtml(String(err.message || err)) +

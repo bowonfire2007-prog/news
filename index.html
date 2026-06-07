@@ -1122,12 +1122,25 @@
   .fc-hr-p { font-size:10px; min-height:13px; color:var(--text-soft); } .fc-hr-p.wet { color:#3b82f6; font-weight:700; }
   [data-theme="dark"] .fc-hr-p.wet { color:#60a5fa; }
   .fc-tenday { display:flex; flex-direction:column; }
-  .fc-d { display:grid; grid-template-columns:64px 28px 44px 1fr; align-items:center; gap:8px; padding:8px 2px; border-bottom:1px solid var(--border); font-size:13.5px; }
+  .fc-d { display:grid; grid-template-columns:58px 26px 1fr auto; align-items:center; gap:10px; padding:9px 2px; border-bottom:1px solid var(--border); font-size:13.5px; }
   .fc-d:last-child { border-bottom:none; }
   .fc-d-day { font-weight:700; } .fc-d-i { font-size:16px; text-align:center; }
-  .fc-d-p { font-size:11px; color:#3b82f6; font-weight:700; text-align:right; } [data-theme="dark"] .fc-d-p { color:#60a5fa; }
+  .fc-d-note { font-size:12.5px; font-weight:700; }
+  .fc-d-note.n-rain { color:#2f6fd0; } [data-theme="dark"] .fc-d-note.n-rain { color:#69a8ff; }
+  .fc-d-note.n-hot { color:var(--accent); }
+  .fc-d-note.n-cold { color:#0f8a99; } [data-theme="dark"] .fc-d-note.n-cold { color:#4cc4d6; }
+  .fc-d-note.n-wind { color:var(--mustard); }
+  .fc-d-note.n-clear { color:var(--text-soft); font-weight:500; }
   .fc-d-hl { text-align:right; font-variant-numeric:tabular-nums; color:var(--text-muted); } .fc-d-hl b { color:var(--text); }
-  .fc-radar { display:inline-block; margin-top:14px; padding:8px 16px; border-radius:8px; background:var(--accent); color:var(--bg); font-weight:800; font-size:13px; box-shadow:var(--shadow); }
+  .fc-radar { display:inline-block; margin-top:10px; padding:8px 16px; border-radius:8px; background:var(--accent); color:var(--bg); font-weight:800; font-size:13px; box-shadow:var(--shadow); }
+  .fc-radar-wrap { margin-top:4px; border-radius:12px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); }
+  .fc-radar-wrap iframe { width:100%; height:360px; border:0; display:block; }
+  .fc-radar-img { width:100%; display:block; background:var(--card-hover); }
+
+  /* Slim header weather — full detail lives in the Forecast tab now */
+  .weather .w-toggle, .weather .w-collapse { display:none !important; }
+  .weather { cursor:pointer; }
+  .weather::after { content:"⛅ Tap for full forecast & smart farm alerts →"; display:block; font-size:10.5px; color:var(--accent); font-weight:800; padding-top:4px; }
 </style>
 </head>
 <body>
@@ -1710,6 +1723,8 @@ let kbIndex = -1;        // keyboard navigation index
 const listEl      = document.getElementById("list");
 const statusEl    = document.getElementById("status");
 const weatherEl   = document.getElementById("weather");
+// Header weather is now a compact glance — tapping it opens the full Forecast tab.
+weatherEl.addEventListener("click", (e) => { if (e.target.closest("a")) return; switchCategory("forecast"); });
 const alertBannerEl = document.getElementById("alertBanner");
 const drawerEl    = document.getElementById("drawer");
 const overlayEl   = document.getElementById("drawerOverlay");
@@ -2496,8 +2511,9 @@ function renderNwsPeriods(periods) {
   }).join("");
 }
 const WEATHER_NEWS_FEEDS = [
-  { source:"MO Weather", url:"https://news.google.com/rss/search?q=(Missouri%20weather%20OR%20%22Kansas%20City%22%20weather%20OR%20%22west%20central%20Missouri%22%20OR%20Sedalia%20OR%20%22Henry%20County%22%20Missouri)%20(storm%20OR%20severe%20OR%20tornado%20OR%20forecast%20OR%20heat%20OR%20snow%20OR%20flood%20OR%20drought%20OR%20weather)%20when:7d&hl=en-US&gl=US&ceid=US:en" },
-  { source:"NWS Pleasant Hill", url:"https://news.google.com/rss/search?q=(%22National%20Weather%20Service%22%20Missouri%20OR%20%22NWS%20Kansas%20City%22%20OR%20%22NWS%20Pleasant%20Hill%22%20OR%20%22Missouri%20storms%22)%20when:7d&hl=en-US&gl=US&ceid=US:en" }
+  { source:"Missouri Weather", url:"https://news.google.com/rss/search?q=(Missouri%20weather%20OR%20%22Missouri%20forecast%22%20OR%20%22Missouri%20storms%22%20OR%20%22Missouri%20severe%20weather%22%20OR%20%22Missouri%20drought%22)%20when:14d&hl=en-US&gl=US&ceid=US:en" },
+  { source:"KC / W-Central MO", url:"https://news.google.com/rss/search?q=(%22Kansas%20City%22%20OR%20Sedalia%20OR%20Warrensburg%20OR%20%22Henry%20County%22%20OR%20%22west%20central%20Missouri%22)%20(weather%20OR%20storm%20OR%20heat%20OR%20snow%20OR%20flood%20OR%20tornado%20OR%20forecast)%20when:14d&hl=en-US&gl=US&ceid=US:en" },
+  { source:"NWS / Severe", url:"https://news.google.com/rss/search?q=(%22National%20Weather%20Service%22%20OR%20%22NWS%20Pleasant%20Hill%22%20OR%20%22heat%20advisory%22%20OR%20%22winter%20storm%22%20OR%20tornado%20OR%20flooding)%20Missouri%20when:14d&hl=en-US&gl=US&ceid=US:en" }
 ];
 async function loadForecastWeatherNews() {
   const el = document.getElementById("fcNewsList"); if (!el) return;
@@ -2506,7 +2522,7 @@ async function loadForecastWeatherNews() {
     let items = [].concat(...results);
     const seen = new Set();
     items = items.filter(it => { const k=(it.title||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim().slice(0,60); if(!k||seen.has(k))return false; seen.add(k); return true; });
-    items = items.filter(it => it.pubDate >= Date.now()-10*86400000).sort((a,b)=>b.pubDate-a.pubDate).slice(0,10);
+    items = items.filter(it => it.pubDate >= Date.now()-21*86400000).sort((a,b)=>b.pubDate-a.pubDate).slice(0,12);
     if (!items.length) { el.innerHTML = '<div class="farm-news-empty">No local weather news right now.</div>'; return; }
     el.innerHTML = items.map(it => { const p=farmNewsParts(it); return '<a class="farm-news-item" href="'+escapeHtml(it.link)+'" target="_blank" rel="noopener noreferrer"><span class="farm-news-body"><span class="farm-news-headline">'+escapeHtml(p.headline)+'</span><span class="farm-news-meta">'+escapeHtml(p.pub)+' · '+relativeTime(it.pubDate)+'</span></span></a>'; }).join("");
   } catch { el.innerHTML = '<div class="farm-news-empty">Couldn\'t load weather news.</div>'; }
@@ -2534,10 +2550,21 @@ async function loadForecast() {
   hourly+='</div>';
 
   let tenday='<div class="fc-tenday">';
-  if (d.time) { for (let i=tIdx;i<d.time.length;i++){ const de=WEATHER_CODE_MAP[d.weather_code?.[i]]||["","🌡️"];
+  if (d.time) { for (let i=tIdx;i<d.time.length;i++){ const de=WEATHER_CODE_MAP[d.weather_code?.[i]]||["",""];
       const dl=i===tIdx?"Today":new Date(d.time[i]+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",timeZone:WEATHER_LOCATION.tz});
-      const hh=Math.round(d.temperature_2m_max?.[i]), ll=Math.round(d.temperature_2m_min?.[i]), pp=d.precipitation_probability_max?.[i];
-      tenday+='<div class="fc-d"><span class="fc-d-day">'+dl+'</span><span class="fc-d-i">'+de[1]+'</span><span class="fc-d-p">'+(isFinite(pp)&&pp>0?pp+'%':'')+'</span><span class="fc-d-hl"><b>'+hh+'°</b> '+ll+'°</span></div>';
+      const hh=Math.round(d.temperature_2m_max?.[i]), ll=Math.round(d.temperature_2m_min?.[i]);
+      const pop=d.precipitation_probability_max?.[i], psum=d.precipitation_sum?.[i], gust=d.wind_gusts_10m_max?.[i];
+      // Plain-English notice so the row is never blank — severe stuff first, else the sky.
+      let note, ncls;
+      if (isFinite(ll)&&ll<=32){ note="❄ Freeze "+ll+"°"; ncls="n-cold"; }
+      else if (isFinite(ll)&&ll<=36){ note="❄ Frost "+ll+"°"; ncls="n-cold"; }
+      else if (isFinite(hh)&&hh>=95){ note="🔥 Heat "+hh+"°"; ncls="n-hot"; }
+      else if (isFinite(pop)&&pop>=50){ note="🌧 "+pop+"% rain"+(isFinite(psum)&&psum>=0.1?' · '+psum.toFixed(2)+'"':''); ncls="n-rain"; }
+      else if (isFinite(hh)&&hh>=90){ note="🥵 Hot "+hh+"°"; ncls="n-hot"; }
+      else if (isFinite(gust)&&gust>=30){ note="💨 Windy G"+Math.round(gust); ncls="n-wind"; }
+      else if (isFinite(pop)&&pop>=25){ note="🌦 "+pop+"% rain"; ncls="n-rain"; }
+      else { note=de[0]||"Quiet"; ncls="n-clear"; }
+      tenday+='<div class="fc-d"><span class="fc-d-day">'+dl+'</span><span class="fc-d-i">'+(de[1]||"")+'</span><span class="fc-d-note '+ncls+'">'+escapeHtml(note)+'</span><span class="fc-d-hl"><b>'+hh+'°</b> '+ll+'°</span></div>';
   } }
   tenday+='</div>';
 
@@ -2548,12 +2575,18 @@ async function loadForecast() {
       '<div class="fc-hero-meta"><div class="fc-hero-cond">'+entry[1]+' '+escapeHtml(entry[0])+'</div>'+
       '<div class="fc-hero-sub">Feels '+(isFinite(c.apparent_temperature)?Math.round(c.apparent_temperature):"—")+'° · H '+hi+'° / L '+lo+'° · '+compassFromDegrees(c.wind_direction_10m)+' '+(isFinite(c.wind_speed_10m)?Math.round(c.wind_speed_10m):"—")+' mph · '+(isFinite(c.relative_humidity_2m)?c.relative_humidity_2m:"—")+'% RH</div>'+
       '<div class="fc-hero-loc">'+escapeHtml(WEATHER_LOCATION.name)+'</div></div></div>'+
+    '<div class="fc-sec" style="margin-top:12px">📡 Live Radar · Pleasant Hill (KEAX)</div>'+
+    '<div class="fc-radar-wrap">'+
+      '<img class="fc-radar-img" src="https://radar.weather.gov/ridge/standard/KEAX_loop.gif" alt="Live KEAX radar loop" '+
+        'onerror="this.style.display=\'none\';var f=this.parentNode.querySelector(\'iframe\');if(f)f.style.display=\'block\';">'+
+      '<iframe style="display:none" loading="lazy" referrerpolicy="no-referrer" src="https://embed.windy.com/embed2.html?lat=38.369&lon=-93.778&detailLat=38.369&detailLon=-93.778&zoom=8&level=surface&overlay=radar&product=radar&menu=&message=true&marker=true&calendar=now&type=map&location=coordinates&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1"></iframe>'+
+    '</div>'+
+    '<a class="fc-radar" href="'+radarHref+'" target="_blank" rel="noopener">📡 Open interactive radar (zoom &amp; pan) →</a>'+
     '<div class="fc-smart">'+insights.map(renderSmartCard).join("")+'</div>'+
     '<div class="fc-sec">Next 72 Hours · Day &amp; Night</div>'+
     '<div id="fcPeriods" class="fc-periods"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading NWS day/night forecast…</div></div>'+
     '<div class="fc-sec">Next 24 Hours</div>'+hourly+
     '<div class="fc-sec">10-Day</div>'+tenday+
-    '<a class="fc-radar" href="'+radarHref+'" target="_blank" rel="noopener">📡 Open Live Radar →</a>'+
     '<div class="farm-news" style="margin-top:18px;padding:0"><div class="farm-news-inner"><div class="farm-news-head"><span class="farm-news-title">🌩️ Local Weather News</span></div><div id="fcNewsList"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading…</div></div></div></div>';
 
   fetchNwsForecast().then(periods => { const el=document.getElementById("fcPeriods"); if(el) el.innerHTML=renderNwsPeriods(periods); });

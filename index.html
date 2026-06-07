@@ -1136,6 +1136,11 @@
   .fc-radar-wrap { margin-top:4px; border-radius:12px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); }
   .fc-radar-wrap iframe { width:100%; height:360px; border:0; display:block; }
   .fc-radar-img { width:100%; display:block; background:var(--card-hover); }
+  .fc-nowcast { margin:12px 0 4px; padding:10px 14px; border-radius:10px; font-weight:800; font-size:14px; box-shadow:var(--shadow); }
+  .fc-nowcast.wet { background:color-mix(in srgb,#2f6fd0 16%,var(--card-hover)); color:#1e5aa8; border:1px solid color-mix(in srgb,#2f6fd0 35%,var(--border)); }
+  [data-theme="dark"] .fc-nowcast.wet { color:#8fc1ff; }
+  .fc-nowcast.dry { background:color-mix(in srgb,var(--mustard) 14%,var(--card-hover)); color:#8a5a00; border:1px solid color-mix(in srgb,var(--mustard) 35%,var(--border)); }
+  [data-theme="dark"] .fc-nowcast.dry { color:var(--mustard); }
 
   /* Slim header weather — full detail lives in the Forecast tab now */
   .weather .w-toggle, .weather .w-collapse { display:none !important; }
@@ -2381,6 +2386,7 @@ async function loadWeather(force) {
     "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m" +
     "&hourly=temperature_2m,apparent_temperature,weather_code,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,relative_humidity_2m" +
     "&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset" +
+    "&minutely_15=precipitation,precipitation_probability" +
     "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone="+encodeURIComponent(WEATHER_LOCATION.tz)+"&forecast_days=10&past_days=1";
   try {
     const [wRes, lakeData] = await Promise.all([fetchWithTimeout(url, FEED_TIMEOUT_MS), fetchTrumanLake()]);
@@ -2527,6 +2533,33 @@ async function loadForecastWeatherNews() {
     el.innerHTML = items.map(it => { const p=farmNewsParts(it); return '<a class="farm-news-item" href="'+escapeHtml(it.link)+'" target="_blank" rel="noopener noreferrer"><span class="farm-news-body"><span class="farm-news-headline">'+escapeHtml(p.headline)+'</span><span class="farm-news-meta">'+escapeHtml(p.pub)+' · '+relativeTime(it.pubDate)+'</span></span></a>'; }).join("");
   } catch { el.innerHTML = '<div class="farm-news-empty">Couldn\'t load weather news.</div>'; }
 }
+// Hyperlocal "rain starting/ending in X min" from Open-Meteo 15-minute precip.
+function rainNowcast(data) {
+  const m = data.minutely_15;
+  if (!m || !m.time || !m.precipitation) return null;
+  const now = Date.now();
+  let cur = -1;
+  for (let i=0;i<m.time.length;i++){ if (new Date(m.time[i]).getTime() <= now+1) cur=i; else break; }
+  if (cur < 0) cur = 0;
+  const wet = i => (m.precipitation[i]||0) >= 0.01 || (m.precipitation_probability?.[i] ?? 0) >= 50;
+  if (wet(cur)) {
+    for (let i=cur+1;i<m.time.length;i++){ if(!wet(i)){ return { state:"ending", mins:Math.max(0,Math.round((new Date(m.time[i]).getTime()-now)/60000)) }; } }
+    return { state:"raining" };
+  }
+  for (let i=cur+1;i<m.time.length;i++){ const t=new Date(m.time[i]).getTime(); if(t>now+2.5*3600000)break;
+    if((m.precipitation[i]||0)>=0.02 || (m.precipitation_probability?.[i] ?? 0)>=55) return { state:"starting", mins:Math.round((t-now)/60000) };
+  }
+  return { state:"dry" };
+}
+function renderNowcastBar(data) {
+  const nc = rainNowcast(data);
+  if (!nc) return "";
+  if (nc.state==="starting") return '<div class="fc-nowcast wet">🌧 Rain likely in about '+nc.mins+' min</div>';
+  if (nc.state==="ending")   return '<div class="fc-nowcast wet">🌦 Rain should ease in about '+nc.mins+' min</div>';
+  if (nc.state==="raining")  return '<div class="fc-nowcast wet">🌧 Raining now — no real letup in the next 2 hours</div>';
+  return '<div class="fc-nowcast dry">☀️ No rain expected in the next 2 hours</div>';
+}
+
 async function loadForecast() {
   listEl.innerHTML = '<div class="status" style="padding:20px 0"><span class="spinner"></span> Loading forecast…</div>';
   let data = getCachedWeather();
@@ -2575,12 +2608,15 @@ async function loadForecast() {
       '<div class="fc-hero-meta"><div class="fc-hero-cond">'+entry[1]+' '+escapeHtml(entry[0])+'</div>'+
       '<div class="fc-hero-sub">Feels '+(isFinite(c.apparent_temperature)?Math.round(c.apparent_temperature):"—")+'° · H '+hi+'° / L '+lo+'° · '+compassFromDegrees(c.wind_direction_10m)+' '+(isFinite(c.wind_speed_10m)?Math.round(c.wind_speed_10m):"—")+' mph · '+(isFinite(c.relative_humidity_2m)?c.relative_humidity_2m:"—")+'% RH</div>'+
       '<div class="fc-hero-loc">'+escapeHtml(WEATHER_LOCATION.name)+'</div></div></div>'+
-    '<div class="fc-sec" style="margin-top:12px">📡 Live Radar · Pleasant Hill (KEAX)</div>'+
+    renderNowcastBar(data)+
+    '<div class="fc-sec" style="margin-top:8px">📡 Live Radar · Pleasant Hill (KEAX)</div>'+
     '<div class="fc-radar-wrap">'+
       '<img class="fc-radar-img" src="https://radar.weather.gov/ridge/standard/KEAX_loop.gif" alt="Live KEAX radar loop" '+
         'onerror="this.style.display=\'none\';var f=this.parentNode.querySelector(\'iframe\');if(f)f.style.display=\'block\';">'+
       '<iframe style="display:none" loading="lazy" referrerpolicy="no-referrer" src="https://embed.windy.com/embed2.html?lat=38.369&lon=-93.778&detailLat=38.369&detailLon=-93.778&zoom=8&level=surface&overlay=radar&product=radar&menu=&message=true&marker=true&calendar=now&type=map&location=coordinates&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1"></iframe>'+
     '</div>'+
+    '<div class="fc-sec">🛰 Future Radar · where it\'s headed (press ▶)</div>'+
+    '<div class="fc-radar-wrap"><iframe loading="lazy" referrerpolicy="no-referrer" src="https://embed.windy.com/embed2.html?lat=38.369&lon=-93.778&detailLat=38.369&detailLon=-93.778&zoom=8&level=surface&overlay=rain&menu=&message=true&marker=true&calendar=now&type=map&location=coordinates&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1"></iframe></div>'+
     '<a class="fc-radar" href="'+radarHref+'" target="_blank" rel="noopener">📡 Open interactive radar (zoom &amp; pan) →</a>'+
     '<div class="fc-smart">'+insights.map(renderSmartCard).join("")+'</div>'+
     '<div class="fc-sec">Next 72 Hours · Day &amp; Night</div>'+

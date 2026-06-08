@@ -498,6 +498,196 @@ async function handleBillsRefresh(request, url, env, ctx) {
   return jsonResponse(result);
 }
 
+// ─────────────── TRACKED TOPIC STATUS CARDS ───────────────
+// Powers the right-column status cards on the cannabis / local / science tabs.
+// For each topic: fetch a Google News RSS search, hand the fresh headlines to
+// Claude, and have it return a structured status card (status line, milestone
+// steps, "what's next", and which headlines to pin). Cached in BILLS_KV under a
+// "trackers:" prefix. Refreshed by the daily cron and on demand via
+// /trackers-refresh?force=1.  Static fields (color/icon/title) are merged in
+// server-side so the model never invents them; headline URLs come only from the
+// real fetched list (model picks indices, never raw URLs).
+const TRACKERS_CONFIG = [
+  {
+    key:   "cannabis",
+    color: "#5aa53a",
+    icon:  "🌿",
+    title: "Schedule III Tracker",
+    query: "marijuana rescheduling Schedule III DEA hearing",
+    scaffold: "Canonical milestone order for federal marijuana rescheduling: (1) DEA proposed rule published (May 2024); (2) Public comment period (2024); (3) Final order moving FDA-approved / state-licensed medical marijuana to Schedule III (Apr 28, 2026); (4) DEA administrative-law-judge hearing on rescheduling ALL marijuana (Jun 29 – Jul 15, 2026); (5) Final rule on broader reschedule (pending). Keep these five steps in this order and set each step's state to done/current/todo based on today's date and the headlines."
+  },
+  {
+    key:   "local",
+    color: "#3b82f6",
+    icon:  "🏗️",
+    title: "Solar & Data Center Watch (MO)",
+    query: "Missouri data center solar farm Ameren Evergy Google Amazon PSC",
+    scaffold: "This card tracks Missouri's data-center buildout and the solar + battery projects utilities are adding to power them. Use up to 4 step items for the biggest concrete projects/decisions (e.g. AWS Project Green, Google New Florence campus, Ameren Callaway solar farm, PSC rulings on specific solar/storage cases). state: done = built/under construction or approved, current = active/just announced, todo = pending review."
+  },
+  {
+    key:   "science",
+    color: "#8b5cf6",
+    icon:  "🧫",
+    title: "InnovaPrep / Sample-Prep Watch",
+    query: "InnovaPrep OR bioaerosol OR \"air sampling\" OR \"wastewater surveillance\" pathogen concentration sample prep",
+    scaffold: "This card tracks topics relevant to InnovaPrep's actual field. InnovaPrep makes bioconcentration instruments for BOTH air and liquid samples, for lab AND field use (e.g. the Concentrating Pipette / CP Select for liquids and bioaerosol/air samplers), runs an in-house wind tunnel, and does R&D developing new concentration methods. Relevant themes: aerosol/bioaerosol collection and air sampling, liquid/water/wastewater concentration, field-deployable sample prep, wastewater-based epidemiology, CDC NWSS, H5N1/avian-flu detection, and new concentration vs. extraction methods or benchmarking. Use up to 4 step items for the most relevant current developments. Keep claims supported by the headlines or well-established facts; avoid anything proprietary or speculative."
+  }
+];
+
+// Minimal Google News RSS item extractor → [{title, src, url, date}]
+function parseNewsItems(xml, max) {
+  const items = [];
+  const blocks = xml.split(/<item>/i).slice(1);
+  for (const b of blocks) {
+    if (items.length >= max) break;
+    const body = b.split(/<\/item>/i)[0];
+    const grab = (tag) => {
+      const m = body.match(new RegExp("<" + tag + "[^>]*>([\\s\\S]*?)<\\/" + tag + ">", "i"));
+      return m ? htxt(m[1]) : "";
+    };
+    let title = grab("title");
+    const link = grab("link");
+    const date = grab("pubDate");
+    let src = grab("source");
+    // Google News titles look like "Headline - Source"; split the source out.
+    if (!src && / - [^-]+$/.test(title)) { src = title.replace(/^.*\s-\s([^-]+)$/, "$1").trim(); }
+    title = title.replace(/\s-\s[^-]+$/, "").trim();
+    if (title && link) items.push({ title, src: src || "", url: link, date });
+  }
+  return items;
+}
+
+async function fetchTopicHeadlines(query, max = 8) {
+  const url = "https://news.google.com/rss/search?q=" + encodeURIComponent(query) +
+              "&hl=en-US&gl=US&ceid=US:en";
+  const r = await fetch(url, { headers: BTS_UA, cf: { cacheTtl: 300 } });
+  if (!r.ok) throw new Error("news HTTP " + r.status);
+  const xml = await r.text();
+  return parseNewsItems(xml, max);
+}
+
+async function generateTrackerCard(cfg, headlines, anthropicKey) {
+  const today = new Date().toISOString().slice(0, 10);
+  const list = headlines.map((h, i) =>
+    `[${i}] ${h.title} — ${h.src || "source"}${h.date ? " (" + h.date + ")" : ""}`).join("\n");
+
+  const prompt = `Today is ${today}. You are updating a compact status card for a personal news dashboard.
+
+TOPIC: ${cfg.title}
+GUIDANCE: ${cfg.scaffold}
+
+LATEST HEADLINES (most recent first):
+${list || "(no headlines returned)"}
+
+Return ONLY a JSON object (no markdown, no prose) with exactly these fields:
+{
+  "status": "<=6 word current-status line",
+  "sub": "one sentence (<=25 words) of context",
+  "steps": [ { "label": "short milestone", "when": "date or phase", "state": "done|current|todo" } ],
+  "next": "1-2 sentences on what to watch next",
+  "head_ids": [ up to 3 integer indices into the headline list above, most relevant first ]
+}
+Rules: base status/steps on the headlines and well-established facts; do not invent dates. Use at most 5 steps. head_ids must be valid indices from the list (omit if no headlines). Output must be valid JSON and nothing else.`;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": anthropicKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      model: env_model_safe(),
+      max_tokens: 700,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  if (!res.ok) throw new Error("Claude " + res.status);
+  const data = await res.json();
+  let txt = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim();
+  const a = txt.indexOf("{"), z = txt.lastIndexOf("}");
+  if (a === -1 || z === -1) throw new Error("no JSON in model output");
+  const parsed = JSON.parse(txt.slice(a, z + 1));
+
+  const heads = Array.isArray(parsed.head_ids)
+    ? parsed.head_ids
+        .filter(i => Number.isInteger(i) && headlines[i])
+        .slice(0, 3)
+        .map(i => ({ title: headlines[i].title, src: headlines[i].src, url: headlines[i].url }))
+    : [];
+  const steps = Array.isArray(parsed.steps)
+    ? parsed.steps.slice(0, 5).map(s => ({
+        label: String(s.label || "").slice(0, 120),
+        when:  String(s.when  || "").slice(0, 40),
+        state: ["done", "current", "todo"].includes(s.state) ? s.state : "todo"
+      }))
+    : [];
+
+  return {
+    color:  cfg.color,
+    icon:   cfg.icon,
+    title:  cfg.title,
+    status: String(parsed.status || "").slice(0, 80),
+    sub:    String(parsed.sub || "").slice(0, 240),
+    steps,
+    next:   String(parsed.next || "").slice(0, 320),
+    heads,
+    updated: today
+  };
+}
+
+function env_model_safe() { return "claude-sonnet-4-6"; }
+
+async function runTrackersScheduled(env, ctx, force = false) {
+  if (!env.BILLS_KV) return { error: "BILLS_KV not bound" };
+  if (!env.ANTHROPIC_API_KEY) return { error: "ANTHROPIC_API_KEY not set" };
+  const results = [];
+
+  for (const cfg of TRACKERS_CONFIG) {
+    try {
+      const headlines = await fetchTopicHeadlines(cfg.query, 8);
+      const fingerprint = headlines.map(h => h.title).join("|");
+      const newHash = await hashKey(fingerprint);
+      const prevHash = await env.BILLS_KV.get("trackers:hash:" + cfg.key);
+      const existingRaw = await env.BILLS_KV.get("trackers:data:" + cfg.key);
+
+      // No new headlines and not forced → keep what we have (saves an API call).
+      if (!force && prevHash === newHash && existingRaw) {
+        results.push({ key: cfg.key, changed: false });
+        continue;
+      }
+
+      const card = await generateTrackerCard(cfg, headlines, env.ANTHROPIC_API_KEY);
+      await env.BILLS_KV.put("trackers:data:" + cfg.key, JSON.stringify(card),
+        { expirationTtl: 2 * 365 * 24 * 3600 });
+      await env.BILLS_KV.put("trackers:hash:" + cfg.key, newHash);
+      results.push({ key: cfg.key, changed: true, status: card.status });
+    } catch (err) {
+      results.push({ key: cfg.key, error: err.message });
+    }
+  }
+  return { results, ran_at: new Date().toISOString() };
+}
+
+// GET /trackers — frontend reads this to render the right-column status cards.
+// Returns { trackers: { cannabis:[card], local:[card], science:[card] }, fetched_at }
+async function handleTrackers(url, env) {
+  if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
+  const trackers = {};
+  for (const cfg of TRACKERS_CONFIG) {
+    const raw = await env.BILLS_KV.get("trackers:data:" + cfg.key);
+    if (raw) trackers[cfg.key] = [JSON.parse(raw)];
+  }
+  return jsonResponse({ trackers, fetched_at: new Date().toISOString() });
+}
+
+// GET /trackers-refresh[?force=1] — manual trigger for seeding / testing.
+async function handleTrackersRefresh(url, env, ctx) {
+  const force = url.searchParams.get("force") === "1";
+  const result = await runTrackersScheduled(env, ctx, force);
+  return jsonResponse(result);
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
@@ -557,6 +747,8 @@ export default {
     if (url.pathname === "/stockbrief")   return handleStockBrief(request, env, ctx);
     if (url.pathname === "/local-bills")   return handleLocalBills(url, env);
     if (url.pathname === "/bills-refresh") return handleBillsRefresh(request, url, env, ctx);
+    if (url.pathname === "/trackers")         return handleTrackers(url, env);
+    if (url.pathname === "/trackers-refresh") return handleTrackersRefresh(url, env, ctx);
     return handleRssProxy(url);
   },
 
@@ -571,6 +763,7 @@ export default {
     if (cron === "0 15 * * 1") ctx.waitUntil(runMissouriScheduled(env, ctx));
     if (cron === "0 18 * * 2") ctx.waitUntil(runMissouriScheduled(env, ctx));
     if (cron === "0 13 * * *" || cron === "0 1 * * *") ctx.waitUntil(runBillsScheduled(env, ctx));
+    if (cron === "0 13 * * *") ctx.waitUntil(runTrackersScheduled(env, ctx));
   }
 };
 

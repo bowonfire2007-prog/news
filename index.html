@@ -181,6 +181,46 @@
 
   /* ── MAIN ── */
   main { max-width:var(--maxw); margin:0 auto; padding:8px 20px max(env(safe-area-inset-bottom),40px); background:color-mix(in srgb,var(--bg) 92%,transparent); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); position:relative; }
+  /* ── Dual-column layout: news left, tracked-topic cards right (only on tabs with a tracker) ── */
+  .main-cols { display:flex; gap:30px; align-items:flex-start; }
+  .main-col-left { flex:1; min-width:0; }
+  .tracker-col { width:330px; flex-shrink:0; position:sticky; top:14px; display:flex; flex-direction:column; gap:16px; }
+  .tracker-col[hidden] { display:none; }
+  .track-card { border:1px solid var(--border); border-top:3px solid var(--tc, var(--sage)); border-radius:6px; background:color-mix(in srgb,var(--bg) 60%,#fff); box-shadow:var(--shadow); overflow:hidden; }
+  .track-card-head { display:flex; align-items:center; gap:8px; padding:11px 14px 9px; border-bottom:1px solid var(--border); }
+  .track-card-head .tc-icon { font-size:18px; line-height:1; }
+  .track-card-head .tc-title { font-size:13px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; color:var(--text); }
+  .track-card-head .tc-live { margin-left:auto; font-size:9px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:var(--tc, var(--sage)); display:flex; align-items:center; gap:4px; }
+  .track-card-head .tc-live::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--tc, var(--sage)); box-shadow:0 0 0 0 var(--tc, var(--sage)); animation:tcpulse 2s infinite; }
+  @keyframes tcpulse { 0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--tc, var(--sage)) 55%,transparent);} 70%{box-shadow:0 0 0 7px transparent;} 100%{box-shadow:0 0 0 0 transparent;} }
+  .track-card-body { padding:12px 14px 14px; }
+  .tc-status { font-size:14px; font-weight:700; color:var(--text); line-height:1.4; margin-bottom:3px; }
+  .tc-sub { font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:12px; }
+  .tc-steps { list-style:none; margin:0 0 12px; padding:0; position:relative; }
+  .tc-step { position:relative; padding:0 0 14px 24px; font-size:12.5px; line-height:1.4; color:var(--text-muted); }
+  .tc-step:last-child { padding-bottom:0; }
+  .tc-step::before { content:""; position:absolute; left:6px; top:14px; bottom:0; width:2px; background:var(--border); }
+  .tc-step:last-child::before { display:none; }
+  .tc-step .tc-dot { position:absolute; left:0; top:1px; width:14px; height:14px; border-radius:50%; border:2px solid var(--border); background:var(--bg); box-sizing:border-box; }
+  .tc-step.done .tc-dot { background:var(--tc, var(--sage)); border-color:var(--tc, var(--sage)); }
+  .tc-step.done .tc-dot::after { content:"\2713"; position:absolute; inset:-3px 0 0 1px; font-size:9px; color:#fff; font-weight:900; }
+  .tc-step.current .tc-dot { background:#fff; border-color:var(--tc, var(--sage)); box-shadow:0 0 0 3px color-mix(in srgb,var(--tc, var(--sage)) 25%,transparent); }
+  .tc-step.current { color:var(--text); font-weight:700; }
+  .tc-step .tc-when { display:block; font-size:10.5px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; color:var(--text-soft); margin-top:1px; }
+  .tc-next { font-size:12px; line-height:1.5; color:var(--text); background:color-mix(in srgb,var(--tc, var(--sage)) 10%,transparent); border-radius:5px; padding:8px 10px; margin-bottom:12px; }
+  .tc-next b { text-transform:uppercase; font-size:10px; letter-spacing:0.06em; color:var(--tc, var(--sage)); display:block; margin-bottom:2px; }
+  .tc-heads { list-style:none; margin:0; padding:11px 0 0; border-top:1px solid var(--border); }
+  .tc-heads-label { font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-soft); margin-bottom:7px; }
+  .tc-head { font-size:12px; line-height:1.4; margin-bottom:8px; }
+  .tc-head:last-child { margin-bottom:0; }
+  .tc-head a { color:var(--text); text-decoration:none; border-bottom:1px solid var(--border); }
+  .tc-head a:hover { color:var(--accent); border-color:var(--accent); }
+  .tc-head .tc-head-src { display:block; font-size:10px; color:var(--text-soft); margin-top:1px; }
+  .tc-updated { font-size:10px; color:var(--text-soft); text-align:right; padding:9px 14px 0; }
+  @media (max-width:860px) {
+    .main-cols { flex-direction:column; gap:18px; }
+    .tracker-col { width:100%; position:static; order:-1; }
+  }
   footer { background:color-mix(in srgb,var(--bg) 88%,transparent); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
   .status { padding:40px 20px; text-align:center; color:var(--text-muted); font-size:14px; line-height:1.6; }
   .spinner { display:inline-block; width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; vertical-align:middle; margin-right:8px; }
@@ -1214,8 +1254,16 @@
 </header>
 
 <main>
-  <div id="status" class="status" style="display:none"></div>
-  <div id="list"></div>
+  <div class="main-cols" id="mainCols">
+    <div class="main-col-left" id="mainColLeft">
+      <div id="status" class="status" style="display:none"></div>
+      <div id="list"></div>
+    </div>
+    <aside class="tracker-col" id="trackerCol" hidden>
+      <div id="trackerBills"></div>
+      <div id="trackerCards"></div>
+    </aside>
+  </div>
 </main>
 
 <button class="header-reveal" id="headerReveal" aria-label="Show header">
@@ -1833,6 +1881,127 @@ function renderQuoteOfDay() {
     '<div class="quote-author">— ' + escapeHtml(q.author) + '</div>';
 }
 
+// ========== TRACKED TOPICS (right-column status cards) ==========
+// Pinned status cards shown on the right side of specific tabs. The TRACKER_DATA
+// block below is auto-refreshed daily by a scheduled task — keep the
+// TRACKER_DATA_START / TRACKER_DATA_END markers intact so it can be rewritten.
+// step state: "done" | "current" | "todo"
+/* TRACKER_DATA_START */
+const TRACKER_DATA = {
+  cannabis: [{
+    color:"#5aa53a", icon:"🌿", title:"Schedule III Tracker",
+    status:"Partial reschedule now in effect",
+    sub:"FDA-approved & state-licensed medical marijuana moved to Schedule III. Broader reschedule of all marijuana still under review.",
+    steps:[
+      { label:"DEA proposed rule published", when:"May 2024", state:"done" },
+      { label:"Public comment period", when:"2024", state:"done" },
+      { label:"Final order: medical / FDA products → Schedule III", when:"Apr 28, 2026", state:"done" },
+      { label:"DEA hearing on rescheduling ALL marijuana", when:"Jun 29 – Jul 15, 2026", state:"current" },
+      { label:"Final rule on broader reschedule", when:"Pending", state:"todo" }
+    ],
+    next:"DEA administrative-law-judge hearing on moving all marijuana (incl. recreational) to Schedule III begins June 29, 2026 in Arlington, VA and concludes by July 15.",
+    heads:[
+      { title:"DEA final order reschedules certain marijuana to Schedule III", src:"Federal Register", url:"https://www.federalregister.gov/documents/2026/04/28/2026-08177/schedules-of-controlled-substances-rescheduling-of-marijuana" },
+      { title:"Expedited hearing set to consider broader rescheduling", src:"Gibson Dunn", url:"https://www.gibsondunn.com/dea-downschedules-state-medical-marijuana-to-schedule-iii-expedited-hearing-set-to-consider-broader-rescheduling/" },
+      { title:"DOJ places state-licensed medical marijuana in Schedule III", src:"U.S. Justice Dept.", url:"https://www.justice.gov/opa/pr/justice-department-places-fda-approved-marijuana-products-and-products-containing-marijuana" }
+    ],
+    updated:"2026-06-08"
+  }],
+  local: [{
+    color:"#3b82f6", icon:"🏗️", title:"Solar & Data Center Watch (MO)",
+    status:"Investment boom underway",
+    sub:"$50B+ in data-center campuses pledged across Missouri; utilities racing to add solar + battery storage to feed them.",
+    steps:[
+      { label:"AWS \"Project Green\" campus ($35B, 1,000 ac)", when:"Under construction", state:"done" },
+      { label:"Google New Florence campus ($15B, 900+ ac)", when:"Announced May 2026", state:"current" },
+      { label:"Ameren Callaway solar farm — largest in MO (1,160 ac)", when:"PSC approved · grid by 2028", state:"current" },
+      { label:"Audrain/Ralls 175MW solar + 200MW battery", when:"PSC review", state:"todo" }
+    ],
+    next:"Watch: PSC deadline in the Audrain County solar case, plus zoning fights and council recalls in Festus, Peculiar and St. Charles over data-center agreements.",
+    heads:[
+      { title:"Google announces historic $15B data center in eastern Missouri", src:"Missourinet", url:"https://www.missourinet.com/2026/05/21/google-announces-historic-15-billion-data-center-to-be-built-in-eastern-missouri/" },
+      { title:"Callaway solar plant to lead Ameren renewable investments", src:"Jefferson City News-Tribune", url:"https://www.newstribune.com/news/2026/may/20/callaway-solar-plant-to-lead-ameren-renewable/" },
+      { title:"Regulators set deadline in Audrain County solar farm case", src:"ABC17 News", url:"https://abc17news.com/news/audrain/2026/05/29/missouri-regulators-deadline-in-audrain-county-solar-farm-case/" }
+    ],
+    updated:"2026-06-08"
+  }],
+  science: [{
+    color:"#8b5cf6", icon:"🧫", title:"InnovaPrep / Sample-Prep Watch",
+    status:"Air + liquid concentration in focus",
+    sub:"Topics for InnovaPrep's field — bioconcentration for air and liquid samples, lab and field use, plus R&D on new concentration methods.",
+    steps:[
+      { label:"Bioaerosol / air sampling for pathogen surveillance", when:"Active area", state:"current" },
+      { label:"H5N1 in dairy/poultry — air & wastewater detection", when:"Ongoing", state:"current" },
+      { label:"CDC NWSS expands flu A / H5 subtyping in wastewater", when:"2024 → now", state:"current" },
+      { label:"Concentration-method R&D / benchmarking (lab + field)", when:"Continuous", state:"current" }
+    ],
+    next:"Worth knowing: sample concentration is the bottleneck for both air and liquid pathogen detection — wind-tunnel-validated aerosol capture and concentration-vs-extraction benchmarking are shaping field and lab adoption.",
+    heads:[
+      { title:"Sequencing-based detection of H5N1 in wastewater across ten cities", src:"NEJM", url:"https://www.nejm.org/doi/full/10.1056/NEJMc2405937" },
+      { title:"CDC wastewater data for avian influenza A(H5)", src:"CDC NWSS", url:"https://www.cdc.gov/wastewater/emerging-viruses/h5.html" },
+      { title:"Benchmarking concentration vs. direct extraction for respiratory-virus surveillance", src:"bioRxiv", url:"https://www.biorxiv.org/content/10.1101/2024.11.27.625007.full.pdf" }
+    ],
+    updated:"2026-06-08"
+  }]
+};
+/* TRACKER_DATA_END */
+
+// Live data fetched from the Cloudflare worker (/trackers). Falls back to the
+// hardcoded TRACKER_DATA above until the fetch resolves or if it fails.
+let LIVE_TRACKERS = null;
+
+async function loadTrackers() {
+  try {
+    const res = await fetch(CF_WORKER.replace(/\/$/, "") + "/trackers");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (data && data.trackers && Object.keys(data.trackers).length) {
+      LIVE_TRACKERS = data.trackers;
+      renderTrackers(); // refresh the current tab with live data
+    }
+  } catch (_) { /* keep the built-in fallback */ }
+}
+
+function renderTrackers() {
+  const col = document.getElementById("trackerCol");
+  if (!col) return;
+  const cardsEl = document.getElementById("trackerCards") || col;
+  const billsEl = document.getElementById("trackerBills");
+  if (billsEl && activeCat !== "local") billsEl.innerHTML = ""; // bills only on Local
+  const source = LIVE_TRACKERS || {};
+  const cards = (source[activeCat] && source[activeCat].length)
+    ? source[activeCat]
+    : TRACKER_DATA[activeCat];
+  const hasBills = activeCat === "local";
+  if ((!cards || !cards.length) && !hasBills) { col.hidden = true; cardsEl.innerHTML = ""; return; }
+  col.hidden = false;
+  cardsEl.innerHTML = (cards || []).map(c => {
+    const steps = (c.steps || []).map(s =>
+      '<li class="tc-step ' + (s.state || "todo") + '"><span class="tc-dot"></span>' +
+      escapeHtml(s.label) +
+      (s.when ? '<span class="tc-when">' + escapeHtml(s.when) + '</span>' : '') +
+      '</li>'
+    ).join("");
+    const heads = (c.heads || []).map(h =>
+      '<li class="tc-head"><a href="' + encodeURI(h.url) + '" target="_blank" rel="noopener">' +
+      escapeHtml(h.title) + '</a><span class="tc-head-src">' + escapeHtml(h.src || "") + '</span></li>'
+    ).join("");
+    return '<div class="track-card" style="--tc:' + escapeHtml(c.color || "var(--sage)") + '">' +
+      '<div class="track-card-head"><span class="tc-icon">' + (c.icon || "📌") + '</span>' +
+      '<span class="tc-title">' + escapeHtml(c.title || "") + '</span>' +
+      '<span class="tc-live">Tracking</span></div>' +
+      '<div class="track-card-body">' +
+        (c.status ? '<div class="tc-status">' + escapeHtml(c.status) + '</div>' : '') +
+        (c.sub ? '<div class="tc-sub">' + escapeHtml(c.sub) + '</div>' : '') +
+        (steps ? '<ul class="tc-steps">' + steps + '</ul>' : '') +
+        (c.next ? '<div class="tc-next"><b>What’s next</b>' + escapeHtml(c.next) + '</div>' : '') +
+        (heads ? '<div class="tc-heads-label">Latest headlines</div><ul class="tc-heads">' + heads + '</ul>' : '') +
+      '</div>' +
+      (c.updated ? '<div class="tc-updated">Updated ' + escapeHtml(c.updated) + '</div>' : '') +
+      '</div>';
+  }).join("");
+}
+
 // ========== QUICK TABS ==========
 function renderQuickTabs() {
   const container = document.getElementById("quickTabs");
@@ -1884,6 +2053,7 @@ function switchCategory(id) {
   kbIndex = -1;
   renderDrawer();
   renderQuickTabs();
+  renderTrackers();
   updateSectionLabel();
   newPillEl.style.display = "none";
   loadCategory();
@@ -8473,9 +8643,12 @@ async function loadCategory(force) {
   renderNews(deduped);
 
   if (activeCat === "local") {
-    const billsSection = document.createElement("div");
-    listEl.insertBefore(billsSection, listEl.firstChild);
-    loadLocalBills(billsSection);
+    // Bill tracker now lives in the right-hand tracker column, above the status cards.
+    const billsMount = document.getElementById("trackerBills");
+    if (billsMount) {
+      billsMount.innerHTML = "";
+      loadLocalBills(billsMount);
+    }
   }
 
   const newCount = deduped.filter(i => i.isNew).length;
@@ -8559,6 +8732,8 @@ async function loadTicker() {
 renderQuoteOfDay();
 renderDrawer();
 renderQuickTabs();
+renderTrackers();
+loadTrackers();
 updateSectionLabel();
 fetchNWSAlerts();
 loadWeather();

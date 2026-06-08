@@ -31,7 +31,8 @@ if errorlevel 1 (
 echo.
 
 echo === Pushing to GitHub ===
-git add index.html news.html worker.js wrangler.toml push.bat .gitignore lwc.min.js
+git add index.html worker.js wrangler.toml push.bat .gitignore lwc.min.js
+git rm --cached --ignore-unmatch news.html
 git commit -m "Update dashboard"
 git push
 echo.

@@ -1198,9 +1198,16 @@
   .fc-d-note.n-clear { color:var(--text-soft); font-weight:500; }
   .fc-d-hl { text-align:right; font-variant-numeric:tabular-nums; color:var(--text-muted); } .fc-d-hl b { color:var(--text); }
   .fc-radar { display:inline-block; margin-top:10px; padding:8px 16px; border-radius:8px; background:var(--accent); color:var(--bg); font-weight:800; font-size:13px; box-shadow:var(--shadow); }
-  .fc-radar-wrap { margin-top:4px; border-radius:12px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); }
+  .fc-radar-wrap { position:relative; margin-top:4px; border-radius:12px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); }
   .fc-radar-wrap iframe { width:100%; height:360px; border:0; display:block; }
   .fc-radar-img { width:100%; display:block; background:var(--card-hover); }
+  /* Tap-to-interact overlay so embedded maps don't hijack page scroll on touch devices */
+  .fc-radar-tap { position:absolute; inset:0; z-index:2; display:flex; align-items:flex-end; justify-content:center; padding-bottom:12px; cursor:pointer; }
+  .fc-radar-tap span { background:rgba(20,15,10,.62); color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.02em; padding:6px 13px; border-radius:20px; }
+  .fc-radar-wrap.active .fc-radar-tap { display:none; }
+  .fc-radar-wrap:not(.active) iframe.fc-radar-frame { pointer-events:none; }
+  @media (hover:hover) and (pointer:fine) { .fc-radar-tap { display:none !important; } .fc-radar-wrap iframe.fc-radar-frame { pointer-events:auto; } }
+  @media (max-width:520px) { .fc-radar-wrap iframe { height:300px; } }
   .fc-nowcast { margin:12px 0 4px; padding:10px 14px; border-radius:10px; font-weight:800; font-size:14px; box-shadow:var(--shadow); }
   .fc-nowcast.wet { background:color-mix(in srgb,#2f6fd0 16%,var(--card-hover)); color:#1e5aa8; border:1px solid color-mix(in srgb,#2f6fd0 35%,var(--border)); }
   [data-theme="dark"] .fc-nowcast.wet { color:#8fc1ff; }
@@ -2037,10 +2044,7 @@ const TAB_RAIL = {
   cannabis: [ { type:"tracker", key:"cannabis" } ],
   local:    [ { type:"bills" }, { type:"tracker", key:"local" } ],
   science:  [ { type:"tracker", key:"science" } ],
-  outdoor:  [ { type:"data", id:"lakeConditions" } ],
-  market:   [ { type:"data", id:"moMarket" } ],
   forecast: [ { type:"data", id:"forecastOutlook" } ],
-  garden:   [ { type:"reference", id:"plantingGuide" } ],
   stocks:   [ { type:"data", id:"marketSnapshot" } ],
   world:    [ { type:"brief", key:"world" } ],
   usa:      [ { type:"brief", key:"usa" } ],
@@ -3064,11 +3068,15 @@ async function loadForecast() {
     '<div class="fc-sec" style="margin-top:8px">📡 Live Radar · Pleasant Hill (KEAX)</div>'+
     '<div class="fc-radar-wrap">'+
       '<img class="fc-radar-img" src="https://radar.weather.gov/ridge/standard/KEAX_loop.gif" alt="Live KEAX radar loop" '+
-        'onerror="this.style.display=\'none\';var f=this.parentNode.querySelector(\'iframe\');if(f)f.style.display=\'block\';">'+
-      '<iframe style="display:none" loading="lazy" referrerpolicy="no-referrer" src="https://embed.windy.com/embed2.html?lat=38.369&lon=-93.778&detailLat=38.369&detailLon=-93.778&zoom=8&level=surface&overlay=radar&product=radar&menu=&message=true&marker=true&calendar=now&type=map&location=coordinates&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1"></iframe>'+
+        'onerror="this.style.display=\'none\';var w=this.parentNode;w.querySelector(\'iframe\').style.display=\'block\';w.querySelector(\'.fc-radar-tap\').style.display=\'\';">'+
+      '<iframe class="fc-radar-frame" style="display:none" loading="lazy" referrerpolicy="no-referrer" src="https://www.rainviewer.com/map.html?loc=38.369,-93.778,8&oFa=0&oC=1&oU=0&oCS=1&oF=0&oAP=1&c=3&o=83&lm=1&layer=radar&sm=1&sn=1"></iframe>'+
+      '<div class="fc-radar-tap" style="display:none" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
     '</div>'+
-    '<div class="fc-sec">🛰 Future Radar · where it\'s headed (press ▶)</div>'+
-    '<div class="fc-radar-wrap"><iframe loading="lazy" referrerpolicy="no-referrer" src="https://embed.windy.com/embed2.html?lat=38.369&lon=-93.778&detailLat=38.369&detailLon=-93.778&zoom=8&level=surface&overlay=rain&menu=&message=true&marker=true&calendar=now&type=map&location=coordinates&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1"></iframe></div>'+
+    '<div class="fc-sec">🛰 Future Radar · radar nowcast, where it\'s headed (press ▶)</div>'+
+    '<div class="fc-radar-wrap">'+
+      '<iframe class="fc-radar-frame" loading="lazy" referrerpolicy="no-referrer" src="https://www.rainviewer.com/map.html?loc=38.369,-93.778,8&oFa=0&oC=1&oU=0&oCS=1&oF=0&oAP=1&c=4&o=83&lm=1&layer=radar&sm=1&sn=1"></iframe>'+
+      '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
+    '</div>'+
     '<a class="fc-radar" href="'+radarHref+'" target="_blank" rel="noopener">📡 Open interactive radar (zoom &amp; pan) →</a>'+
     '<div class="fc-smart">'+insights.map(renderSmartCard).join("")+'</div>'+
     '<div class="fc-sec">Next 72 Hours · Day &amp; Night</div>'+
@@ -7784,7 +7792,21 @@ function saDown()   { return saIsDark() ? "#f87171" : "#b91c1c"; }
 function saAccent() { return saIsDark() ? "#ff6b4a" : "#b8331a"; }
 
 // ── Chart state ──
-let _saCharts = [], _saCandles = [], _saOverlays = {}, _saIndicators = {};
+let _saCharts = [], _saCandles = [], _saOverlays = {}, _saIndicators = {}, _saIntraday = false;
+
+// Format a unix-second timestamp in Central time (auto CST/CDT) for intraday charts.
+function saFmtCT(ts, withDate) {
+  const o = withDate
+    ? { timeZone:"America/Chicago", month:"short", day:"numeric", hour:"numeric", minute:"2-digit" }
+    : { timeZone:"America/Chicago", hour:"numeric", minute:"2-digit" };
+  return new Intl.DateTimeFormat("en-US", o).format(new Date(ts * 1000));
+}
+function saTickCT(time, tickMarkType) {
+  // tickMarkType: 0 Year, 1 Month, 2 DayOfMonth, 3 Time, 4 TimeWithSeconds
+  if (tickMarkType >= 3) return saFmtCT(time, false);
+  return new Intl.DateTimeFormat("en-US", { timeZone:"America/Chicago", month:"short", day:"numeric" }).format(new Date(time * 1000));
+}
+function saCrosshairCT(time) { return saFmtCT(time, true); }
 let _saSeriesMap = {};
 let _saRange   = "1Y";
 let _saStyle   = localStorage.getItem("sa.style") || "candle";  // candle | line | area
@@ -7853,7 +7875,9 @@ function saBuildChart(elId, height) {
     grid:    { vertLines: { color: saGrid() }, horzLines: { color: saGrid() } },
     crosshair: { mode: 1 },
     rightPriceScale: { borderColor: saGrid() },
-    timeScale: { borderColor: saGrid(), timeVisible: true, secondsVisible: false },
+    localization: _saIntraday ? { timeFormatter: saCrosshairCT } : undefined,
+    timeScale: { borderColor: saGrid(), timeVisible: true, secondsVisible: false,
+      tickMarkFormatter: _saIntraday ? saTickCT : undefined },
     handleScale: { mouseWheel: false, pinch: false },
     handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: true, vertTouchDrag: false }
   });
@@ -8017,7 +8041,7 @@ async function openStockAnalysis(ticker) {
       <div class="sa-meta-row" id="saMeta"></div>
     </div>
     <div class="sa-range-row" id="saRangeRow">
-      ${["1M","6M","YTD","1Y","5Y","MAX"].map(r=>`<button class="sa-range-btn${r===_saRange?" active":""}" data-range="${r}">${r}</button>`).join("")}
+      ${["1D","5D","1M","6M","YTD","1Y","5Y","MAX"].map(r=>`<button class="sa-range-btn${r===_saRange?" active":""}" data-range="${r}">${r}</button>`).join("")}
     </div>
     <div class="sa-overlay-row" id="saOverlayRow">
       <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-soft);margin-right:2px">Overlays</span>
@@ -8202,6 +8226,7 @@ async function saLoadCandles(ticker, range) {
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
     _saCandles = data.candles || [];
+    _saIntraday = !!data.intraday || range === "1D" || range === "5D";
     if (!_saCandles.length) { saDestroyCharts(); return; }
     if (_saCompare) await saEnsureSpy(range);
 

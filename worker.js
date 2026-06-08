@@ -1341,10 +1341,21 @@ async function handleStockCandles(url, env, ctx) {
   const cached = await cache.match(cacheReq);
   if (cached) return jsonResponse({ ...(await cached.json()), cached: true });
 
-  // Yahoo Finance chart API — free, no key, supports 1mo/6mo/1y/5y ranges
-  const RANGE_MAP = { "1M": "1mo", "6M": "6mo", "YTD": "ytd", "1Y": "1y", "5Y": "5y", "MAX": "max" };
-  const yhRange = RANGE_MAP[range] || "1y";
-  const yhUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=${yhRange}`;
+  // Yahoo Finance chart API — free, no key. Intraday ranges (1D/5D) use a finer
+  // interval; the rest use daily candles.
+  const RANGE_MAP = {
+    "1D":  { range: "1d",  interval: "5m"  },
+    "5D":  { range: "5d",  interval: "30m" },
+    "1M":  { range: "1mo", interval: "1d"  },
+    "6M":  { range: "6mo", interval: "1d"  },
+    "YTD": { range: "ytd", interval: "1d"  },
+    "1Y":  { range: "1y",  interval: "1d"  },
+    "5Y":  { range: "5y",  interval: "1d"  },
+    "MAX": { range: "max", interval: "1d"  }
+  };
+  const cfg = RANGE_MAP[range] || RANGE_MAP["1Y"];
+  const intraday = cfg.interval !== "1d";
+  const yhUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=${cfg.interval}&range=${cfg.range}`;
 
   const res = await fetch(yhUrl, {
     headers: {
@@ -1372,9 +1383,9 @@ async function handleStockCandles(url, env, ctx) {
     .filter(c => c.open != null && c.close != null)
     .sort((a, b) => a.time - b.time);
 
-  const result = { ticker, range, candles, count: candles.length, source: "Yahoo" };
+  const result = { ticker, range, candles, count: candles.length, source: "Yahoo", intraday };
   const cacheRes = new Response(JSON.stringify(result), {
-    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" }
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=" + (intraday ? 300 : 3600) }
   });
   ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
   return jsonResponse({ ...result, cached: false });

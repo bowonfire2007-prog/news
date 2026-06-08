@@ -184,7 +184,11 @@
   /* ── Dual-column layout: news left, tracked-topic cards right (only on tabs with a tracker) ── */
   .main-cols { display:flex; gap:30px; align-items:flex-start; }
   .main-col-left { flex:1; min-width:0; }
-  .tracker-col { width:330px; flex-shrink:0; position:sticky; top:14px; display:flex; flex-direction:column; gap:16px; }
+  .tracker-col { width:330px; flex-shrink:0; position:sticky; top:14px; max-height:calc(100vh - 28px); overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:16px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .tracker-col::-webkit-scrollbar { width:7px; }
+  .tracker-col::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+  #railModules { display:flex; flex-direction:column; gap:16px; }
+  .rail-mod:empty { display:none; }
   .tracker-col[hidden] { display:none; }
   .track-card { border:1px solid var(--border); border-top:3px solid var(--tc, var(--sage)); border-radius:6px; background:color-mix(in srgb,var(--bg) 60%,#fff); box-shadow:var(--shadow); overflow:hidden; }
   .track-card-head { display:flex; align-items:center; gap:8px; padding:11px 14px 9px; border-bottom:1px solid var(--border); }
@@ -219,7 +223,7 @@
   .tc-updated { font-size:10px; color:var(--text-soft); text-align:right; padding:9px 14px 0; }
   @media (max-width:860px) {
     .main-cols { flex-direction:column; gap:18px; }
-    .tracker-col { width:100%; position:static; order:-1; }
+    .tracker-col { width:100%; position:static; order:-1; max-height:none; overflow:visible; }
   }
   footer { background:color-mix(in srgb,var(--bg) 88%,transparent); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
   .status { padding:40px 20px; text-align:center; color:var(--text-muted); font-size:14px; line-height:1.6; }
@@ -1260,8 +1264,7 @@
       <div id="list"></div>
     </div>
     <aside class="tracker-col" id="trackerCol" hidden>
-      <div id="trackerBills"></div>
-      <div id="trackerCards"></div>
+      <div id="railModules"></div>
     </aside>
   </div>
 </main>
@@ -1488,7 +1491,13 @@ const CATEGORIES = [
     { source:"NASA", url:"https://www.nasa.gov/news-release/feed/" },
     { source:"Science Magazine", url:"https://www.science.org/rss/news_current.xml" },
     { source:"Quanta Magazine", url:"https://www.quantamagazine.org/feed/" },
-    { source:"Phys.org", url:"https://phys.org/rss-feed/" }
+    { source:"Phys.org", url:"https://phys.org/rss-feed/" },
+    { source:"Bioaerosol & Air Sampling", url:"https://news.google.com/rss/search?q=bioaerosol+OR+%22air+sampling%22+OR+%22aerosol+collection%22+pathogen&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Wastewater Surveillance", url:"https://news.google.com/rss/search?q=%22wastewater+surveillance%22+OR+%22wastewater-based+epidemiology%22+pathogen&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Sample Prep & Concentration", url:"https://news.google.com/rss/search?q=%22sample+preparation%22+OR+%22microbial+concentration%22+OR+%22sample+concentration%22+pathogen+detection&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Biosurveillance & Detection", url:"https://news.google.com/rss/search?q=biosurveillance+OR+%22biothreat+detection%22+OR+%22pathogen+detection%22+%22early+warning%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Avian Flu Surveillance", url:"https://news.google.com/rss/search?q=H5N1+OR+%22avian+influenza%22+wastewater+OR+%22air+surveillance%22+OR+monitoring&hl=en-US&gl=US&ceid=US:en" },
+    { source:"InnovaPrep", url:"https://news.google.com/rss/search?q=InnovaPrep+OR+%22Concentrating+Pipette%22&hl=en-US&gl=US&ceid=US:en" }
   ]},
   { id:"philippines", label:"Philippines", maxAgeHours:72, feeds:[
     { source:"Panay News", url:"https://www.panaynews.net/feed/" },
@@ -1656,6 +1665,9 @@ const SOURCE_WEIGHT = {
   "Ars Technica":1.6,"Ars Science":1.6,"MIT Tech Review":1.6,"Wired":1.5,"The Verge":1.5,"TechCrunch":1.4,"Tom's Hardware":1.4,"9to5Mac":1.3,"9to5Google":1.3,"Engadget":1.3,
   "Bloomberg (Google)":1.8,"WSJ Markets":1.8,"Reuters Business":1.8,"Financial Times":1.7,"CNBC":1.5,"MarketWatch":1.5,"Fortune":1.4,"Yahoo Finance":1.3,
   "Nature":1.9,"Science Magazine":1.9,"Scientific American":1.7,"Quanta Magazine":1.7,"New Scientist":1.6,"NASA":1.5,"Phys.org":1.3,
+  // ── SCIENCE: InnovaPrep scope-of-work sources boosted to float above general science ──
+  "InnovaPrep":2.4,"Bioaerosol & Air Sampling":2.2,"Sample Prep & Concentration":2.2,
+  "Wastewater Surveillance":2.1,"Biosurveillance & Detection":2.0,"Avian Flu Surveillance":2.0,
   "Missouri Independent":1.7,"KCUR":1.5,"St. Louis Public Radio":1.4,"Missouri Times":1.3,
   "Marijuana Moment":1.6,"MJBizDaily":1.5,"Leafly News":1.4,"Cannabis Now":1.3,
   "Philippine News Agency":1.5,"Manila Times":1.3,
@@ -1957,25 +1969,69 @@ async function loadTrackers() {
     const data = await res.json();
     if (data && data.trackers && Object.keys(data.trackers).length) {
       LIVE_TRACKERS = data.trackers;
-      renderTrackers(); // refresh the current tab with live data
+      renderRail(); // refresh the current tab with live data
     }
   } catch (_) { /* keep the built-in fallback */ }
 }
 
-function renderTrackers() {
-  const col = document.getElementById("trackerCol");
-  if (!col) return;
-  const cardsEl = document.getElementById("trackerCards") || col;
-  const billsEl = document.getElementById("trackerBills");
-  if (billsEl && activeCat !== "local") billsEl.innerHTML = ""; // bills only on Local
-  const source = LIVE_TRACKERS || {};
-  const cards = (source[activeCat] && source[activeCat].length)
-    ? source[activeCat]
-    : TRACKER_DATA[activeCat];
-  const hasBills = activeCat === "local";
-  if ((!cards || !cards.length) && !hasBills) { col.hidden = true; cardsEl.innerHTML = ""; return; }
+// ── RIGHT-COLUMN RAIL ──────────────────────────────────────────────────────
+// The rail is a stack of modules configured per tab in TAB_RAIL. Each module's
+// `type` is handled by renderRailModule, so adding a rail to a tab is one entry.
+//   type:"tracker"   → status card from LIVE_TRACKERS / TRACKER_DATA (by key)
+//   type:"bills"     → Missouri legislative tracker (async, loads once per tab)
+//   type:"data"      → live card from a worker endpoint (Phase 2+)
+//   type:"brief"     → cached AI digest of the tab (Phase 4)
+//   type:"reference" → static reference card
+const TAB_RAIL = {
+  cannabis: [ { type:"tracker", key:"cannabis" } ],
+  local:    [ { type:"bills" }, { type:"tracker", key:"local" } ],
+  science:  [ { type:"tracker", key:"science" } ]
+};
+
+function railModulesFor(cat) {
+  if (TAB_RAIL[cat]) return TAB_RAIL[cat];
+  return TRACKER_DATA[cat] ? [{ type:"tracker", key:cat }] : [];
+}
+
+function renderRailModule(slot, mod, firstTime) {
+  switch (mod.type) {
+    case "tracker":
+      slot.innerHTML = trackerCardHTML(mod.key || activeCat);
+      break;
+    case "bills":
+      if (firstTime) loadLocalBills(slot); // async; fills itself, only on tab entry
+      break;
+    // Phase 2+ module types (data / brief / reference) plug in here.
+    default:
+      slot.innerHTML = "";
+  }
+}
+
+function renderRail() {
+  const col  = document.getElementById("trackerCol");
+  const host = document.getElementById("railModules");
+  if (!col || !host) return;
+  const mods = railModulesFor(activeCat);
+  if (!mods.length) { col.hidden = true; host.innerHTML = ""; host.dataset.cat = ""; return; }
   col.hidden = false;
-  cardsEl.innerHTML = (cards || []).map(c => {
+  const sameTab = host.dataset.cat === activeCat;
+  if (!sameTab) {
+    host.innerHTML = mods.map((_, i) => '<div class="rail-mod" data-i="' + i + '"></div>').join("");
+    host.dataset.cat = activeCat;
+  }
+  const slots = host.querySelectorAll(".rail-mod");
+  mods.forEach((m, i) => { if (slots[i]) renderRailModule(slots[i], m, !sameTab); });
+}
+
+// Back-compat alias for older call sites.
+function renderTrackers() { return renderRail(); }
+
+// Builds the status-card HTML for a tracker key (live data, falling back to TRACKER_DATA).
+function trackerCardHTML(key) {
+  const source = LIVE_TRACKERS || {};
+  const cards = (source[key] && source[key].length) ? source[key] : TRACKER_DATA[key];
+  if (!cards || !cards.length) return "";
+  return (cards || []).map(c => {
     const steps = (c.steps || []).map(s =>
       '<li class="tc-step ' + (s.state || "todo") + '"><span class="tc-dot"></span>' +
       escapeHtml(s.label) +
@@ -8490,8 +8546,11 @@ function renderNews(items, simple) {
   // Desktop two-column front page: a "What else is happening" rail of the next-top
   // headlines beside the main full-card stream. Skipped on the Saved view (it expands
   // briefs by index), on narrow screens, and on short lists.
+  // On tabs that show a right-hand rail, keep the news feed as a single stream so
+  // the page stays two columns (news + rail) instead of three.
+  const hasRail = railModulesFor(activeCat).length > 0;
   const wide = window.matchMedia("(min-width:900px)").matches;
-  if (!simple && wide && rest.length > 8) {
+  if (!simple && wide && !hasRail && rest.length > 8) {
     const railCount = Math.min(6, Math.max(4, Math.round(rest.length * 0.15)));
     const railItems = rest.slice(0, railCount);
     const mainItems = rest.slice(railCount);
@@ -8642,14 +8701,7 @@ async function loadCategory(force) {
   currentItems = deduped;
   renderNews(deduped);
 
-  if (activeCat === "local") {
-    // Bill tracker now lives in the right-hand tracker column, above the status cards.
-    const billsMount = document.getElementById("trackerBills");
-    if (billsMount) {
-      billsMount.innerHTML = "";
-      loadLocalBills(billsMount);
-    }
-  }
+  // (Bill tracker + status cards are rendered in the right-hand rail via renderRail.)
 
   const newCount = deduped.filter(i => i.isNew).length;
   if (newCount > 0 && lastVisit > 0) {

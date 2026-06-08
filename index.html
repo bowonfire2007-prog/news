@@ -189,6 +189,27 @@
   .tracker-col::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
   #railModules { display:flex; flex-direction:column; gap:16px; }
   .rail-mod:empty { display:none; }
+  .tc-big { font-size:24px; font-weight:800; color:var(--text); line-height:1.1; }
+  .tc-big-unit { font-size:12px; font-weight:700; color:var(--text-muted); letter-spacing:0.03em; }
+  .tc-big-sub { font-size:11.5px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; color:var(--text-soft); margin:2px 0 10px; }
+  .tc-up { color:#2f9e44; } .tc-down { color:var(--accent); }
+  .tc-statrow { display:flex; justify-content:space-between; gap:10px; font-size:12.5px; padding:5px 0; border-bottom:1px solid var(--border); }
+  .tc-statrow:last-child { border-bottom:none; }
+  .tc-statlbl { color:var(--text-muted); }
+  .tc-statval { font-weight:700; color:var(--text); text-align:right; }
+  .tc-note { font-size:11.5px; color:var(--text-muted); line-height:1.5; margin-top:10px; }
+  .tc-srcline { font-size:10px; color:var(--text-soft); margin-top:8px; }
+  .rail-loading { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted); padding:4px 0; }
+  .rail-err { font-size:12px; color:var(--text-muted); }
+  .fc-alert { font-size:11.5px; font-weight:700; color:var(--accent); background:color-mix(in srgb,var(--accent) 10%,transparent); border-radius:5px; padding:6px 9px; margin-bottom:10px; }
+  .fc-days { list-style:none; margin:0; padding:0; }
+  .fc-day { display:flex; align-items:center; gap:8px; font-size:12.5px; padding:5px 0; border-bottom:1px solid var(--border); }
+  .fc-day:last-child { border-bottom:none; }
+  .fc-emoji { font-size:15px; width:20px; text-align:center; }
+  .fc-dname { width:54px; color:var(--text); font-weight:700; }
+  .fc-pop { width:40px; color:#2f9fd0; font-size:11px; text-align:right; }
+  .fc-temp { margin-left:auto; font-weight:700; color:var(--text); }
+  .fc-lo { color:var(--text-soft); font-weight:400; }
   .tracker-col[hidden] { display:none; }
   .track-card { border:1px solid var(--border); border-top:3px solid var(--tc, var(--sage)); border-radius:6px; background:color-mix(in srgb,var(--bg) 60%,#fff); box-shadow:var(--shadow); overflow:hidden; }
   .track-card-head { display:flex; align-items:center; gap:8px; padding:11px 14px 9px; border-bottom:1px solid var(--border); }
@@ -1974,6 +1995,36 @@ async function loadTrackers() {
   } catch (_) { /* keep the built-in fallback */ }
 }
 
+// Cached daily AI briefs for World/USA/Tech/Military (worker /tabbriefs).
+let BRIEF_DATA = null;
+async function loadBriefs() {
+  try {
+    const res = await fetch(CF_WORKER.replace(/\/$/, "") + "/tabbriefs");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (data && data.briefs) { BRIEF_DATA = data.briefs; renderRail(); }
+  } catch (_) { /* rail shows a quiet placeholder until briefs seed */ }
+}
+
+function briefCardHTML(key) {
+  const b = BRIEF_DATA && BRIEF_DATA[key];
+  const def = { title: ({ world:"World Brief", usa:"U.S. Brief", tech:"Tech Brief", military:"Defense Brief" })[key] || "Today’s Brief",
+                icon:  ({ world:"🌍", usa:"🇺🇸", tech:"💻", military:"🎖️" })[key] || "📰",
+                color: ({ world:"#3b82f6", usa:"#b8331a", tech:"#7c5cff", military:"#5f6b3a" })[key] || "var(--sage)", live:true };
+  if (!b) return railCardShell({ ...def, live:false }, '<div class="tc-note">Today’s brief refreshes each morning.</div>');
+  const bullets = (b.bullets || []).map(x =>
+    '<li class="tc-head">' +
+    (x.url ? '<a href="' + encodeURI(x.url) + '" target="_blank" rel="noopener">' + escapeHtml(x.text) + '</a>'
+           : escapeHtml(x.text)) +
+    (x.src ? '<span class="tc-head-src">' + escapeHtml(x.src) + '</span>' : '') +
+    '</li>'
+  ).join("");
+  return railCardShell({ title:b.title || def.title, icon:b.icon || def.icon, color:b.color || def.color, live:true },
+    (b.bigpicture ? '<div class="tc-status">' + escapeHtml(b.bigpicture) + '</div>' : '') +
+    (bullets ? '<ul class="tc-heads" style="border-top:none;padding-top:6px">' + bullets + '</ul>' : '') +
+    (b.updated ? '<div class="tc-srcline">Updated ' + escapeHtml(b.updated) + '</div>' : ''));
+}
+
 // ── RIGHT-COLUMN RAIL ──────────────────────────────────────────────────────
 // The rail is a stack of modules configured per tab in TAB_RAIL. Each module's
 // `type` is handled by renderRailModule, so adding a rail to a tab is one entry.
@@ -1985,13 +2036,171 @@ async function loadTrackers() {
 const TAB_RAIL = {
   cannabis: [ { type:"tracker", key:"cannabis" } ],
   local:    [ { type:"bills" }, { type:"tracker", key:"local" } ],
-  science:  [ { type:"tracker", key:"science" } ]
+  science:  [ { type:"tracker", key:"science" } ],
+  outdoor:  [ { type:"data", id:"lakeConditions" } ],
+  market:   [ { type:"data", id:"moMarket" } ],
+  forecast: [ { type:"data", id:"forecastOutlook" } ],
+  garden:   [ { type:"reference", id:"plantingGuide" } ],
+  stocks:   [ { type:"data", id:"marketSnapshot" } ],
+  world:    [ { type:"brief", key:"world" } ],
+  usa:      [ { type:"brief", key:"usa" } ],
+  tech:     [ { type:"brief", key:"tech" } ],
+  military: [ { type:"brief", key:"military" } ]
 };
 
 function railModulesFor(cat) {
   if (TAB_RAIL[cat]) return TAB_RAIL[cat];
   return TRACKER_DATA[cat] ? [{ type:"tracker", key:cat }] : [];
 }
+
+// Fetch JSON from the Cloudflare worker.
+async function railFetchJson(path) {
+  const r = await fetch(CF_WORKER.replace(/\/$/, "") + path);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+// Wraps any rail body in the shared status-card shell for visual consistency.
+function railCardShell(def, bodyHtml) {
+  return '<div class="track-card" style="--tc:' + escapeHtml(def.color || "var(--sage)") + '">' +
+    '<div class="track-card-head"><span class="tc-icon">' + (def.icon || "📌") + '</span>' +
+    '<span class="tc-title">' + escapeHtml(def.title || "") + '</span>' +
+    (def.live === false ? '' : '<span class="tc-live">Live</span>') + '</div>' +
+    '<div class="track-card-body">' + bodyHtml + '</div></div>';
+}
+
+function fmtNum(n, d) { return (typeof n === "number" && isFinite(n)) ? n.toLocaleString(undefined, { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }) : "—"; }
+
+// Live worker-data cards. Each: { title, icon, color, load()->data, render(data)->html }.
+const DATA_MODULES = {
+  lakeConditions: {
+    title: "Truman Lake Conditions", icon: "🎣", color: "#2f9fd0",
+    load: () => Promise.all([railFetchJson("/lake"), railFetchJson("/watertemp").catch(() => null)])
+                  .then(([lake, temp]) => ({ lake, temp })),
+    render: ({ lake, temp }) => {
+      if (!lake || typeof lake.elevation !== "number") return '<div class="rail-err">Lake data unavailable.</div>';
+      const chg = lake.change24h;
+      const chgCls = chg > 0 ? "tc-up" : chg < 0 ? "tc-down" : "";
+      const chgArrow = chg > 0 ? "▲" : chg < 0 ? "▼" : "→";
+      const asOf = lake.timestamp ? new Date(lake.timestamp).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric" }) : "";
+      return '<div class="tc-big">' + fmtNum(lake.elevation, 2) + ' <span class="tc-big-unit">ft pool</span></div>' +
+        '<div class="tc-big-sub ' + chgCls + '">' + chgArrow + ' ' + fmtNum(Math.abs(chg || 0), 2) + ' ft / 24h</div>' +
+        (temp && typeof temp.tempF === "number" ? '<div class="tc-statrow"><span class="tc-statlbl">Water temp</span><span class="tc-statval">' + Math.round(temp.tempF) + '°F</span></div>' : '') +
+        '<div class="tc-statrow"><span class="tc-statlbl">Inflow</span><span class="tc-statval">' + fmtNum(lake.inflow) + ' cfs</span></div>' +
+        '<div class="tc-statrow"><span class="tc-statlbl">Outflow</span><span class="tc-statval">' + fmtNum(lake.outflow) + ' cfs</span></div>' +
+        '<div class="tc-srcline">' + escapeHtml(lake.source || "USACE") + (asOf ? ' · ' + escapeHtml(asOf) : '') + '</div>';
+    }
+  },
+  moMarket: {
+    title: "MO Weekly Cattle Market", icon: "🐄", color: "#3d9e4e",
+    load: () => railFetchJson("/weeklydata").then(d => {
+      const recs = (d.records || []).slice().sort((a, b) => (a.report_date < b.report_date ? 1 : -1));
+      return recs[0] || null;
+    }),
+    render: (r) => {
+      if (!r) return '<div class="rail-err">No market report yet.</div>';
+      const lo = r.feeder_steer_500_600_avg_low, hi = r.feeder_steer_500_600_avg_high;
+      const narrative = (r.market_narrative || "").slice(0, 180).replace(/\s+\S*$/, "") + ((r.market_narrative || "").length > 180 ? "…" : "");
+      return '<div class="tc-big">$' + fmtNum(lo, 0) + '–' + fmtNum(hi, 0) + ' <span class="tc-big-unit">/cwt</span></div>' +
+        '<div class="tc-big-sub">Feeder steers 500–600 lb</div>' +
+        '<div class="tc-statrow"><span class="tc-statlbl">Stocker formula</span><span class="tc-statval">$' + fmtNum(r.stocker_formula_cwt, 2) + '/cwt</span></div>' +
+        '<div class="tc-statrow"><span class="tc-statlbl">Corn (KC)</span><span class="tc-statval">$' + fmtNum(r.corn_kc_fri, 2) + '</span></div>' +
+        '<div class="tc-statrow"><span class="tc-statlbl">Soybeans (KC)</span><span class="tc-statval">$' + fmtNum(r.soybean_kc_fri, 2) + '</span></div>' +
+        '<div class="tc-statrow"><span class="tc-statlbl">Boxed beef (Ch)</span><span class="tc-statval">$' + fmtNum(r.boxed_beef_choice_5day, 2) + '</span></div>' +
+        '<div class="tc-statrow"><span class="tc-statlbl">Receipts</span><span class="tc-statval">' + fmtNum(r.total_receipts) + ' <span style="color:var(--text-soft);font-weight:400">(' + fmtNum(r.week_ago_receipts) + ' wk ago)</span></span></div>' +
+        (narrative ? '<div class="tc-note">' + escapeHtml(narrative) + '</div>' : '') +
+        '<div class="tc-srcline">MO Dept. of Agriculture · week of ' + escapeHtml(r.report_date || "") + '</div>';
+    }
+  },
+  forecastOutlook: {
+    title: "5-Day Outlook", icon: "⛅", color: "#2f9fd0",
+    load: () => {
+      const wxUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + WEATHER_LOCATION.lat +
+        "&longitude=" + WEATHER_LOCATION.lon +
+        "&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,sunrise,sunset" +
+        "&temperature_unit=fahrenheit&timezone=" + encodeURIComponent(WEATHER_LOCATION.tz) + "&forecast_days=6";
+      const alertUrl = "https://api.weather.gov/alerts/active?point=" + WEATHER_LOCATION.lat + "," + WEATHER_LOCATION.lon;
+      return Promise.all([
+        fetch(wxUrl).then(r => r.ok ? r.json() : null),
+        fetch(alertUrl, { headers: { "Accept": "application/geo+json" } }).then(r => r.ok ? r.json() : null).catch(() => null)
+      ]).then(([wx, alerts]) => ({ wx, alerts }));
+    },
+    render: ({ wx, alerts }) => {
+      if (!wx || !wx.daily || !wx.daily.time) return '<div class="rail-err">Forecast unavailable.</div>';
+      const d = wx.daily;
+      let html = "";
+      const feat = alerts && alerts.features && alerts.features[0];
+      if (feat && feat.properties && feat.properties.event) {
+        html += '<div class="fc-alert">⚠ ' + escapeHtml(feat.properties.event) + '</div>';
+      }
+      html += '<ul class="fc-days">';
+      for (let i = 0; i < Math.min(5, d.time.length); i++) {
+        const e = (typeof WEATHER_CODE_MAP !== "undefined" && WEATHER_CODE_MAP[(d.weather_code || [])[i]]) || ["", "🌡️"];
+        const day = i === 0 ? "Today" : new Date(d.time[i] + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
+        const hi = Math.round(d.temperature_2m_max[i]);
+        const lo = Math.round(d.temperature_2m_min[i]);
+        const pop = (d.precipitation_probability_max || [])[i];
+        html += '<li class="fc-day"><span class="fc-emoji">' + e[1] + '</span>' +
+          '<span class="fc-dname">' + day + '</span>' +
+          '<span class="fc-pop">' + (pop != null ? pop + '%' : '') + '</span>' +
+          '<span class="fc-temp">' + hi + '° <span class="fc-lo">' + lo + '°</span></span></li>';
+      }
+      html += '</ul>';
+      if (d.sunrise && d.sunset) {
+        const fmt = t => { try { return new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); } catch { return ""; } };
+        html += '<div class="tc-srcline">☀ ' + fmt(d.sunrise[0]) + '  ·  🌙 ' + fmt(d.sunset[0]) + '  ·  ' + escapeHtml(WEATHER_LOCATION.name) + '</div>';
+      }
+      return html;
+    }
+  },
+  marketSnapshot: {
+    title: "Market Snapshot", icon: "📈", color: "#c49b3f",
+    load: () => Promise.all([
+      railFetchJson("/stockquote?ticker=SPY").then(q => ({ ...q, label: "S&P 500 (SPY)" })).catch(() => null),
+      railFetchJson("/stockquote?ticker=QQQ").then(q => ({ ...q, label: "Nasdaq (QQQ)" })).catch(() => null),
+      railFetchJson("/stockquote?ticker=DIA").then(q => ({ ...q, label: "Dow (DIA)" })).catch(() => null)
+    ]).then(rows => rows.filter(q => q && q.price != null)),
+    render: (rows) => {
+      if (!rows || !rows.length) return '<div class="rail-err">Quotes unavailable.</div>';
+      return rows.map(q => {
+        const cls = q.changePct > 0 ? "tc-up" : q.changePct < 0 ? "tc-down" : "";
+        const sign = q.changePct > 0 ? "+" : "";
+        return '<div class="tc-statrow"><span class="tc-statlbl">' + escapeHtml(q.label) + '</span>' +
+          '<span class="tc-statval">' + fmtNum(q.price, 2) +
+          ' <span class="' + cls + '" style="font-weight:700">' + sign + fmtNum(q.changePct, 2) + '%</span></span></div>';
+      }).join("") + '<div class="tc-srcline">Finnhub · ETF proxies for the indexes</div>';
+    }
+  }
+};
+
+// Static reference cards (no fetch). { title, icon, color, render()->html }.
+const REFERENCE_MODULES = {
+  plantingGuide: {
+    title: "MO Planting Guide", icon: "🌱", color: "#3d9e4e",
+    render: () => {
+      const MONTH = [
+        { label: "January — plan & order", text: "Order seeds; start onions and leeks indoors late month; dormant-prune fruit trees." },
+        { label: "February — start indoors", text: "Start broccoli, cabbage and lettuce transplants indoors; chit seed potatoes." },
+        { label: "March — sow cool-season", text: "Direct-sow peas, lettuce, spinach and radishes; plant onion sets and potatoes." },
+        { label: "April — hardy transplants", text: "Transplant brassicas; sow carrots, beets and chard. Hold tender crops until after ~Apr 20." },
+        { label: "May — warm-season planting", text: "Set out tomatoes, peppers and squash; direct-sow beans, sweet corn and cucumbers." },
+        { label: "June — heat crops & succession", text: "Plant okra, sweet potatoes and southern peas; succession beans and corn; harvest garlic." },
+        { label: "July — start the fall garden", text: "Start fall brassica transplants; succession-sow beans; mulch and keep up with watering." },
+        { label: "August — sow for fall", text: "Direct-sow lettuce, spinach, kale, turnips and carrots; plant fall potatoes early in the month." },
+        { label: "September — cool-season & cover", text: "Sow spinach, radish and lettuce; plant cover crops; prep beds for garlic." },
+        { label: "October — garlic & cleanup", text: "Plant garlic; harvest tender crops before ~Oct 15; mulch beds and sow cover crops." },
+        { label: "November — put beds to bed", text: "Mulch beds, plant garlic if not done, clear debris and test soil." },
+        { label: "December — rest & plan", text: "Review the season, browse catalogs, maintain tools and protect overwintering crops." }
+      ];
+      const t = MONTH[new Date().getMonth()];
+      return '<div class="tc-big-sub">Zone 6b · ' + escapeHtml(WEATHER_LOCATION.name) + '</div>' +
+        '<div class="tc-statrow"><span class="tc-statlbl">Last spring frost</span><span class="tc-statval">~Apr 20</span></div>' +
+        '<div class="tc-statrow"><span class="tc-statlbl">First fall frost</span><span class="tc-statval">~Oct 15</span></div>' +
+        '<div class="tc-heads-label" style="margin-top:12px">' + escapeHtml(t.label) + '</div>' +
+        '<div class="tc-note" style="margin-top:4px">' + escapeHtml(t.text) + '</div>';
+    }
+  }
+};
 
 function renderRailModule(slot, mod, firstTime) {
   switch (mod.type) {
@@ -2001,7 +2210,24 @@ function renderRailModule(slot, mod, firstTime) {
     case "bills":
       if (firstTime) loadLocalBills(slot); // async; fills itself, only on tab entry
       break;
-    // Phase 2+ module types (data / brief / reference) plug in here.
+    case "data": {
+      if (!firstTime) break; // loaded once per tab entry
+      const def = DATA_MODULES[mod.id];
+      if (!def) { slot.innerHTML = ""; break; }
+      slot.innerHTML = railCardShell(def, '<div class="rail-loading"><span class="spinner"></span>Loading…</div>');
+      def.load()
+        .then(data => { slot.innerHTML = railCardShell(def, def.render(data)); })
+        .catch(() => { slot.innerHTML = railCardShell(def, '<div class="rail-err">Couldn\'t load right now.</div>'); });
+      break;
+    }
+    case "reference": {
+      const def = REFERENCE_MODULES[mod.id];
+      slot.innerHTML = def ? railCardShell({ ...def, live: false }, def.render()) : "";
+      break;
+    }
+    case "brief":
+      slot.innerHTML = briefCardHTML(mod.key || activeCat);
+      break;
     default:
       slot.innerHTML = "";
   }
@@ -8786,6 +9012,7 @@ renderDrawer();
 renderQuickTabs();
 renderTrackers();
 loadTrackers();
+loadBriefs();
 updateSectionLabel();
 fetchNWSAlerts();
 loadWeather();
@@ -8799,7 +9026,7 @@ setInterval(loadTicker, 5 * 60 * 1000);
     const m = location.hash.match(/^#stock-(.+)$/);
     if (m) {
       const tk = decodeURIComponent(m[1]).toUpperCase();
-      if (activeCat !== "stocks") { activeCat = "stocks"; renderDrawer(); renderQuickTabs(); updateSectionLabel(); }
+      if (activeCat !== "stocks") { activeCat = "stocks"; renderDrawer(); renderQuickTabs(); renderRail(); updateSectionLabel(); }
       openStockAnalysis(tk);
     } else if (document.getElementById("saBackBtn")) {
       // Back button pressed while analysis is showing — return to watchlist

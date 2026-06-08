@@ -688,6 +688,90 @@ async function handleTrackersRefresh(url, env, ctx) {
   return jsonResponse(result);
 }
 
+// ─────────────── TAB BRIEFS (AI "today's brief" per news tab) ───────────────
+// Cached daily digests for the firehose tabs. Same pattern as trackers: fetch
+// fresh headlines, ask Claude for a tight bigpicture + 3-4 bullets, cache in KV.
+const BRIEFS_CONFIG = [
+  { key:"world",    title:"World Brief",   icon:"🌍", color:"#3b82f6", query:"world international top news headlines today",                 focus:"the most important international / world news right now" },
+  { key:"usa",      title:"U.S. Brief",    icon:"🇺🇸", color:"#b8331a", query:"United States national news politics economy top headlines today", focus:"the most important U.S. national news right now" },
+  { key:"tech",     title:"Tech Brief",    icon:"💻", color:"#7c5cff", query:"technology AI software hardware top news headlines today",        focus:"the most important technology news right now" },
+  { key:"military", title:"Defense Brief", icon:"🎖️", color:"#5f6b3a", query:"military defense Pentagon national security news today",          focus:"the most important defense / military news right now" }
+];
+
+async function generateBrief(cfg, headlines, anthropicKey) {
+  const today = new Date().toISOString().slice(0, 10);
+  const list = headlines.map((h, i) => `[${i}] ${h.title} — ${h.src || "source"}${h.date ? " (" + h.date + ")" : ""}`).join("\n");
+  const prompt = `Today is ${today}. Write a tight "today's brief" capturing ${cfg.focus} for a personal news dashboard, based ONLY on these headlines.
+
+HEADLINES:
+${list || "(none)"}
+
+Return ONLY JSON (no prose, no markdown):
+{
+  "bigpicture": "<=18 word one-line read on the overall picture",
+  "bullets": [ { "text": "<=16 word point", "head_id": <integer index into the list> } ]
+}
+Give 3-4 bullets. Each head_id must be a valid index. Output valid JSON only.`;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": anthropicKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({ model: env_model_safe(), max_tokens: 600, messages: [{ role: "user", content: prompt }] })
+  });
+  if (!res.ok) throw new Error("Claude " + res.status);
+  const data = await res.json();
+  let txt = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim();
+  const a = txt.indexOf("{"), z = txt.lastIndexOf("}");
+  if (a === -1 || z === -1) throw new Error("no JSON in model output");
+  const parsed = JSON.parse(txt.slice(a, z + 1));
+  const bullets = Array.isArray(parsed.bullets)
+    ? parsed.bullets.slice(0, 4).map(b => {
+        const h = headlines[b.head_id];
+        return { text: String(b.text || "").slice(0, 160), url: h ? h.url : null, src: h ? h.src : "" };
+      }).filter(b => b.text)
+    : [];
+  return { title: cfg.title, icon: cfg.icon, color: cfg.color, bigpicture: String(parsed.bigpicture || "").slice(0, 160), bullets, updated: today };
+}
+
+async function runBriefsScheduled(env, ctx, force = false) {
+  if (!env.BILLS_KV) return { error: "BILLS_KV not bound" };
+  if (!env.ANTHROPIC_API_KEY) return { error: "ANTHROPIC_API_KEY not set" };
+  const results = [];
+  for (const cfg of BRIEFS_CONFIG) {
+    try {
+      const headlines = await fetchTopicHeadlines(cfg.query, 8);
+      const newHash = await hashKey(headlines.map(h => h.title).join("|"));
+      const prevHash = await env.BILLS_KV.get("briefs:hash:" + cfg.key);
+      const existing = await env.BILLS_KV.get("briefs:data:" + cfg.key);
+      if (!force && prevHash === newHash && existing) { results.push({ key: cfg.key, changed: false }); continue; }
+      const card = await generateBrief(cfg, headlines, env.ANTHROPIC_API_KEY);
+      await env.BILLS_KV.put("briefs:data:" + cfg.key, JSON.stringify(card), { expirationTtl: 2 * 365 * 24 * 3600 });
+      await env.BILLS_KV.put("briefs:hash:" + cfg.key, newHash);
+      results.push({ key: cfg.key, changed: true });
+    } catch (err) {
+      results.push({ key: cfg.key, error: err.message });
+    }
+  }
+  return { results, ran_at: new Date().toISOString() };
+}
+
+// GET /tabbriefs — frontend reads this for the World/USA/Tech/Military rail cards.
+async function handleBriefs(url, env) {
+  if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
+  const briefs = {};
+  for (const cfg of BRIEFS_CONFIG) {
+    const raw = await env.BILLS_KV.get("briefs:data:" + cfg.key);
+    if (raw) briefs[cfg.key] = JSON.parse(raw);
+  }
+  return jsonResponse({ briefs, fetched_at: new Date().toISOString() });
+}
+
+// GET /tabbriefs-refresh[?force=1] — manual trigger for seeding / testing.
+async function handleBriefsRefresh(url, env, ctx) {
+  const force = url.searchParams.get("force") === "1";
+  return jsonResponse(await runBriefsScheduled(env, ctx, force));
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
@@ -749,6 +833,8 @@ export default {
     if (url.pathname === "/bills-refresh") return handleBillsRefresh(request, url, env, ctx);
     if (url.pathname === "/trackers")         return handleTrackers(url, env);
     if (url.pathname === "/trackers-refresh") return handleTrackersRefresh(url, env, ctx);
+    if (url.pathname === "/tabbriefs")         return handleBriefs(url, env);
+    if (url.pathname === "/tabbriefs-refresh") return handleBriefsRefresh(url, env, ctx);
     return handleRssProxy(url);
   },
 
@@ -764,6 +850,7 @@ export default {
     if (cron === "0 18 * * 2") ctx.waitUntil(runMissouriScheduled(env, ctx));
     if (cron === "0 13 * * *" || cron === "0 1 * * *") ctx.waitUntil(runBillsScheduled(env, ctx));
     if (cron === "0 13 * * *") ctx.waitUntil(runTrackersScheduled(env, ctx));
+    if (cron === "0 13 * * *") ctx.waitUntil(runBriefsScheduled(env, ctx));
   }
 };
 

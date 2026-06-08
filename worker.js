@@ -543,7 +543,9 @@ function parseNewsItems(xml, max) {
     const body = b.split(/<\/item>/i)[0];
     const grab = (tag) => {
       const m = body.match(new RegExp("<" + tag + "[^>]*>([\\s\\S]*?)<\\/" + tag + ">", "i"));
-      return m ? htxt(m[1]) : "";
+      if (!m) return "";
+      // Unwrap CDATA (BBC/NPR/Ars use it) before stripping tags/entities.
+      return htxt(m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1"));
     };
     let title = grab("title");
     const link = grab("link");
@@ -692,11 +694,49 @@ async function handleTrackersRefresh(url, env, ctx) {
 // Cached daily digests for the firehose tabs. Same pattern as trackers: fetch
 // fresh headlines, ask Claude for a tight bigpicture + 3-4 bullets, cache in KV.
 const BRIEFS_CONFIG = [
-  { key:"world",    title:"World Brief",   icon:"🌍", color:"#3b82f6", query:"world international top news headlines today",                 focus:"the most important international / world news right now" },
-  { key:"usa",      title:"U.S. Brief",    icon:"🇺🇸", color:"#b8331a", query:"United States national news politics economy top headlines today", focus:"the most important U.S. national news right now" },
-  { key:"tech",     title:"Tech Brief",    icon:"💻", color:"#7c5cff", query:"technology AI software hardware top news headlines today",        focus:"the most important technology news right now" },
-  { key:"military", title:"Defense Brief", icon:"🎖️", color:"#5f6b3a", query:"military defense Pentagon national security news today",          focus:"the most important defense / military news right now" }
+  { key:"world", title:"World Brief", icon:"🌍", color:"#3b82f6", focus:"the most important international / world news right now",
+    feeds:[
+      "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "https://news.google.com/rss/search?q=when:1d+site:apnews.com+world+OR+international+OR+europe+OR+asia+OR+africa&hl=en-US&gl=US&ceid=US:en",
+      "https://news.google.com/rss/search?q=when:2d+site:reuters.com+world&hl=en-US&gl=US&ceid=US:en"
+    ] },
+  { key:"usa", title:"U.S. Brief", icon:"🇺🇸", color:"#b8331a", focus:"the most important U.S. national news right now",
+    feeds:[
+      "https://news.google.com/rss/search?q=when:1d+site:apnews.com&hl=en-US&gl=US&ceid=US:en",
+      "https://feeds.npr.org/1001/rss.xml",
+      "https://news.google.com/rss/search?q=when:1d+site:reuters.com+politics+OR+economy&hl=en-US&gl=US&ceid=US:en"
+    ] },
+  { key:"tech", title:"Tech Brief", icon:"💻", color:"#7c5cff", focus:"the most important technology news right now",
+    feeds:[
+      "https://news.google.com/rss/search?q=when:2d+site:arstechnica.com&hl=en-US&gl=US&ceid=US:en",
+      "https://news.google.com/rss/search?q=when:2d+site:theverge.com&hl=en-US&gl=US&ceid=US:en"
+    ] },
+  { key:"military", title:"Defense Brief", icon:"🎖️", color:"#5f6b3a", focus:"the most important defense / military news right now",
+    feeds:[
+      "https://news.google.com/rss/search?q=when:2d+site:apnews.com+military+OR+pentagon+OR+army+OR+navy+OR+air+force&hl=en-US&gl=US&ceid=US:en",
+      "https://news.google.com/rss/search?q=when:2d+site:reuters.com+military+OR+defense+OR+pentagon+OR+troops&hl=en-US&gl=US&ceid=US:en"
+    ] }
 ];
+
+// Fetch several feeds, merge and de-dupe by title, newest-ish first.
+async function fetchBriefHeadlines(feeds, max) {
+  const lists = await Promise.all((feeds || []).map(u =>
+    fetch(u, { headers: BTS_UA, cf: { cacheTtl: 300 } })
+      .then(r => r.ok ? r.text() : "")
+      .then(t => parseNewsItems(t, max || 10))
+      .catch(() => [])
+  ));
+  const seen = new Set(), out = [];
+  for (const list of lists) {
+    for (const it of list) {
+      const k = it.title.toLowerCase().slice(0, 60);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(it);
+    }
+  }
+  return out.slice(0, max || 10);
+}
 
 async function generateBrief(cfg, headlines, anthropicKey) {
   const today = new Date().toISOString().slice(0, 10);
@@ -739,7 +779,7 @@ async function runBriefsScheduled(env, ctx, force = false) {
   const results = [];
   for (const cfg of BRIEFS_CONFIG) {
     try {
-      const headlines = await fetchTopicHeadlines(cfg.query, 8);
+      const headlines = await fetchBriefHeadlines(cfg.feeds, 12);
       const newHash = await hashKey(headlines.map(h => h.title).join("|"));
       const prevHash = await env.BILLS_KV.get("briefs:hash:" + cfg.key);
       const existing = await env.BILLS_KV.get("briefs:data:" + cfg.key);

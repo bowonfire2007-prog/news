@@ -427,6 +427,14 @@
   .bill-checked { font-size:10px; color:var(--text-soft); }
   .bill-loading { padding:20px 0; text-align:center; color:var(--text-muted); font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px; }
   .bill-error { padding:14px; font-size:13px; color:var(--text-muted); background:var(--card-hover); border-radius:8px; border:1px solid var(--border); }
+  /* Compact rendering for dormant/inactive bills (no recent movement) */
+  .bill-card-dim { padding:11px 14px; opacity:.82; }
+  .bill-card-dim .bill-card-top { margin-bottom:6px; }
+  .bill-card-dim .bill-title { font-size:13px; font-weight:600; }
+  .bill-dormant-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .bill-dormant-note { font-size:12px; color:var(--text-muted); font-style:italic; }
+  .bill-details-panel { max-height:0; overflow:hidden; transition:max-height .28s ease; }
+  .bill-details-panel.open { max-height:900px; }
   @media (max-width:520px) {
     .bill-card { padding:12px; }
     .bill-summary { font-size:13px; padding:8px 10px; }
@@ -1200,6 +1208,8 @@
   .fc-radar { display:inline-block; margin-top:10px; padding:8px 16px; border-radius:8px; background:var(--accent); color:var(--bg); font-weight:800; font-size:13px; box-shadow:var(--shadow); }
   .fc-radar-wrap { position:relative; margin-top:4px; border-radius:12px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); }
   .fc-radar-wrap iframe { width:100%; height:360px; border:0; display:block; }
+  .fc-radar-tall iframe { height:480px; }
+  @media (max-width:520px) { .fc-radar-tall iframe { height:400px; } }
   .fc-radar-img { width:100%; display:block; background:var(--card-hover); }
   /* Tap-to-interact overlay so embedded maps don't hijack page scroll on touch devices */
   .fc-radar-tap { position:absolute; inset:0; z-index:2; display:flex; align-items:flex-end; justify-content:center; padding-bottom:12px; cursor:pointer; }
@@ -1965,6 +1975,24 @@ const TRACKER_DATA = {
     ],
     updated:"2026-06-08"
   }],
+  cannabis_mo: [{
+    color:"#2f8f5b", icon:"⚖️", title:"Missouri Cannabis Law Watch",
+    status:"Hemp ban signed; rules pending",
+    sub:"Missouri's 2026 session moved intoxicating hemp / delta-8 into the licensed marijuana system; DHSS now writing the rules.",
+    steps:[
+      { label:"HB 2641 — Intoxicating Cannabinoid Control Act passes House", when:"Feb 19, 2026", state:"done" },
+      { label:"Senate approves (25–5); House concurs", when:"Apr 2026", state:"done" },
+      { label:"Governor signs intoxicating-hemp ban into law", when:"Apr 23, 2026", state:"done" },
+      { label:"Ban takes effect — delta-8/THC products move to licensed cannabis system", when:"Nov 12, 2026", state:"current" }
+    ],
+    next:"Watch: DHSS rulemaking on the 0.4mg-THC product cap and 21+ limit, plus any pre-filed marijuana, expungement and psychedelics bills for the 2027 session.",
+    heads:[
+      { title:"Missouri governor signs bill to ban intoxicating hemp products in November", src:"Missouri Independent", url:"https://missouriindependent.com/2026/04/23/missouri-governor-signs-bill-to-ban-intoxicating-hemp-products-in-november/" },
+      { title:"Missouri legislature passes bill that greatly restricts intoxicating hemp industry", src:"St. Louis Public Radio", url:"https://www.stlpr.org/government-politics-issues/2026-04-02/missouri-legislature-passes-bill-greatly-restricts-intoxicating-hemp-industry" },
+      { title:"Missouri cannabis bill tracking 2026", src:"Greenway Magazine", url:"https://mogreenway.com/2025/12/12/missouri-cannabis-bill-tracking-2026/" }
+    ],
+    updated:"2026-06-08"
+  }],
   science: [{
     color:"#8b5cf6", icon:"🧫", title:"InnovaPrep / Sample-Prep Watch",
     status:"Air + liquid concentration in focus",
@@ -2042,7 +2070,7 @@ function briefCardHTML(key) {
 //   type:"reference" → static reference card
 const TAB_RAIL = {
   cannabis: [ { type:"tracker", key:"cannabis" } ],
-  local:    [ { type:"bills" }, { type:"tracker", key:"local" } ],
+  local:    [ { type:"bills" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" } ],
   science:  [ { type:"tracker", key:"science" } ],
   forecast: [ { type:"data", id:"forecastOutlook" } ],
   stocks:   [ { type:"data", id:"marketSnapshot" } ],
@@ -3065,19 +3093,12 @@ async function loadForecast() {
       '<div class="fc-hero-sub">Feels '+(isFinite(c.apparent_temperature)?Math.round(c.apparent_temperature):"—")+'° · H '+hi+'° / L '+lo+'° · '+compassFromDegrees(c.wind_direction_10m)+' '+(isFinite(c.wind_speed_10m)?Math.round(c.wind_speed_10m):"—")+' mph · '+(isFinite(c.relative_humidity_2m)?c.relative_humidity_2m:"—")+'% RH</div>'+
       '<div class="fc-hero-loc">'+escapeHtml(WEATHER_LOCATION.name)+'</div></div></div>'+
     renderNowcastBar(data)+
-    '<div class="fc-sec" style="margin-top:8px">📡 Live Radar · Pleasant Hill (KEAX)</div>'+
-    '<div class="fc-radar-wrap">'+
-      '<img class="fc-radar-img" src="https://radar.weather.gov/ridge/standard/KEAX_loop.gif" alt="Live KEAX radar loop" '+
-        'onerror="this.style.display=\'none\';var w=this.parentNode;w.querySelector(\'iframe\').style.display=\'block\';w.querySelector(\'.fc-radar-tap\').style.display=\'\';">'+
-      '<iframe class="fc-radar-frame" style="display:none" loading="lazy" referrerpolicy="no-referrer" src="https://www.rainviewer.com/map.html?loc=38.369,-93.778,8&oFa=0&oC=1&oU=0&oCS=1&oF=0&oAP=1&c=3&o=83&lm=1&layer=radar&sm=1&sn=1"></iframe>'+
-      '<div class="fc-radar-tap" style="display:none" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
+    '<div class="fc-sec" style="margin-top:8px">📡 Radar · past → now → +30 min forecast (press ▶)</div>'+
+    '<div class="fc-radar-wrap fc-radar-tall">'+
+      '<iframe class="fc-radar-frame" loading="lazy" referrerpolicy="no-referrer" src="https://www.rainviewer.com/map.html?loc=38.369,-93.778,8&oFa=0&oC=1&oU=0&oCS=1&oF=0&oAP=1&c=4&o=83&lm=1&layer=radar&sm=1&sn=1&hPP=0"></iframe>'+
+      '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to play / interact</span></div>'+
     '</div>'+
-    '<div class="fc-sec">🛰 Future Radar · radar nowcast, where it\'s headed (press ▶)</div>'+
-    '<div class="fc-radar-wrap">'+
-      '<iframe class="fc-radar-frame" loading="lazy" referrerpolicy="no-referrer" src="https://www.rainviewer.com/map.html?loc=38.369,-93.778,8&oFa=0&oC=1&oU=0&oCS=1&oF=0&oAP=1&c=4&o=83&lm=1&layer=radar&sm=1&sn=1"></iframe>'+
-      '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
-    '</div>'+
-    '<a class="fc-radar" href="'+radarHref+'" target="_blank" rel="noopener">📡 Open interactive radar (zoom &amp; pan) →</a>'+
+    '<a class="fc-radar" href="'+radarHref+'" target="_blank" rel="noopener">📡 Open NWS radar full-screen →</a>'+
     '<div class="fc-smart">'+insights.map(renderSmartCard).join("")+'</div>'+
     '<div class="fc-sec">Next 72 Hours · Day &amp; Night</div>'+
     '<div id="fcPeriods" class="fc-periods"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading NWS day/night forecast…</div></div>'+
@@ -7640,6 +7661,18 @@ const BILL_STATUS_LABEL = {
   9:"In Committee", 10:"Committee Pass", 11:"Committee DNP", 12:"Draft"
 };
 
+// A bill is "dormant" when it's dead (failed/vetoed/committee-DNP) or hasn't moved
+// in over 30 days — e.g. a moratorium bill sitting idle after the session ends.
+// These collapse to a slim one-line card so they don't eat the rail to say nothing.
+function billIsDormant(b) {
+  if ([5, 6, 11].includes(b.status)) return true; // Vetoed / Failed / Committee DNP
+  const d = b.last_action_date ||
+    ((b.change_history && b.change_history.length) ? b.change_history[b.change_history.length - 1].date : "");
+  const t = d ? Date.parse(d) : NaN;
+  if (!isNaN(t) && (Date.now() - t) / 86400000 > 30) return true;
+  return false;
+}
+
 function buildBillCard(b) {
   const statusCls   = BILL_STATUS_CLASS[b.status]  || "s-intro";
   const statusLabel = BILL_STATUS_LABEL[b.status] || b.status_text || "Unknown";
@@ -7649,6 +7682,34 @@ function buildBillCard(b) {
   ).join("");
 
   const checkedAgo = b.last_checked ? relativeTime(new Date(b.last_checked).getTime()) : "";
+
+  // Dormant bills: slim header + one status line; full detail tucked behind "Details ▾".
+  if (billIsDormant(b)) {
+    const detailHtml =
+      `<div class="bill-sponsor" style="margin-top:8px">Sponsor: ${escapeHtml(b.sponsor || "")}</div>` +
+      (b.last_action ? `<div class="bill-last-action"><span class="bill-last-action-date">${escapeHtml(b.last_action_date||"")}</span> — ${escapeHtml(b.last_action)}</div>` : "") +
+      (b.summary ? `<div class="bill-summary"><div class="bill-summary-lbl">AI Summary</div>${escapeHtml(b.summary)}</div>` : "") +
+      `<div class="bill-links">` +
+        (b.legiscan_url  ? `<a class="bill-link" href="${escapeHtml(b.legiscan_url)}"  target="_blank" rel="noopener">LegiScan ↗</a>` : "") +
+        (b.mo_senate_url ? `<a class="bill-link" href="${escapeHtml(b.mo_senate_url)}" target="_blank" rel="noopener">MO Senate ↗</a>` : "") +
+      `</div>` +
+      (historyHtml ? `<div style="margin-top:10px">${historyHtml}</div>` : "");
+    return `
+<div class="bill-card bill-card-dim${b.priority ? " priority" : ""}">
+  <div class="bill-card-top">
+    <div>
+      <div class="bill-number">${escapeHtml(b.bill_number)}</div>
+      <div class="bill-title">${escapeHtml(b.title || b.description || "")}</div>
+    </div>
+    <span class="bill-status-badge ${statusCls}">${escapeHtml(statusLabel)}</span>
+  </div>
+  <div class="bill-dormant-row">
+    <span class="bill-dormant-note">No movement${b.last_action_date ? " since " + escapeHtml(b.last_action_date) : ""}</span>
+    <button class="bill-history-btn" onclick="var p=this.parentElement.nextElementSibling;p.classList.toggle('open');this.textContent=p.classList.contains('open')?'Hide ▴':'Details ▾'">Details ▾</button>
+  </div>
+  <div class="bill-details-panel">${detailHtml}</div>
+</div>`;
+  }
 
   return `
 <div class="bill-card${b.priority ? " priority" : ""}">

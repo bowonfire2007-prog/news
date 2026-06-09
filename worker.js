@@ -521,8 +521,16 @@ const TRACKERS_CONFIG = [
     color: "#3b82f6",
     icon:  "🏗️",
     title: "Solar & Data Center Watch (MO)",
-    query: "Missouri data center solar farm Ameren Evergy Google Amazon PSC",
-    scaffold: "This card tracks Missouri's data-center buildout and the solar + battery projects utilities are adding to power them. Use up to 4 step items for the biggest concrete projects/decisions (e.g. AWS Project Green, Google New Florence campus, Ameren Callaway solar farm, PSC rulings on specific solar/storage cases). state: done = built/under construction or approved, current = active/just announced, todo = pending review."
+    query: "Missouri (\"data center\" OR \"server farm\" OR hyperscale OR \"solar farm\" OR \"battery storage\") (Ameren OR Evergy OR Google OR Amazon OR Meta OR Microsoft OR PSC OR rezoning OR county)",
+    scaffold: "This card tracks ALL of Missouri's data-center / server-farm buildout AND the solar + battery-storage projects utilities are adding to power them — statewide, not just the marquee names. Draw from the widest set of headlines: new campus announcements, individual utility-scale solar/storage filings, PSC rulings, county zoning/rezoning fights, and moratoria. Use up to 4 step items for the most concrete current projects/decisions (e.g. AWS Project Green, Google New Florence campus, Ameren Callaway solar farm, Audrain/Ralls solar+battery, specific county solar votes). state: done = built/under construction or approved, current = active/just announced, todo = pending review."
+  },
+  {
+    key:   "cannabis_mo",
+    color: "#2f8f5b",
+    icon:  "⚖️",
+    title: "Missouri Cannabis Law Watch",
+    query: "Missouri (marijuana OR cannabis OR hemp OR \"delta-8\") (bill OR law OR legislature OR DHSS OR regulation OR license OR dispensary)",
+    scaffold: "This card tracks MISSOURI STATE cannabis law and legislation — NOT the federal reschedule. Missouri legalized adult-use cannabis via Amendment 3 (2022); the DHSS Division of Cannabis Regulation oversees licensing. Relevant themes: bills moving through the Missouri General Assembly affecting marijuana or intoxicating hemp / delta-8 (e.g. the 2026 Intoxicating Cannabinoid Control Act / HB 2641), DHSS rule changes, microbusiness license rounds, expungement, lab-testing and product-safety rules, and ballot measures. Use up to 4 step items for the most concrete current bills or rule changes. state: done = enacted/signed/in effect, current = active/moving/just filed, todo = pending/under review or future effective date. Base claims on the headlines or well-established facts; do not invent bill numbers or dates."
   },
   {
     key:   "science",

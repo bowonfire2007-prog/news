@@ -559,10 +559,11 @@ function parseNewsItems(xml, max) {
     const link = grab("link");
     const date = grab("pubDate");
     let src = grab("source");
+    const desc = grab("description").replace(/\s+/g, " ").trim().slice(0, 240);
     // Google News titles look like "Headline - Source"; split the source out.
     if (!src && / - [^-]+$/.test(title)) { src = title.replace(/^.*\s-\s([^-]+)$/, "$1").trim(); }
     title = title.replace(/\s-\s[^-]+$/, "").trim();
-    if (title && link) items.push({ title, src: src || "", url: link, date });
+    if (title && link) items.push({ title, src: src || "", url: link, date, desc });
   }
   return items;
 }
@@ -706,13 +707,16 @@ const BRIEFS_CONFIG = [
     feeds:[
       "https://feeds.bbci.co.uk/news/world/rss.xml",
       "https://news.google.com/rss/search?q=when:1d+site:apnews.com+world+OR+international+OR+europe+OR+asia+OR+africa&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=when:2d+site:reuters.com+world&hl=en-US&gl=US&ceid=US:en"
+      "https://news.google.com/rss/search?q=when:2d+site:reuters.com+world&hl=en-US&gl=US&ceid=US:en",
+      "https://www.theguardian.com/world/rss",
+      "https://www.aljazeera.com/xml/rss/all.xml"
     ] },
   { key:"usa", title:"U.S. Brief", icon:"🇺🇸", color:"#b8331a", focus:"the most important U.S. national news right now",
     feeds:[
       "https://news.google.com/rss/search?q=when:1d+site:apnews.com&hl=en-US&gl=US&ceid=US:en",
       "https://feeds.npr.org/1001/rss.xml",
-      "https://news.google.com/rss/search?q=when:1d+site:reuters.com+politics+OR+economy&hl=en-US&gl=US&ceid=US:en"
+      "https://news.google.com/rss/search?q=when:1d+site:reuters.com+politics+OR+economy&hl=en-US&gl=US&ceid=US:en",
+      "https://news.google.com/rss/search?q=when:1d+site:nbcnews.com+OR+site:cbsnews.com&hl=en-US&gl=US&ceid=US:en"
     ] },
   { key:"tech", title:"Tech Brief", icon:"💻", color:"#7c5cff", focus:"the most important technology news right now",
     feeds:[
@@ -722,7 +726,9 @@ const BRIEFS_CONFIG = [
   { key:"military", title:"Defense Brief", icon:"🎖️", color:"#5f6b3a", focus:"the most important defense / military news right now",
     feeds:[
       "https://news.google.com/rss/search?q=when:2d+site:apnews.com+military+OR+pentagon+OR+army+OR+navy+OR+air+force&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=when:2d+site:reuters.com+military+OR+defense+OR+pentagon+OR+troops&hl=en-US&gl=US&ceid=US:en"
+      "https://news.google.com/rss/search?q=when:2d+site:reuters.com+military+OR+defense+OR+pentagon+OR+troops&hl=en-US&gl=US&ceid=US:en",
+      "https://www.defensenews.com/arc/outboundfeeds/rss/?outputType=xml",
+      "https://breakingdefense.com/feed/"
     ] }
 ];
 
@@ -734,37 +740,56 @@ async function fetchBriefHeadlines(feeds, max) {
       .then(t => parseNewsItems(t, max || 10))
       .catch(() => [])
   ));
+  // Round-robin across feeds so one chatty feed doesn't crowd out the rest.
   const seen = new Set(), out = [];
-  for (const list of lists) {
-    for (const it of list) {
+  const cap = max || 10;
+  let added = true;
+  for (let i = 0; added && out.length < cap; i++) {
+    added = false;
+    for (const list of lists) {
+      if (out.length >= cap) break;
+      const it = list[i];
+      if (!it) continue;
       const k = it.title.toLowerCase().slice(0, 60);
       if (seen.has(k)) continue;
       seen.add(k);
       out.push(it);
+      added = true;
     }
   }
-  return out.slice(0, max || 10);
+  return out;
 }
 
-async function generateBrief(cfg, headlines, anthropicKey) {
+async function generateBrief(cfg, headlines, anthropicKey, prev) {
   const today = new Date().toISOString().slice(0, 10);
-  const list = headlines.map((h, i) => `[${i}] ${h.title} — ${h.src || "source"}${h.date ? " (" + h.date + ")" : ""}`).join("\n");
-  const prompt = `Today is ${today}. Write a tight "today's brief" capturing ${cfg.focus} for a personal news dashboard, based ONLY on these headlines.
+  const list = headlines.map((h, i) =>
+    `[${i}] ${h.title} — ${h.src || "source"}${h.date ? " (" + h.date + ")" : ""}${h.desc ? "\n    " + h.desc : ""}`
+  ).join("\n");
+  const prevBlock = (prev && prev.updated && prev.updated !== today) ? `
+
+YESTERDAY'S BRIEF (${prev.updated}) — use it to spot what CHANGED or is ONGOING. Don't repeat it; advance it:
+${prev.bigpicture || ""}
+${(prev.bullets || []).map(b => "- " + b.text).join("\n")}` : "";
+  const prompt = `Today is ${today}. You are the editor of a sharp personal daily brief covering ${cfg.focus}. Work ONLY from these headlines and summaries.
 
 HEADLINES:
-${list || "(none)"}
+${list || "(none)"}${prevBlock}
+
+Write like a smart wire editor: concrete and specific, no filler, no hedging boilerplate. Prioritize what is genuinely important over what is merely new. When a story continues from yesterday, say what changed (e.g. "day 3 — talks stalled").
 
 Return ONLY JSON (no prose, no markdown):
 {
-  "bigpicture": "<=18 word one-line read on the overall picture",
-  "bullets": [ { "text": "<=16 word point", "head_id": <integer index into the list> } ]
+  "bigpicture": "one-line read on the day, <=28 words",
+  "synthesis": "50-80 word paragraph connecting the day's threads — what actually matters and why",
+  "bullets": [ { "text": "<=24 words: the development plus why it matters", "head_id": <integer index into the list> } ],
+  "themes": [ "3-6 short lowercase phrases (2-4 words each) naming today's running stories, suitable for matching against headlines" ]
 }
-Give 3-4 bullets. Each head_id must be a valid index. Output valid JSON only.`;
+Give 3-5 bullets. Each head_id must be a valid index. Output valid JSON only.`;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": anthropicKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: env_model_safe(), max_tokens: 600, messages: [{ role: "user", content: prompt }] })
+    body: JSON.stringify({ model: env_model_safe(), max_tokens: 1200, messages: [{ role: "user", content: prompt }] })
   });
   if (!res.ok) throw new Error("Claude " + res.status);
   const data = await res.json();
@@ -773,12 +798,18 @@ Give 3-4 bullets. Each head_id must be a valid index. Output valid JSON only.`;
   if (a === -1 || z === -1) throw new Error("no JSON in model output");
   const parsed = JSON.parse(txt.slice(a, z + 1));
   const bullets = Array.isArray(parsed.bullets)
-    ? parsed.bullets.slice(0, 4).map(b => {
+    ? parsed.bullets.slice(0, 5).map(b => {
         const h = headlines[b.head_id];
-        return { text: String(b.text || "").slice(0, 160), url: h ? h.url : null, src: h ? h.src : "" };
+        return { text: String(b.text || "").slice(0, 220), url: h ? h.url : null, src: h ? h.src : "" };
       }).filter(b => b.text)
     : [];
-  return { title: cfg.title, icon: cfg.icon, color: cfg.color, bigpicture: String(parsed.bigpicture || "").slice(0, 160), bullets, updated: today };
+  const themes = Array.isArray(parsed.themes)
+    ? parsed.themes.slice(0, 8).map(t => String(t || "").trim().slice(0, 60)).filter(Boolean)
+    : [];
+  return { title: cfg.title, icon: cfg.icon, color: cfg.color,
+           bigpicture: String(parsed.bigpicture || "").slice(0, 220),
+           synthesis: String(parsed.synthesis || "").slice(0, 650),
+           bullets, themes, updated: today };
 }
 
 async function runBriefsScheduled(env, ctx, force = false) {
@@ -787,12 +818,13 @@ async function runBriefsScheduled(env, ctx, force = false) {
   const results = [];
   for (const cfg of BRIEFS_CONFIG) {
     try {
-      const headlines = await fetchBriefHeadlines(cfg.feeds, 12);
+      const headlines = await fetchBriefHeadlines(cfg.feeds, 32);
       const newHash = await hashKey(headlines.map(h => h.title).join("|"));
       const prevHash = await env.BILLS_KV.get("briefs:hash:" + cfg.key);
       const existing = await env.BILLS_KV.get("briefs:data:" + cfg.key);
       if (!force && prevHash === newHash && existing) { results.push({ key: cfg.key, changed: false }); continue; }
-      const card = await generateBrief(cfg, headlines, env.ANTHROPIC_API_KEY);
+      let prev = null; try { prev = existing ? JSON.parse(existing) : null; } catch {}
+      const card = await generateBrief(cfg, headlines, env.ANTHROPIC_API_KEY, prev);
       await env.BILLS_KV.put("briefs:data:" + cfg.key, JSON.stringify(card), { expirationTtl: 2 * 365 * 24 * 3600 });
       await env.BILLS_KV.put("briefs:hash:" + cfg.key, newHash);
       results.push({ key: cfg.key, changed: true });

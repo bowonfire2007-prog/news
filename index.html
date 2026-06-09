@@ -1210,7 +1210,7 @@
   .fc-radar-wrap { position:relative; margin-top:4px; border-radius:12px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); }
   .fc-radar-wrap .fc-radar-frame { width:100%; height:360px; border:0; display:block; }
   .fc-radar-tall .fc-radar-frame { height:480px; }
-  @media (max-width:520px) { .fc-radar-tall .fc-radar-frame { height:400px; } }
+  @media (max-width:860px) { .fc-radar-wrap .fc-radar-frame, .fc-radar-tall .fc-radar-frame { height:min(58vw, 420px); } }
   .fc-radar-ctl { position:absolute; left:10px; right:10px; bottom:10px; z-index:1000; display:flex; align-items:center; gap:9px; background:rgba(20,15,10,.74); border-radius:10px; padding:6px 11px; }
   .fc-radar-ctl button { background:none; border:0; color:#fff; font-size:15px; cursor:pointer; padding:0 2px; line-height:1; }
   .fc-radar-ctl input[type=range] { flex:1; accent-color:var(--accent); min-width:0; }
@@ -1223,7 +1223,7 @@
   .fc-radar-wrap.active .fc-radar-tap { display:none; }
   .fc-radar-wrap:not(.active) .fc-radar-frame { pointer-events:none; }
   @media (hover:hover) and (pointer:fine) { .fc-radar-tap { display:none !important; } .fc-radar-wrap .fc-radar-frame { pointer-events:auto; } }
-  @media (max-width:520px) { .fc-radar-wrap .fc-radar-frame { height:300px; } }
+  @media (max-width:520px) { .fc-radar-wrap .fc-radar-frame, .fc-radar-tall .fc-radar-frame { height:min(64vw, 270px); } }
   .fc-nowcast { margin:12px 0 4px; padding:10px 14px; border-radius:10px; font-weight:800; font-size:14px; box-shadow:var(--shadow); }
   .fc-nowcast.wet { background:color-mix(in srgb,#2f6fd0 16%,var(--card-hover)); color:#1e5aa8; border:1px solid color-mix(in srgb,#2f6fd0 35%,var(--border)); }
   [data-theme="dark"] .fc-nowcast.wet { color:#8fc1ff; }
@@ -2062,6 +2062,7 @@ function briefCardHTML(key) {
   ).join("");
   return railCardShell({ title:b.title || def.title, icon:b.icon || def.icon, color:b.color || def.color, live:true },
     (b.bigpicture ? '<div class="tc-status">' + escapeHtml(b.bigpicture) + '</div>' : '') +
+    (b.synthesis ? '<div class="tc-note" style="margin:8px 0 2px">' + escapeHtml(b.synthesis) + '</div>' : '') +
     (bullets ? '<ul class="tc-heads" style="border-top:none;padding-top:6px">' + bullets + '</ul>' : '') +
     (b.updated ? '<div class="tc-srcline">Updated ' + escapeHtml(b.updated) + '</div>' : ''));
 }
@@ -2410,9 +2411,16 @@ function escapeHtml(s) {
 }
 
 // Heat score: source weight × exponential recency decay (half-life ~12h)
+// Per-tab decay speed: hours for a story's heat to fall to 1/e. Fast-churn tabs
+// stay at 12h; slower beats keep good stories ranked for days. Unlisted tabs = 12.
+const TAB_TAU = { world:12, usa:12, business:18, ukraine:18, iran:18, tech:24, military:24, scs:24, philippines:24, science:48, cannabis:48 };
 function heatScore(item) {
   const ageHours = (Date.now() - item.pubDate) / 3600000;
-  const decay = Math.exp(-ageHours / 12);
+  const baseTau = (typeof activeCat !== "undefined" && TAB_TAU[activeCat]) || 12;
+  // Multi-source stories cool slower: each extra outlet covering the same story
+  // stretches its lifetime, so important topics stay on the tab longer.
+  const tau = Math.min(baseTau * (1 + 0.8 * ((item.sourceCount || 1) - 1)), 168);
+  const decay = Math.exp(-ageHours / tau);
   const weight = SOURCE_WEIGHT[item.source] || SOURCE_WEIGHT["default"];
   return decay * weight;
 }
@@ -9130,12 +9138,15 @@ async function loadCategory(force) {
   // Collapse same-story duplicates across every news feed (collapseByTopic preserves the
   // existing order, so each tab's own sort — e.g. local relevance — is left intact).
   deduped = collapseByTopic(deduped);
-  // In the hard-news tabs, also promote breaking/trending stories toward the top.
-  if (cat.id === "world" || cat.id === "usa" || cat.id === "military") {
-    deduped.sort((a, b) => {
-      const boost = it => (isBreaking(it.title) ? 5 : 1) * (it.trending ? 3 : 1) * (it.sourceCount >= 4 ? 1.5 : 1);
-      return (heatScore(b) * boost(b)) - (heatScore(a) * boost(a));
-    });
+  // Promote big stories on every news tab: multi-source coverage lifts a story
+  // smoothly (1 + 0.5·log2(sources)), with modest breaking/trending bumps, plus
+  // a boost for headlines matching today's AI-picked themes from the tab brief.
+  // (Local keeps its own relevance ordering from the pass above.)
+  if (cat.id !== "local") {
+    const themes = (BRIEF_DATA && BRIEF_DATA[cat.id] && Array.isArray(BRIEF_DATA[cat.id].themes)) ? BRIEF_DATA[cat.id].themes.filter(Boolean) : [];
+    const themeRe = themes.length ? new RegExp(themes.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "i") : null;
+    const boost = it => (isBreaking(it.title) ? 2 : 1) * (it.trending ? 1.5 : 1) * (1 + 0.5 * Math.log2(it.sourceCount || 1)) * (themeRe && themeRe.test(it.title) ? 1.6 : 1);
+    deduped.sort((a, b) => (heatScore(b) * boost(b)) - (heatScore(a) * boost(a)));
   }
   deduped.forEach(i => { i.isNew = lastVisit > 0 && i.pubDate > lastVisit; });
   currentItems = deduped;

@@ -1187,6 +1187,7 @@
   .fc-period-short { font-size:12px; color:var(--text-muted); font-weight:600; margin:3px 0 5px; }
   .fc-period-detail { font-size:13px; line-height:1.45; color:var(--text); font-family:"Iowan Old Style","Palatino","Georgia",serif; }
   .fc-empty { font-size:12.5px; color:var(--text-muted); padding:8px 0; }
+  .fc-src { font-size:10px; font-weight:600; color:var(--text-soft); letter-spacing:0; text-transform:none; }
   .fc-hourly { display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:4px; }
   .fc-hourly::-webkit-scrollbar { display:none; }
   .fc-hr { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:3px; background:var(--card-hover); border:1px solid var(--border); border-radius:9px; padding:8px 10px; min-width:54px; }
@@ -2975,19 +2976,62 @@ function renderSmartCard(o) {
   return '<div class="fc-card fc-'+o.lvl+'"><div class="fc-card-top"><span class="fc-card-icon">'+o.icon+'</span><span class="fc-card-title">'+escapeHtml(o.title)+'</span></div><div class="fc-card-text">'+escapeHtml(o.text)+'</div></div>';
 }
 // NWS day/night narrative forecast (api.weather.gov, CORS-enabled, no key)
-let _nwsForecastUrl = null;
+let _nwsForecastUrl = null, _nwsHourlyUrl = null;
+async function ensureNwsUrls() {
+  if (_nwsForecastUrl && _nwsHourlyUrl) return true;
+  try {
+    const pr = await fetch("https://api.weather.gov/points/"+WEATHER_LOCATION.lat+","+WEATHER_LOCATION.lon, { headers:{ "Accept":"application/geo+json" } });
+    if (!pr.ok) return false;
+    const p = (await pr.json())?.properties || {};
+    _nwsForecastUrl = p.forecast || _nwsForecastUrl;
+    _nwsHourlyUrl = p.forecastHourly || _nwsHourlyUrl;
+    return true;
+  } catch { return false; }
+}
 async function fetchNwsForecast() {
   try {
-    if (!_nwsForecastUrl) {
-      const pr = await fetch("https://api.weather.gov/points/"+WEATHER_LOCATION.lat+","+WEATHER_LOCATION.lon, { headers:{ "Accept":"application/geo+json" } });
-      if (!pr.ok) return null;
-      _nwsForecastUrl = (await pr.json())?.properties?.forecast;
-    }
+    if (!_nwsForecastUrl) await ensureNwsUrls();
     if (!_nwsForecastUrl) return null;
     const fr = await fetch(_nwsForecastUrl, { headers:{ "Accept":"application/geo+json" } });
     if (!fr.ok) return null;
     return (await fr.json())?.properties?.periods || null;
   } catch { return null; }
+}
+async function fetchNwsHourly() {
+  try {
+    if (!_nwsHourlyUrl) await ensureNwsUrls();
+    if (!_nwsHourlyUrl) return null;
+    const fr = await fetch(_nwsHourlyUrl, { headers:{ "Accept":"application/geo+json" } });
+    if (!fr.ok) return null;
+    return (await fr.json())?.properties?.periods || null;
+  } catch { return null; }
+}
+function nwsEmoji(s, day) {
+  s = (s||"").toLowerCase();
+  if (/thunder/.test(s)) return "⛈️";
+  if (/snow|flurr|wintry|sleet|ice|blizzard/.test(s)) return "🌨️";
+  if (/freezing/.test(s)) return "🌧️";
+  if (/rain|shower|drizzle/.test(s)) return "🌧️";
+  if (/fog|haze|mist|smoke/.test(s)) return "🌫️";
+  if (/cloudy|overcast/.test(s)) { if (/partly|mostly sunny|few|mostly clear/.test(s)) return day?"⛅":"☁️"; return "☁️"; }
+  if (/clear|sunny|fair/.test(s)) return day?"☀️":"🌙";
+  return day?"🌤️":"🌙";
+}
+function renderNwsHourly(periods) {
+  if (!periods || !periods.length) return null;
+  const now = Date.now();
+  let out = '<div class="fc-hourly">', n = 0;
+  for (let i=0; i<periods.length && n<18; i++) {
+    const p = periods[i];
+    const t = new Date(p.startTime).getTime();
+    if (t < now - 3600000) continue;
+    n++;
+    const pop = p.probabilityOfPrecipitation && p.probabilityOfPrecipitation.value;
+    const lbl = n===1 ? "Now" : new Date(p.startTime).toLocaleTimeString("en-US",{ hour:"numeric", timeZone:WEATHER_LOCATION.tz }).replace(/\s?AM/,"a").replace(/\s?PM/,"p");
+    const wet = isFinite(pop) && pop > 0;
+    out += '<div class="fc-hr"><div class="fc-hr-t">'+lbl+'</div><div class="fc-hr-i">'+nwsEmoji(p.shortForecast,p.isDaytime)+'</div><div class="fc-hr-d">'+p.temperature+'°</div><div class="fc-hr-p'+(wet?' wet':'')+'">'+(wet?pop+'%':'')+'</div></div>';
+  }
+  return out + '</div>';
 }
 function renderNwsPeriods(periods) {
   if (!periods || !periods.length) return '<div class="fc-empty">72-hour day/night forecast unavailable right now.</div>';
@@ -3102,11 +3146,13 @@ async function loadForecast() {
     '<div class="fc-smart">'+insights.map(renderSmartCard).join("")+'</div>'+
     '<div class="fc-sec">Next 72 Hours · Day &amp; Night</div>'+
     '<div id="fcPeriods" class="fc-periods"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading NWS day/night forecast…</div></div>'+
-    '<div class="fc-sec">Next 24 Hours</div>'+hourly+
+    '<div class="fc-sec">Next 24 Hours <span class="fc-src" id="fcHourlySrc">· model</span></div>'+
+    '<div id="fcHourly">'+hourly+'</div>'+
     '<div class="fc-sec">10-Day</div>'+tenday+
     '<div class="farm-news" style="margin-top:18px;padding:0"><div class="farm-news-inner"><div class="farm-news-head"><span class="farm-news-title">🌩️ Local Weather News</span></div><div id="fcNewsList"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading…</div></div></div></div>';
 
   fetchNwsForecast().then(periods => { const el=document.getElementById("fcPeriods"); if(el) el.innerHTML=renderNwsPeriods(periods); });
+  fetchNwsHourly().then(periods => { const h=renderNwsHourly(periods); if(!h) return; const el=document.getElementById("fcHourly"); if(el) el.innerHTML=h; const s=document.getElementById("fcHourlySrc"); if(s) s.textContent="· official NWS"; });
   loadForecastWeatherNews();
 }
 

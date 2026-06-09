@@ -2073,11 +2073,8 @@ const TAB_RAIL = {
   cannabis: [ { type:"tracker", key:"cannabis" } ],
   local:    [ { type:"bills" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" } ],
   science:  [ { type:"tracker", key:"science" } ],
-  forecast: [ { type:"data", id:"forecastOutlook" } ],
-  stocks:   [ { type:"data", id:"marketSnapshot" } ],
   world:    [ { type:"brief", key:"world" } ],
   usa:      [ { type:"brief", key:"usa" } ],
-  tech:     [ { type:"brief", key:"tech" } ],
   military: [ { type:"brief", key:"military" } ]
 };
 
@@ -3130,17 +3127,29 @@ async function loadForecast() {
   tenday+='</div>';
 
   const radarHref="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My43NzgsMzguMzY4Nl0sImxvY2F0aW9uIjpudWxsLCJ6b29tIjo4LCJmaWx0ZXJpbmciOnRydWUsImxheWVyIjoiYnJlZiIsInN0YXRpb24iOiJLRUFYIn19";
+  const fmtSun = iso => { try { return new Date(iso).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:WEATHER_LOCATION.tz}).replace(' AM','a').replace(' PM','p'); } catch { return ''; } };
+  const sunLine = d.sunrise?.[tIdx]&&d.sunset?.[tIdx] ? ' · ☀️ '+fmtSun(d.sunrise[tIdx])+' 🌙 '+fmtSun(d.sunset[tIdx]) : '';
+  // Windy embeds: fully interactive (drag to pan, +/- or scroll to zoom, scrubbable timeline).
+  const windyBase = "https://embed.windy.com/embed2.html?lat="+WEATHER_LOCATION.lat+"&lon="+WEATHER_LOCATION.lon+"&detailLat="+WEATHER_LOCATION.lat+"&detailLon="+WEATHER_LOCATION.lon+"&marker=true&calendar=now&type=map&location=coordinates&level=surface&metricWind=mph&metricTemp=%C2%B0F";
+  const liveRadarSrc   = windyBase + "&zoom=8&overlay=radar&product=radar&radarRange=-1";
+  const futureRadarSrc = windyBase + "&zoom=7&overlay=rain&product=ecmwf";
 
   listEl.innerHTML =
     '<div class="fc-hero"><div class="fc-hero-temp">'+(isFinite(c.temperature_2m)?Math.round(c.temperature_2m):"—")+'°</div>'+
       '<div class="fc-hero-meta"><div class="fc-hero-cond">'+entry[1]+' '+escapeHtml(entry[0])+'</div>'+
-      '<div class="fc-hero-sub">Feels '+(isFinite(c.apparent_temperature)?Math.round(c.apparent_temperature):"—")+'° · H '+hi+'° / L '+lo+'° · '+compassFromDegrees(c.wind_direction_10m)+' '+(isFinite(c.wind_speed_10m)?Math.round(c.wind_speed_10m):"—")+' mph · '+(isFinite(c.relative_humidity_2m)?c.relative_humidity_2m:"—")+'% RH</div>'+
+      '<div class="fc-hero-sub">Feels '+(isFinite(c.apparent_temperature)?Math.round(c.apparent_temperature):"—")+'° · H '+hi+'° / L '+lo+'° · '+compassFromDegrees(c.wind_direction_10m)+' '+(isFinite(c.wind_speed_10m)?Math.round(c.wind_speed_10m):"—")+' mph · '+(isFinite(c.relative_humidity_2m)?c.relative_humidity_2m:"—")+'% RH'+sunLine+'</div>'+
       '<div class="fc-hero-loc">'+escapeHtml(WEATHER_LOCATION.name)+'</div></div></div>'+
+    '<div id="fcAlerts"></div>'+
     renderNowcastBar(data)+
-    '<div class="fc-sec" style="margin-top:8px">📡 Radar · past → now → +30 min forecast (press ▶)</div>'+
+    '<div class="fc-sec" style="margin-top:8px">📡 Live Radar · drag to pan · scroll or +/− to zoom</div>'+
     '<div class="fc-radar-wrap fc-radar-tall">'+
-      '<iframe class="fc-radar-frame" loading="lazy" referrerpolicy="no-referrer" src="https://www.rainviewer.com/map.html?loc=38.369,-93.778,8&oFa=0&oC=1&oU=0&oCS=1&oF=0&oAP=1&c=4&o=83&lm=1&layer=radar&sm=1&sn=1&hPP=0"></iframe>'+
-      '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to play / interact</span></div>'+
+      '<iframe class="fc-radar-frame" loading="lazy" src="'+liveRadarSrc+'"></iframe>'+
+      '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
+    '</div>'+
+    '<div class="fc-sec">🌧 Future Radar · drag the timeline to look hours &amp; days ahead</div>'+
+    '<div class="fc-radar-wrap fc-radar-tall">'+
+      '<iframe class="fc-radar-frame" loading="lazy" src="'+futureRadarSrc+'"></iframe>'+
+      '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
     '</div>'+
     '<a class="fc-radar" href="'+radarHref+'" target="_blank" rel="noopener">📡 Open NWS radar full-screen →</a>'+
     '<div class="fc-smart">'+insights.map(renderSmartCard).join("")+'</div>'+
@@ -3151,6 +3160,13 @@ async function loadForecast() {
     '<div class="fc-sec">10-Day</div>'+tenday+
     '<div class="farm-news" style="margin-top:18px;padding:0"><div class="farm-news-inner"><div class="farm-news-head"><span class="farm-news-title">🌩️ Local Weather News</span></div><div id="fcNewsList"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading…</div></div></div></div>';
 
+  // Active NWS alerts banner (was in the old right-hand rail card).
+  fetch("https://api.weather.gov/alerts/active?point="+WEATHER_LOCATION.lat+","+WEATHER_LOCATION.lon,{headers:{"Accept":"application/geo+json"}})
+    .then(r=>r.ok?r.json():null)
+    .then(a=>{ const el=document.getElementById("fcAlerts");
+      if(!el||!a||!a.features||!a.features.length) return;
+      el.innerHTML=a.features.slice(0,3).map(f=>{const p=f.properties||{};return '<div class="fc-alert" style="margin:10px 0 0">⚠ '+escapeHtml(p.event||"Weather alert")+'</div>';}).join("");
+    }).catch(()=>{});
   fetchNwsForecast().then(periods => { const el=document.getElementById("fcPeriods"); if(el) el.innerHTML=renderNwsPeriods(periods); });
   fetchNwsHourly().then(periods => { const h=renderNwsHourly(periods); if(!h) return; const el=document.getElementById("fcHourly"); if(el) el.innerHTML=h; const s=document.getElementById("fcHourlySrc"); if(s) s.textContent="· official NWS"; });
   loadForecastWeatherNews();

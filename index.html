@@ -1208,17 +1208,22 @@
   .fc-d-hl { text-align:right; font-variant-numeric:tabular-nums; color:var(--text-muted); } .fc-d-hl b { color:var(--text); }
   .fc-radar { display:inline-block; margin-top:10px; padding:8px 16px; border-radius:8px; background:var(--accent); color:var(--bg); font-weight:800; font-size:13px; box-shadow:var(--shadow); }
   .fc-radar-wrap { position:relative; margin-top:4px; border-radius:12px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); }
-  .fc-radar-wrap iframe { width:100%; height:360px; border:0; display:block; }
-  .fc-radar-tall iframe { height:480px; }
-  @media (max-width:520px) { .fc-radar-tall iframe { height:400px; } }
+  .fc-radar-wrap .fc-radar-frame { width:100%; height:360px; border:0; display:block; }
+  .fc-radar-tall .fc-radar-frame { height:480px; }
+  @media (max-width:520px) { .fc-radar-tall .fc-radar-frame { height:400px; } }
+  .fc-radar-ctl { position:absolute; left:10px; right:10px; bottom:10px; z-index:1000; display:flex; align-items:center; gap:9px; background:rgba(20,15,10,.74); border-radius:10px; padding:6px 11px; }
+  .fc-radar-ctl button { background:none; border:0; color:#fff; font-size:15px; cursor:pointer; padding:0 2px; line-height:1; }
+  .fc-radar-ctl input[type=range] { flex:1; accent-color:var(--accent); min-width:0; }
+  .fc-radar-time { color:#fff; font-size:11.5px; font-weight:700; white-space:nowrap; }
+  .fc-radar-time.future { color:#ffd27a; }
   .fc-radar-img { width:100%; display:block; background:var(--card-hover); }
   /* Tap-to-interact overlay so embedded maps don't hijack page scroll on touch devices */
-  .fc-radar-tap { position:absolute; inset:0; z-index:2; display:flex; align-items:flex-end; justify-content:center; padding-bottom:12px; cursor:pointer; }
+  .fc-radar-tap { position:absolute; inset:0; z-index:1001; display:flex; align-items:flex-end; justify-content:center; padding-bottom:12px; cursor:pointer; }
   .fc-radar-tap span { background:rgba(20,15,10,.62); color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.02em; padding:6px 13px; border-radius:20px; }
   .fc-radar-wrap.active .fc-radar-tap { display:none; }
-  .fc-radar-wrap:not(.active) iframe.fc-radar-frame { pointer-events:none; }
-  @media (hover:hover) and (pointer:fine) { .fc-radar-tap { display:none !important; } .fc-radar-wrap iframe.fc-radar-frame { pointer-events:auto; } }
-  @media (max-width:520px) { .fc-radar-wrap iframe { height:300px; } }
+  .fc-radar-wrap:not(.active) .fc-radar-frame { pointer-events:none; }
+  @media (hover:hover) and (pointer:fine) { .fc-radar-tap { display:none !important; } .fc-radar-wrap .fc-radar-frame { pointer-events:auto; } }
+  @media (max-width:520px) { .fc-radar-wrap .fc-radar-frame { height:300px; } }
   .fc-nowcast { margin:12px 0 4px; padding:10px 14px; border-radius:10px; font-weight:800; font-size:14px; box-shadow:var(--shadow); }
   .fc-nowcast.wet { background:color-mix(in srgb,#2f6fd0 16%,var(--card-hover)); color:#1e5aa8; border:1px solid color-mix(in srgb,#2f6fd0 35%,var(--border)); }
   [data-theme="dark"] .fc-nowcast.wet { color:#8fc1ff; }
@@ -3085,6 +3090,66 @@ function renderNowcastBar(data) {
   return '<div class="fc-nowcast dry">☀️ No rain expected in the next 2 hours</div>';
 }
 
+// ── Live radar: Leaflet + RainViewer tiles, built in-page (no third-party iframe) ──
+let FC_RADAR_MAP=null, FC_RADAR_TIMER=null;
+function ensureLeaflet(){
+  if (window.L) return Promise.resolve();
+  if (window.__leafletP) return window.__leafletP;
+  window.__leafletP = new Promise((res,rej)=>{
+    const c=document.createElement("link"); c.rel="stylesheet";
+    c.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
+    document.head.appendChild(c);
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+    s.onload=res; s.onerror=()=>{ window.__leafletP=null; rej(new Error("Leaflet failed to load")); };
+    document.head.appendChild(s);
+  });
+  return window.__leafletP;
+}
+async function initForecastRadar(){
+  const el=document.getElementById("fcRadarMap"); if(!el) return;
+  if (FC_RADAR_TIMER){ clearInterval(FC_RADAR_TIMER); FC_RADAR_TIMER=null; }
+  if (FC_RADAR_MAP){ try{ FC_RADAR_MAP.remove(); }catch{} FC_RADAR_MAP=null; }
+  try{
+    await ensureLeaflet();
+    const rv=await fetch("https://api.rainviewer.com/public/weather-maps.json").then(r=>r.json());
+    const past=(rv.radar&&rv.radar.past)||[], nowcast=(rv.radar&&rv.radar.nowcast)||[];
+    const frames=past.concat(nowcast);
+    if(!frames.length) throw new Error("no radar frames");
+    const dark=document.documentElement.getAttribute("data-theme")==="dark";
+    const map=L.map(el,{center:[WEATHER_LOCATION.lat,WEATHER_LOCATION.lon],zoom:8,minZoom:4,maxZoom:11});
+    FC_RADAR_MAP=map;
+    map.attributionControl.setPrefix(false);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/"+(dark?"dark_all":"light_all")+"/{z}/{x}/{y}{r}.png",
+      {attribution:"&copy; OSM &copy; CARTO &copy; RainViewer", maxZoom:11}).addTo(map);
+    L.circleMarker([WEATHER_LOCATION.lat,WEATHER_LOCATION.lon],{radius:5,color:"#b8331a",weight:2,fillColor:"#b8331a",fillOpacity:.55}).addTo(map);
+    // RainViewer free tiles only go to z7 natively; Leaflet upscales beyond that.
+    const layers=frames.map(f=>L.tileLayer(rv.host+f.path+"/256/{z}/{x}/{y}/4/1_1.png",{opacity:0,maxNativeZoom:7,maxZoom:11}).addTo(map));
+    const lbl=document.getElementById("fcRadarTime"), slider=document.getElementById("fcRadarSlider"), btn=document.getElementById("fcRadarPlay");
+    if(slider) slider.max=String(frames.length-1);
+    let idx=Math.max(past.length-1,0);
+    function show(i){
+      idx=((i%frames.length)+frames.length)%frames.length;
+      layers.forEach((l,j)=>l.setOpacity(j===idx?0.7:0));
+      if(slider) slider.value=String(idx);
+      if(lbl){
+        const mins=Math.round((frames[idx].time*1000-Date.now())/60000);
+        const clock=new Date(frames[idx].time*1000).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:WEATHER_LOCATION.tz});
+        lbl.textContent=clock+(mins>1?" (+"+mins+"m)":mins<=-2?" ("+Math.abs(mins)+"m ago)":" (now)");
+        lbl.classList.toggle("future",mins>1);
+      }
+    }
+    function pause(){ if(FC_RADAR_TIMER){ clearInterval(FC_RADAR_TIMER); FC_RADAR_TIMER=null; } if(btn) btn.textContent="▶"; }
+    function play(){ pause(); FC_RADAR_TIMER=setInterval(()=>{ if(!document.getElementById("fcRadarMap")){ pause(); return; } show(idx+1); },650); if(btn) btn.textContent="⏸"; }
+    if(btn) btn.onclick=()=>FC_RADAR_TIMER?pause():play();
+    if(slider) slider.oninput=e=>{ pause(); show(+e.target.value); };
+    show(idx); play();
+  }catch(e){
+    el.innerHTML='<div class="status" style="padding:24px;text-align:center">Radar unavailable right now — use the NWS link below.</div>';
+    const lbl=document.getElementById("fcRadarTime"); if(lbl) lbl.textContent="—";
+  }
+}
+
 async function loadForecast() {
   listEl.innerHTML = '<div class="status" style="padding:20px 0"><span class="spinner"></span> Loading forecast…</div>';
   let data = getCachedWeather();
@@ -3129,9 +3194,8 @@ async function loadForecast() {
   const radarHref="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My43NzgsMzguMzY4Nl0sImxvY2F0aW9uIjpudWxsLCJ6b29tIjo4LCJmaWx0ZXJpbmciOnRydWUsImxheWVyIjoiYnJlZiIsInN0YXRpb24iOiJLRUFYIn19";
   const fmtSun = iso => { try { return new Date(iso).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:WEATHER_LOCATION.tz}).replace(' AM','a').replace(' PM','p'); } catch { return ''; } };
   const sunLine = d.sunrise?.[tIdx]&&d.sunset?.[tIdx] ? ' · ☀️ '+fmtSun(d.sunrise[tIdx])+' 🌙 '+fmtSun(d.sunset[tIdx]) : '';
-  // Windy embeds: fully interactive (drag to pan, +/- or scroll to zoom, scrubbable timeline).
+  // Future radar = Windy embed (interactive, scrubbable days ahead). Live radar is built in-page below.
   const windyBase = "https://embed.windy.com/embed2.html?lat="+WEATHER_LOCATION.lat+"&lon="+WEATHER_LOCATION.lon+"&detailLat="+WEATHER_LOCATION.lat+"&detailLon="+WEATHER_LOCATION.lon+"&marker=true&calendar=now&type=map&location=coordinates&level=surface&metricWind=mph&metricTemp=%C2%B0F";
-  const liveRadarSrc   = windyBase + "&zoom=8&overlay=radar&product=radar&radarRange=-1";
   const futureRadarSrc = windyBase + "&zoom=7&overlay=rain&product=ecmwf";
 
   listEl.innerHTML =
@@ -3143,7 +3207,8 @@ async function loadForecast() {
     renderNowcastBar(data)+
     '<div class="fc-sec" style="margin-top:8px">📡 Live Radar · drag to pan · scroll or +/− to zoom</div>'+
     '<div class="fc-radar-wrap fc-radar-tall">'+
-      '<iframe class="fc-radar-frame" loading="lazy" src="'+liveRadarSrc+'"></iframe>'+
+      '<div id="fcRadarMap" class="fc-radar-frame"></div>'+
+      '<div class="fc-radar-ctl"><button id="fcRadarPlay" type="button" title="Play / pause">▶</button><input id="fcRadarSlider" type="range" min="0" max="0" value="0"><span class="fc-radar-time" id="fcRadarTime">Loading…</span></div>'+
       '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
     '</div>'+
     '<div class="fc-sec">🌧 Future Radar · drag the timeline to look hours &amp; days ahead</div>'+
@@ -3160,6 +3225,7 @@ async function loadForecast() {
     '<div class="fc-sec">10-Day</div>'+tenday+
     '<div class="farm-news" style="margin-top:18px;padding:0"><div class="farm-news-inner"><div class="farm-news-head"><span class="farm-news-title">🌩️ Local Weather News</span></div><div id="fcNewsList"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading…</div></div></div></div>';
 
+  initForecastRadar();
   // Active NWS alerts banner (was in the old right-hand rail card).
   fetch("https://api.weather.gov/alerts/active?point="+WEATHER_LOCATION.lat+","+WEATHER_LOCATION.lon,{headers:{"Accept":"application/geo+json"}})
     .then(r=>r.ok?r.json():null)

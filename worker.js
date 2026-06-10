@@ -261,24 +261,15 @@ async function handleWeeklyRefresh(request, env, ctx) {
 // Secrets needed: ANTHROPIC_API_KEY (already bound), NOTIFY_TARGET (optional).
 // KV: BILLS_KV (bound in wrangler.toml).
 
-const TRACKED_BILLS_CONFIG = [
-  {
-    key:         "sb849",
-    bill_number: "SB 849",
-    sponsor:     "O'Laughlin",
-    description: "Statewide moratorium on new & ongoing commercial solar (has emergency clause)",
-    bts_bill_id: null,   // auto-discovered from bill list on first run
-    priority:    true
-  },
-  {
-    key:         "sb933",
-    bill_number: "SB 933",
-    sponsor:     "Crawford",
-    description: "Parallel commercial solar moratorium",
-    bts_bill_id: 547,    // confirmed from senate.mo.gov BTS
-    priority:    false
-  }
-];
+// Session over — the legislature adjourned in May 2026, so SB 849 / SB 933
+// (commercial-solar moratoria) died on adjournment and were removed.
+// To track bills again when the January 2027 session opens:
+//   1. Add entries here like:
+//        { key:"sb849", bill_number:"SB 849", sponsor:"O'Laughlin",
+//          description:"What it does", bts_bill_id:null, priority:true }
+//   2. Bump LEGISCAN_YEAR below to 2027.
+//   3. Re-add { type:"bills" } to TAB_RAIL.local in index.html.
+const TRACKED_BILLS_CONFIG = [];
 
 const LEGISCAN_YEAR = 2026; // MO regular session year — bump each January
 const BTS_UA = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" };

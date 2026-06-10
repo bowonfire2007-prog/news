@@ -729,7 +729,7 @@ const BRIEFS_CONFIG = [
       "https://missouriindependent.com/feed/",
       "https://www.kcur.org/news.rss"
     ] },
-  { key:"mostate", title:"Missouri Brief", icon:"🏛️", color:"#8a6d3a", focus:"statewide Missouri news — state government and the legislature in Jefferson City, courts, economy, agriculture, and stories that affect the whole state, with special attention to anything touching rural west-central Missouri",
+  { key:"mostate", title:"Missouri Brief", icon:"🏛️", color:"#8a6d3a", focus:"statewide Missouri news — state government and the legislature in Jefferson City, courts, economy, agriculture, and stories that affect the whole state, with special attention to anything touching rural west-central Missouri; ALWAYS call out bills the governor signs or vetoes and new laws about to take effect",
     feeds:[
       "https://missouriindependent.com/feed/",
       "https://themissouritimes.com/feed/",

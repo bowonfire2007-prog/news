@@ -2067,6 +2067,55 @@ function briefCardHTML(key) {
     (b.updated ? '<div class="tc-srcline">Updated ' + escapeHtml(b.updated) + '</div>' : ''));
 }
 
+// ── TOPIC WATCH ────────────────────────────────────────────────────────────
+// Pinned "keeping tabs on" cards for the right rail. Each topic stays on its
+// tab permanently and always shows the latest matching coverage, even when the
+// story isn't hot — new items get a red ● until you've seen them.
+// To tag a new topic, add one line to its tab:
+//   { label:"Card title", icon:"🗂️", q:'google news search query' }
+// q uses Google News search syntax: quotes for exact phrases, OR between terms.
+const WATCH_TOPICS = {
+  usa: [
+    { label:"Epstein Case", icon:"🗂️", q:'"Jeffrey Epstein" OR "Epstein files" OR "Ghislaine Maxwell"' }
+  ],
+  world: [],
+  local: []
+};
+
+async function renderWatchCards(slot) {
+  const topics = WATCH_TOPICS[activeCat] || [];
+  if (!topics.length) { slot.innerHTML = ""; return; }
+  const shell = (t, body) => railCardShell({ title:t.label, icon:t.icon || "🏷️", color:t.color || "#8a6da3" }, body);
+  slot.innerHTML = topics.map(t => shell(t, '<div class="rail-loading"><span class="spinner"></span>Loading…</div>')).join("");
+  const one = async (t) => {
+    const url = "https://news.google.com/rss/search?q=" + encodeURIComponent(t.q) + "&hl=en-US&gl=US&ceid=US:en";
+    try {
+      const items = (await fetchFeed({ source:t.label, url })).slice()
+        .sort((a, b) => (b.pubDate || 0) - (a.pubDate || 0)).slice(0, 4);
+      if (!items.length) throw new Error("empty");
+      const seenKey = "watch.seen." + t.label;
+      const lastSeen = +localStorage.getItem(seenKey) || 0;
+      try { localStorage.setItem(seenKey, String(Math.max(lastSeen, items[0].pubDate || 0))); } catch {}
+      const rows = items.map(it => {
+        // Google News titles end in " - Source"; split it out for the byline.
+        let title = it.title, src = "";
+        const m = title.match(/^(.*)\s-\s([^-]+)$/);
+        if (m) { title = m[1].trim(); src = m[2].trim(); }
+        return '<li class="tc-head"><a href="' + encodeURI(it.link) + '" target="_blank" rel="noopener">' +
+          ((it.pubDate || 0) > lastSeen && lastSeen > 0 ? '<span style="color:var(--accent);font-weight:800">● </span>' : '') +
+          escapeHtml(title) + '</a>' +
+          '<span class="tc-head-src">' + escapeHtml(src) + (it.pubDate ? (src ? ' · ' : '') + relativeTime(it.pubDate) : '') + '</span></li>';
+      }).join("");
+      return shell(t, '<ul class="tc-heads" style="border-top:none;padding-top:2px">' + rows + '</ul>' +
+        '<div class="tc-srcline">Tagged topic · latest coverage stays pinned here</div>');
+    } catch {
+      return shell(t, '<div class="rail-err">No coverage loaded right now — will retry on next visit.</div>');
+    }
+  };
+  const html = await Promise.all(topics.map(one));
+  if (slot.isConnected) slot.innerHTML = html.join("");
+}
+
 // ── RIGHT-COLUMN RAIL ──────────────────────────────────────────────────────
 // The rail is a stack of modules configured per tab in TAB_RAIL. Each module's
 // `type` is handled by renderRailModule, so adding a rail to a tab is one entry.
@@ -2074,13 +2123,14 @@ function briefCardHTML(key) {
 //   type:"bills"     → Missouri legislative tracker (async, loads once per tab)
 //   type:"data"      → live card from a worker endpoint (Phase 2+)
 //   type:"brief"     → cached AI digest of the tab (Phase 4)
+//   type:"watch"     → pinned topic-watch cards from WATCH_TOPICS (by tab)
 //   type:"reference" → static reference card
 const TAB_RAIL = {
   cannabis: [ { type:"tracker", key:"cannabis" } ],
-  local:    [ { type:"brief", key:"local" }, { type:"bills" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" } ],
+  local:    [ { type:"brief", key:"local" }, { type:"watch" }, { type:"bills" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" } ],
   science:  [ { type:"tracker", key:"science" } ],
-  world:    [ { type:"brief", key:"world" } ],
-  usa:      [ { type:"brief", key:"usa" } ],
+  world:    [ { type:"brief", key:"world" }, { type:"watch" } ],
+  usa:      [ { type:"brief", key:"usa" }, { type:"watch" } ],
   military: [ { type:"brief", key:"military" } ]
 };
 
@@ -2263,6 +2313,9 @@ function renderRailModule(slot, mod, firstTime) {
     }
     case "brief":
       slot.innerHTML = briefCardHTML(mod.key || activeCat);
+      break;
+    case "watch":
+      if (firstTime) renderWatchCards(slot); // async; fills its own slot
       break;
     default:
       slot.innerHTML = "";

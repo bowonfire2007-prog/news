@@ -2078,8 +2078,12 @@ const WATCH_TOPICS = {
   usa: [
     { label:"Epstein Case", icon:"🗂️", q:'"Jeffrey Epstein" OR "Epstein files" OR "Ghislaine Maxwell"' }
   ],
-  world: [],
-  local: []
+  world: [
+    { label:"South China Sea", icon:"🚢", color:"#2f6fd0", q:'"South China Sea" OR "Scarborough Shoal" OR "Second Thomas Shoal" OR "Spratly Islands"' }
+  ],
+  local: [
+    { label:"World Cup in KC", icon:"⚽", color:"#c49b3f", q:'"World Cup" "Kansas City" OR "FIFA" "Arrowhead" OR "World Cup 2026" Missouri' }
+  ]
 };
 
 async function renderWatchCards(slot) {

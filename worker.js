@@ -729,6 +729,14 @@ const BRIEFS_CONFIG = [
       "https://news.google.com/rss/search?q=when:2d+site:reuters.com+military+OR+defense+OR+pentagon+OR+troops&hl=en-US&gl=US&ceid=US:en",
       "https://www.defensenews.com/arc/outboundfeeds/rss/?outputType=xml",
       "https://breakingdefense.com/feed/"
+    ] },
+  { key:"local", title:"Local Brief", icon:"📍", color:"#3d9e4e", focus:"local news for Clinton Missouri, Henry County, Truman Lake, and west-central Missouri, plus statewide Missouri news that affects rural west-central communities — always lead with the most local stories",
+    feeds:[
+      "https://news.google.com/rss/search?q=%22Clinton+Missouri%22+OR+%22Henry+County%22+Missouri+OR+%22Truman+Lake%22&hl=en-US&gl=US&ceid=US:en",
+      "https://news.google.com/rss/search?q=%22Benton+County%22+OR+%22St.+Clair+County%22+OR+%22Bates+County%22+Missouri+OR+%22Warsaw%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en",
+      "https://news.google.com/rss/search?q=Sedalia+OR+Warrensburg+OR+%22Whiteman+AFB%22+Missouri&hl=en-US&gl=US&ceid=US:en",
+      "https://missouriindependent.com/feed/",
+      "https://www.kcur.org/news.rss"
     ] }
 ];
 

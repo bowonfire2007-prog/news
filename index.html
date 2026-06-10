@@ -2049,9 +2049,9 @@ async function loadBriefs() {
 
 function briefCardHTML(key) {
   const b = BRIEF_DATA && BRIEF_DATA[key];
-  const def = { title: ({ world:"World Brief", usa:"U.S. Brief", tech:"Tech Brief", military:"Defense Brief" })[key] || "Today’s Brief",
-                icon:  ({ world:"🌍", usa:"🇺🇸", tech:"💻", military:"🎖️" })[key] || "📰",
-                color: ({ world:"#3b82f6", usa:"#b8331a", tech:"#7c5cff", military:"#5f6b3a" })[key] || "var(--sage)", live:true };
+  const def = { title: ({ world:"World Brief", usa:"U.S. Brief", tech:"Tech Brief", military:"Defense Brief", local:"Local Brief" })[key] || "Today’s Brief",
+                icon:  ({ world:"🌍", usa:"🇺🇸", tech:"💻", military:"🎖️", local:"📍" })[key] || "📰",
+                color: ({ world:"#3b82f6", usa:"#b8331a", tech:"#7c5cff", military:"#5f6b3a", local:"#3d9e4e" })[key] || "var(--sage)", live:true };
   if (!b) return railCardShell({ ...def, live:false }, '<div class="tc-note">Today’s brief refreshes each morning.</div>');
   const bullets = (b.bullets || []).map(x =>
     '<li class="tc-head">' +
@@ -2077,7 +2077,7 @@ function briefCardHTML(key) {
 //   type:"reference" → static reference card
 const TAB_RAIL = {
   cannabis: [ { type:"tracker", key:"cannabis" } ],
-  local:    [ { type:"bills" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" } ],
+  local:    [ { type:"brief", key:"local" }, { type:"bills" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" } ],
   science:  [ { type:"tracker", key:"science" } ],
   world:    [ { type:"brief", key:"world" } ],
   usa:      [ { type:"brief", key:"usa" } ],

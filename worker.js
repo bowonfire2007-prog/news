@@ -730,13 +730,21 @@ const BRIEFS_CONFIG = [
       "https://www.defensenews.com/arc/outboundfeeds/rss/?outputType=xml",
       "https://breakingdefense.com/feed/"
     ] },
-  { key:"local", title:"Local Brief", icon:"📍", color:"#3d9e4e", focus:"local news for Clinton Missouri, Henry County, Truman Lake, and west-central Missouri, plus statewide Missouri news that affects rural west-central communities — always lead with the most local stories",
+  { key:"local", title:"Local Brief", icon:"📍", color:"#3d9e4e", focus:"local news for Clinton Missouri, Henry County, Truman Lake, and west-central Missouri — always lead with the most local stories (statewide policy news belongs in the Missouri Brief, not here)",
     feeds:[
       "https://news.google.com/rss/search?q=%22Clinton+Missouri%22+OR+%22Henry+County%22+Missouri+OR+%22Truman+Lake%22&hl=en-US&gl=US&ceid=US:en",
       "https://news.google.com/rss/search?q=%22Benton+County%22+OR+%22St.+Clair+County%22+OR+%22Bates+County%22+Missouri+OR+%22Warsaw%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en",
       "https://news.google.com/rss/search?q=Sedalia+OR+Warrensburg+OR+%22Whiteman+AFB%22+Missouri&hl=en-US&gl=US&ceid=US:en",
       "https://missouriindependent.com/feed/",
       "https://www.kcur.org/news.rss"
+    ] },
+  { key:"mostate", title:"Missouri Brief", icon:"🏛️", color:"#8a6d3a", focus:"statewide Missouri news — state government and the legislature in Jefferson City, courts, economy, agriculture, and stories that affect the whole state, with special attention to anything touching rural west-central Missouri",
+    feeds:[
+      "https://missouriindependent.com/feed/",
+      "https://themissouritimes.com/feed/",
+      "https://news.google.com/rss/search?q=site%3Amissourinet.com&hl=en-US&gl=US&ceid=US:en",
+      "https://news.google.com/rss/search?q=Missouri+legislature+OR+%22Missouri+Senate%22+OR+%22Missouri+House%22+OR+Kehoe&hl=en-US&gl=US&ceid=US:en",
+      "https://news.google.com/rss/search?q=when:1d+site:stltoday.com&hl=en-US&gl=US&ceid=US:en"
     ] }
 ];
 

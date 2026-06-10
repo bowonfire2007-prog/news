@@ -2049,9 +2049,9 @@ async function loadBriefs() {
 
 function briefCardHTML(key) {
   const b = BRIEF_DATA && BRIEF_DATA[key];
-  const def = { title: ({ world:"World Brief", usa:"U.S. Brief", tech:"Tech Brief", military:"Defense Brief", local:"Local Brief" })[key] || "Today’s Brief",
-                icon:  ({ world:"🌍", usa:"🇺🇸", tech:"💻", military:"🎖️", local:"📍" })[key] || "📰",
-                color: ({ world:"#3b82f6", usa:"#b8331a", tech:"#7c5cff", military:"#5f6b3a", local:"#3d9e4e" })[key] || "var(--sage)", live:true };
+  const def = { title: ({ world:"World Brief", usa:"U.S. Brief", tech:"Tech Brief", military:"Defense Brief", local:"Local Brief", mostate:"Missouri Brief" })[key] || "Today’s Brief",
+                icon:  ({ world:"🌍", usa:"🇺🇸", tech:"💻", military:"🎖️", local:"📍", mostate:"🏛️" })[key] || "📰",
+                color: ({ world:"#3b82f6", usa:"#b8331a", tech:"#7c5cff", military:"#5f6b3a", local:"#3d9e4e", mostate:"#8a6d3a" })[key] || "var(--sage)", live:true };
   if (!b) return railCardShell({ ...def, live:false }, '<div class="tc-note">Today’s brief refreshes each morning.</div>');
   const bullets = (b.bullets || []).map(x =>
     '<li class="tc-head">' +
@@ -2082,7 +2082,7 @@ const WATCH_TOPICS = {
     { label:"South China Sea", icon:"🚢", color:"#2f6fd0", q:'"South China Sea" OR "Scarborough Shoal" OR "Second Thomas Shoal" OR "Spratly Islands"' }
   ],
   local: [
-    { label:"World Cup in KC", icon:"⚽", color:"#c49b3f", q:'"World Cup" "Kansas City" OR "FIFA" "Arrowhead" OR "World Cup 2026" Missouri' }
+    { label:"World Cup in KC", icon:"⚽", color:"#c49b3f", q:'"FIFA World Cup" "Kansas City" OR "Arrowhead Stadium"' }
   ]
 };
 
@@ -2092,7 +2092,9 @@ async function renderWatchCards(slot) {
   const shell = (t, body) => railCardShell({ title:t.label, icon:t.icon || "🏷️", color:t.color || "#8a6da3" }, body);
   slot.innerHTML = topics.map(t => shell(t, '<div class="rail-loading"><span class="spinner"></span>Loading…</div>')).join("");
   const one = async (t) => {
-    const url = "https://news.google.com/rss/search?q=" + encodeURIComponent(t.q) + "&hl=en-US&gl=US&ceid=US:en";
+    // Google's RSS endpoint 503s on %20-encoded queries via the proxy — use +
+    // for spaces like every other feed URL on the site.
+    const url = "https://news.google.com/rss/search?q=" + encodeURIComponent(t.q).replace(/%20/g, "+") + "&hl=en-US&gl=US&ceid=US:en";
     try {
       const items = (await fetchFeed({ source:t.label, url })).slice()
         .sort((a, b) => (b.pubDate || 0) - (a.pubDate || 0)).slice(0, 4);
@@ -2131,7 +2133,7 @@ async function renderWatchCards(slot) {
 //   type:"reference" → static reference card
 const TAB_RAIL = {
   cannabis: [ { type:"tracker", key:"cannabis" } ],
-  local:    [ { type:"brief", key:"local" }, { type:"watch" }, { type:"bills" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" } ],
+  local:    [ { type:"brief", key:"local" }, { type:"brief", key:"mostate" }, { type:"watch" }, { type:"bills" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" } ],
   science:  [ { type:"tracker", key:"science" } ],
   world:    [ { type:"brief", key:"world" }, { type:"watch" } ],
   usa:      [ { type:"brief", key:"usa" }, { type:"watch" } ],

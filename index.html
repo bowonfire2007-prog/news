@@ -1218,6 +1218,10 @@
   .fc-radar-time.future { color:#ffd27a; }
   .fc-radar-ctl .fc-radar-layer { font-size:11px; font-weight:700; white-space:nowrap; background:rgba(255,255,255,.14); border-radius:7px; padding:3px 8px; }
   .fc-radar-ctl .fc-radar-layer:hover { background:rgba(255,255,255,.26); }
+  .fc-model-btns { display:flex; gap:6px; flex-wrap:wrap; margin:6px 0; }
+  .fc-model-btns button { font-size:12px; font-weight:700; padding:5px 11px; border-radius:8px; border:1px solid var(--border); background:var(--card-hover); color:var(--text); cursor:pointer; }
+  .fc-model-btns button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .fc-model-note { font-size:11.5px; color:var(--text-muted); margin:6px 0 2px; line-height:1.45; }
   .fc-radar-img { width:100%; display:block; background:var(--card-hover); }
   /* Tap-to-interact overlay so embedded maps don't hijack page scroll on touch devices */
   .fc-radar-tap { position:absolute; inset:0; z-index:1001; display:flex; align-items:flex-end; justify-content:center; padding-bottom:12px; cursor:pointer; }
@@ -3180,6 +3184,11 @@ function ensureLeaflet(){
   });
   return window.__leafletP;
 }
+function fcModelOverlay(overlay, btn){
+  const f=document.getElementById("fcModelMap"); if(!f) return;
+  f.src="https://embed.windy.com/embed2.html?lat="+WEATHER_LOCATION.lat+"&lon="+WEATHER_LOCATION.lon+"&detailLat="+WEATHER_LOCATION.lat+"&detailLon="+WEATHER_LOCATION.lon+"&zoom=7&level=surface&overlay="+overlay+"&product=ecmwf&menu=&message=true&marker=true&calendar=now&type=map&location=coordinates&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1";
+  const row=btn&&btn.parentNode; if(row) row.querySelectorAll("button").forEach(b=>b.classList.toggle("active", b===btn));
+}
 async function initForecastRadar(){
   const el=document.getElementById("fcRadarMap"); if(!el) return;
   if (FC_RADAR_TIMER){ clearInterval(FC_RADAR_TIMER); FC_RADAR_TIMER=null; }
@@ -3300,6 +3309,18 @@ async function loadForecast() {
       '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
     '</div>'+
     '<a class="fc-radar" href="'+radarHref+'" target="_blank" rel="noopener">📡 Open NWS radar full-screen →</a>'+
+    '<div class="fc-sec" style="margin-top:12px">🧪 Forecast model · ECMWF — hours to days ahead <span class="fc-src">· model, not radar</span></div>'+
+    '<div class="fc-model-btns">'+
+      '<button type="button" data-ov="rain" class="active" onclick="fcModelOverlay(\'rain\',this)">🌧 Rain</button>'+
+      '<button type="button" data-ov="temp" onclick="fcModelOverlay(\'temp\',this)">🌡 Heat</button>'+
+      '<button type="button" data-ov="wind" onclick="fcModelOverlay(\'wind\',this)">💨 Wind</button>'+
+      '<button type="button" data-ov="gust" onclick="fcModelOverlay(\'gust\',this)">🌬 Gusts</button>'+
+    '</div>'+
+    '<div class="fc-radar-wrap fc-radar-tall">'+
+      '<iframe id="fcModelMap" class="fc-radar-frame" loading="lazy" src="https://embed.windy.com/embed2.html?lat='+WEATHER_LOCATION.lat+'&lon='+WEATHER_LOCATION.lon+'&detailLat='+WEATHER_LOCATION.lat+'&detailLon='+WEATHER_LOCATION.lon+'&zoom=7&level=surface&overlay=rain&product=ecmwf&menu=&message=true&marker=true&calendar=now&type=map&location=coordinates&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1"></iframe>'+
+      '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
+    '</div>'+
+    '<div class="fc-model-note">Drag Windy’s timeline along the bottom forward to see the projected hours ahead. This is a forecast model — blockier and less certain than the live radar above.</div>'+
     '<div class="fc-smart">'+insights.map(renderSmartCard).join("")+'</div>'+
     '<div class="fc-sec">Next 72 Hours · Day &amp; Night</div>'+
     '<div id="fcPeriods" class="fc-periods"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading NWS day/night forecast…</div></div>'+

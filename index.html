@@ -3160,13 +3160,27 @@ function rainNowcast(data) {
   }
   return { state:"dry" };
 }
-function renderNowcastBar(data) {
-  const nc = rainNowcast(data);
+function nowcastBarHtml(nc, src) {
   if (!nc) return "";
-  if (nc.state==="starting") return '<div class="fc-nowcast wet">🌧 Rain likely in about '+nc.mins+' min</div>';
-  if (nc.state==="ending")   return '<div class="fc-nowcast wet">🌦 Rain should ease in about '+nc.mins+' min</div>';
-  if (nc.state==="raining")  return '<div class="fc-nowcast wet">🌧 Raining now — no real letup in the next 2 hours</div>';
-  return '<div class="fc-nowcast dry">☀️ No rain expected in the next 2 hours</div>';
+  const tag = src ? ' <span class="fc-src">· '+src+'</span>' : '';
+  if (nc.state==="starting") return '<div class="fc-nowcast wet">🌧 Rain likely in about '+nc.mins+' min'+tag+'</div>';
+  if (nc.state==="ending")   return '<div class="fc-nowcast wet">🌦 Rain should ease in about '+nc.mins+' min'+tag+'</div>';
+  if (nc.state==="raining")  return '<div class="fc-nowcast wet">🌧 Raining now — no real letup in the next 2 hours'+tag+'</div>';
+  return '<div class="fc-nowcast dry">☀️ No rain expected in the next 2 hours'+tag+'</div>';
+}
+function renderNowcastBar(data) { return nowcastBarHtml(rainNowcast(data)); }
+// Sharper near-term nowcast from Tomorrow.io minute-by-minute precip (next 60 min).
+function tomorrowNowcast(minutely) {
+  if (!minutely || !minutely.length) return null;
+  const now = Date.now(), RAIN = 0.01; // in/hr
+  const pts = minutely
+    .map(m => ({ t:new Date(m.t).getTime(), wet:((m.pi!=null&&m.pi>=RAIN) || (m.pp!=null&&m.pp>=50)) }))
+    .filter(p => isFinite(p.t) && p.t >= now-90000)
+    .sort((a,b)=>a.t-b.t);
+  if (!pts.length) return null;
+  if (pts[0].wet) { const dry = pts.find(p=>!p.wet); return dry ? { state:"ending", mins:Math.max(1,Math.round((dry.t-now)/60000)) } : { state:"raining" }; }
+  const wet = pts.find(p=>p.wet);
+  return wet ? { state:"starting", mins:Math.max(1,Math.round((wet.t-now)/60000)) } : { state:"dry" };
 }
 
 // ── Live radar: Leaflet + RainViewer tiles, built in-page (no third-party iframe) ──
@@ -3245,6 +3259,10 @@ async function initForecastRadar(){
       else layerBtn.onclick=()=>{ const playing=!!FC_RADAR_TIMER; pause(); mode=(mode==="radar"?"satellite":"radar"); layerBtn.textContent=(mode==="radar"?"🛰 Satellite":"📡 Radar"); buildLayers(); show(idx); if(playing) play(); };
     }
     buildLayers(); show(idx); play();
+    const note=document.getElementById("fcRadarNote");
+    if(note) note.innerHTML = nowcast.length
+      ? '🟡 Yellow frames are live nowcast — real radar projected ~'+Math.max(1,Math.round((nowcast[nowcast.length-1].time*1000-Date.now())/60000))+' min ahead.'
+      : '⚪ No future frames right now — no rain in radar range to project. For hours ahead, use the Forecast model below.';
   }catch(e){
     el.innerHTML='<div class="status" style="padding:24px;text-align:center">Radar unavailable right now — use the NWS link below.</div>';
     const lbl=document.getElementById("fcRadarTime"); if(lbl) lbl.textContent="—";
@@ -3302,13 +3320,14 @@ async function loadForecast() {
       '<div class="fc-hero-sub">Feels '+(isFinite(c.apparent_temperature)?Math.round(c.apparent_temperature):"—")+'° · H '+hi+'° / L '+lo+'° · '+compassFromDegrees(c.wind_direction_10m)+' '+(isFinite(c.wind_speed_10m)?Math.round(c.wind_speed_10m):"—")+' mph · '+(isFinite(c.relative_humidity_2m)?c.relative_humidity_2m:"—")+'% RH'+sunLine+'</div>'+
       '<div class="fc-hero-loc">'+escapeHtml(WEATHER_LOCATION.name)+'</div></div></div>'+
     '<div id="fcAlerts"></div>'+
-    renderNowcastBar(data)+
+    '<div id="fcNowcast">'+renderNowcastBar(data)+'</div>'+
     '<div class="fc-sec" style="margin-top:8px">📡 Radar · past → now → +30 min · drag to pan · scroll to zoom · ▶ to animate</div>'+
     '<div class="fc-radar-wrap fc-radar-tall">'+
       '<div id="fcRadarMap" class="fc-radar-frame"></div>'+
       '<div class="fc-radar-ctl"><button id="fcRadarPlay" type="button" title="Play / pause">▶</button><input id="fcRadarSlider" type="range" min="0" max="0" value="0"><span class="fc-radar-time" id="fcRadarTime">Loading…</span><button id="fcRadarLayer" type="button" class="fc-radar-layer" title="Switch radar / satellite">🛰 Satellite</button></div>'+
       '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
     '</div>'+
+    '<div class="fc-model-note" id="fcRadarNote"></div>'+
     '<a class="fc-radar" href="'+radarHref+'" target="_blank" rel="noopener">📡 Open NWS radar full-screen →</a>'+
     '<div class="fc-sec" style="margin-top:12px">🧪 Forecast model · ECMWF — hours to days ahead <span class="fc-src">· model, not radar</span></div>'+
     '<div class="fc-model-btns">'+
@@ -3339,6 +3358,10 @@ async function loadForecast() {
     }).catch(()=>{});
   fetchNwsForecast().then(periods => { const el=document.getElementById("fcPeriods"); if(el) el.innerHTML=renderNwsPeriods(periods); });
   fetchNwsHourly().then(periods => { const h=renderNwsHourly(periods); if(!h) return; const el=document.getElementById("fcHourly"); if(el) el.innerHTML=h; const s=document.getElementById("fcHourlySrc"); if(s) s.textContent="· official NWS"; });
+  fetch(CF_WORKER+"wx-forecast?lat="+WEATHER_LOCATION.lat+"&lon="+WEATHER_LOCATION.lon).then(r=>r.ok?r.json():null).then(j=>{
+    if(!j||!j.minutely) return; const nc=tomorrowNowcast(j.minutely); if(!nc) return;
+    const el=document.getElementById("fcNowcast"); if(el) el.innerHTML=nowcastBarHtml(nc,"Tomorrow.io");
+  }).catch(()=>{});
   loadForecastWeatherNews();
 }
 

@@ -922,6 +922,7 @@ export default {
     if (url.pathname === "/trackers-refresh") return handleTrackersRefresh(url, env, ctx);
     if (url.pathname === "/tabbriefs")         return handleBriefs(url, env);
     if (url.pathname === "/tabbriefs-refresh") return handleBriefsRefresh(url, env, ctx);
+    if (url.pathname === "/wx-forecast")       return handleTomorrowForecast(url, env, ctx);
     return handleRssProxy(url);
   },
 
@@ -1320,6 +1321,41 @@ async function handleLakeHistory(url, env, ctx) {
 
 // GET /stockquote?ticker=AAPL
 // Returns current price, daily change, 52w high/low, company name + industry.
+// GET /wx-forecast?lat=&lon=
+// Hyperlocal Tomorrow.io forecast (minutely 60m + hourly), proxied so the API key
+// stays server-side. Cached 10 min so we make at most ~6 origin calls/hour — well
+// under the free plan's 25/hour cap even with steady traffic.
+async function handleTomorrowForecast(url, env, ctx) {
+  if (!env.TOMORROW_API_KEY) return jsonResponse({ error: "TOMORROW_API_KEY not set" }, 500);
+  const lat = parseFloat(url.searchParams.get("lat"));
+  const lon = parseFloat(url.searchParams.get("lon"));
+  const loc = (isFinite(lat) && isFinite(lon)) ? lat + "," + lon : "38.369,-93.778";
+
+  const cache = caches.default;
+  const cacheReq = new Request("https://wxforecast-cache.local/" + encodeURIComponent(loc));
+  const cached = await cache.match(cacheReq);
+  if (cached) return jsonResponse({ ...(await cached.json()), cached: true });
+
+  let data;
+  try {
+    const r = await fetch("https://api.tomorrow.io/v4/weather/forecast?location=" + encodeURIComponent(loc) + "&units=imperial&apikey=" + env.TOMORROW_API_KEY,
+      { headers: { "Accept": "application/json" } });
+    if (!r.ok) { const t = await r.text(); return jsonResponse({ error: "Tomorrow.io HTTP " + r.status, details: t.slice(0, 200) }, 502); }
+    data = await r.json();
+  } catch (e) { return jsonResponse({ error: "Tomorrow.io fetch failed: " + (e && e.message) }, 502); }
+
+  const tl = (data && data.timelines) || {};
+  const slim = {
+    minutely: (tl.minutely || []).map(m => ({ t: m.time, pi: m.values?.precipitationIntensity ?? null, pp: m.values?.precipitationProbability ?? null })),
+    hourly:   (tl.hourly   || []).slice(0, 24).map(h => ({ t: h.time, temp: h.values?.temperature ?? null, pp: h.values?.precipitationProbability ?? null, pi: h.values?.precipitationIntensity ?? null, wind: h.values?.windSpeed ?? null, gust: h.values?.windGust ?? null })),
+    source: "Tomorrow.io"
+  };
+
+  const cacheRes = new Response(JSON.stringify(slim), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=600" } });
+  ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
+  return jsonResponse({ ...slim, cached: false });
+}
+
 async function handleStockQuote(url, env, ctx) {
   const ticker = (url.searchParams.get("ticker") || "").toUpperCase().trim();
   if (!ticker) return jsonResponse({ error: "ticker required" }, 400);

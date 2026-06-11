@@ -1216,6 +1216,8 @@
   .fc-radar-ctl input[type=range] { flex:1; accent-color:var(--accent); min-width:0; }
   .fc-radar-time { color:#fff; font-size:11.5px; font-weight:700; white-space:nowrap; }
   .fc-radar-time.future { color:#ffd27a; }
+  .fc-radar-ctl .fc-radar-layer { font-size:11px; font-weight:700; white-space:nowrap; background:rgba(255,255,255,.14); border-radius:7px; padding:3px 8px; }
+  .fc-radar-ctl .fc-radar-layer:hover { background:rgba(255,255,255,.26); }
   .fc-radar-img { width:100%; display:block; background:var(--card-hover); }
   /* Tap-to-interact overlay so embedded maps don't hijack page scroll on touch devices */
   .fc-radar-tap { position:absolute; inset:0; z-index:1001; display:flex; align-items:flex-end; justify-content:center; padding-bottom:12px; cursor:pointer; }
@@ -3186,8 +3188,14 @@ async function initForecastRadar(){
     await ensureLeaflet();
     const rv=await fetch("https://api.rainviewer.com/public/weather-maps.json").then(r=>r.json());
     const past=(rv.radar&&rv.radar.past)||[], nowcast=(rv.radar&&rv.radar.nowcast)||[];
-    const frames=past.concat(nowcast);
-    if(!frames.length) throw new Error("no radar frames");
+    const radarFrames=past.concat(nowcast);
+    const satFrames=(rv.satellite&&rv.satellite.infrared)||[];
+    if(!radarFrames.length) throw new Error("no radar frames");
+    // mode -> { frames, suffix, opacity, startIdx }
+    const SETS={
+      radar:{ frames:radarFrames, suffix:"/256/{z}/{x}/{y}/4/1_1.png", opacity:0.7, startIdx:Math.max(past.length-1,0) },
+      satellite:{ frames:satFrames, suffix:"/256/{z}/{x}/{y}/0/0_0.png", opacity:0.65, startIdx:Math.max(satFrames.length-1,0) }
+    };
     const dark=document.documentElement.getAttribute("data-theme")==="dark";
     const map=L.map(el,{center:[WEATHER_LOCATION.lat,WEATHER_LOCATION.lon],zoom:8,minZoom:4,maxZoom:11});
     FC_RADAR_MAP=map;
@@ -3195,14 +3203,21 @@ async function initForecastRadar(){
     L.tileLayer("https://{s}.basemaps.cartocdn.com/"+(dark?"dark_all":"light_all")+"/{z}/{x}/{y}{r}.png",
       {attribution:"&copy; OSM &copy; CARTO &copy; RainViewer", maxZoom:11}).addTo(map);
     L.circleMarker([WEATHER_LOCATION.lat,WEATHER_LOCATION.lon],{radius:5,color:"#b8331a",weight:2,fillColor:"#b8331a",fillOpacity:.55}).addTo(map);
+    const lbl=document.getElementById("fcRadarTime"), slider=document.getElementById("fcRadarSlider"), btn=document.getElementById("fcRadarPlay"), layerBtn=document.getElementById("fcRadarLayer");
+    let mode="radar", frames=[], layers=[], idx=0;
     // RainViewer free tiles only go to z7 natively; Leaflet upscales beyond that.
-    const layers=frames.map(f=>L.tileLayer(rv.host+f.path+"/256/{z}/{x}/{y}/4/1_1.png",{opacity:0,maxNativeZoom:7,maxZoom:11}).addTo(map));
-    const lbl=document.getElementById("fcRadarTime"), slider=document.getElementById("fcRadarSlider"), btn=document.getElementById("fcRadarPlay");
-    if(slider) slider.max=String(frames.length-1);
-    let idx=Math.max(past.length-1,0);
+    function buildLayers(){
+      layers.forEach(l=>{ try{ map.removeLayer(l); }catch{} });
+      const s=SETS[mode]; frames=s.frames;
+      layers=frames.map(f=>L.tileLayer(rv.host+f.path+s.suffix,{opacity:0,maxNativeZoom:7,maxZoom:11}).addTo(map));
+      if(slider) slider.max=String(Math.max(frames.length-1,0));
+      idx=Math.min(s.startIdx, Math.max(frames.length-1,0));
+    }
     function show(i){
+      if(!frames.length) return;
       idx=((i%frames.length)+frames.length)%frames.length;
-      layers.forEach((l,j)=>l.setOpacity(j===idx?0.7:0));
+      const op=SETS[mode].opacity;
+      layers.forEach((l,j)=>l.setOpacity(j===idx?op:0));
       if(slider) slider.value=String(idx);
       if(lbl){
         const mins=Math.round((frames[idx].time*1000-Date.now())/60000);
@@ -3215,7 +3230,11 @@ async function initForecastRadar(){
     function play(){ pause(); FC_RADAR_TIMER=setInterval(()=>{ if(!document.getElementById("fcRadarMap")){ pause(); return; } show(idx+1); },650); if(btn) btn.textContent="⏸"; }
     if(btn) btn.onclick=()=>FC_RADAR_TIMER?pause():play();
     if(slider) slider.oninput=e=>{ pause(); show(+e.target.value); };
-    show(idx); play();
+    if(layerBtn){
+      if(!satFrames.length){ layerBtn.style.display="none"; }
+      else layerBtn.onclick=()=>{ const playing=!!FC_RADAR_TIMER; pause(); mode=(mode==="radar"?"satellite":"radar"); layerBtn.textContent=(mode==="radar"?"🛰 Satellite":"📡 Radar"); buildLayers(); show(idx); if(playing) play(); };
+    }
+    buildLayers(); show(idx); play();
   }catch(e){
     el.innerHTML='<div class="status" style="padding:24px;text-align:center">Radar unavailable right now — use the NWS link below.</div>';
     const lbl=document.getElementById("fcRadarTime"); if(lbl) lbl.textContent="—";
@@ -3267,9 +3286,6 @@ async function loadForecast() {
   const fmtSun = iso => { try { return new Date(iso).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:WEATHER_LOCATION.tz}).replace(' AM','a').replace(' PM','p'); } catch { return ''; } };
   const sunLine = d.sunrise?.[tIdx]&&d.sunset?.[tIdx] ? ' · ☀️ '+fmtSun(d.sunrise[tIdx])+' 🌙 '+fmtSun(d.sunset[tIdx]) : '';
   // Future radar = Windy embed (interactive, scrubbable days ahead). Live radar is built in-page below.
-  const windyBase = "https://embed.windy.com/embed2.html?lat="+WEATHER_LOCATION.lat+"&lon="+WEATHER_LOCATION.lon+"&detailLat="+WEATHER_LOCATION.lat+"&detailLon="+WEATHER_LOCATION.lon+"&marker=true&calendar=now&type=map&location=coordinates&level=surface&metricWind=mph&metricTemp=%C2%B0F";
-  const futureRadarSrc = windyBase + "&zoom=7&overlay=rain&product=ecmwf";
-
   listEl.innerHTML =
     '<div class="fc-hero"><div class="fc-hero-temp">'+(isFinite(c.temperature_2m)?Math.round(c.temperature_2m):"—")+'°</div>'+
       '<div class="fc-hero-meta"><div class="fc-hero-cond">'+entry[1]+' '+escapeHtml(entry[0])+'</div>'+
@@ -3277,15 +3293,10 @@ async function loadForecast() {
       '<div class="fc-hero-loc">'+escapeHtml(WEATHER_LOCATION.name)+'</div></div></div>'+
     '<div id="fcAlerts"></div>'+
     renderNowcastBar(data)+
-    '<div class="fc-sec" style="margin-top:8px">📡 Live Radar · drag to pan · scroll or +/− to zoom</div>'+
+    '<div class="fc-sec" style="margin-top:8px">📡 Radar · past → now → +30 min · drag to pan · scroll to zoom · ▶ to animate</div>'+
     '<div class="fc-radar-wrap fc-radar-tall">'+
       '<div id="fcRadarMap" class="fc-radar-frame"></div>'+
-      '<div class="fc-radar-ctl"><button id="fcRadarPlay" type="button" title="Play / pause">▶</button><input id="fcRadarSlider" type="range" min="0" max="0" value="0"><span class="fc-radar-time" id="fcRadarTime">Loading…</span></div>'+
-      '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
-    '</div>'+
-    '<div class="fc-sec">🌧 Future Radar · drag the timeline to look hours &amp; days ahead</div>'+
-    '<div class="fc-radar-wrap fc-radar-tall">'+
-      '<iframe class="fc-radar-frame" loading="lazy" src="'+futureRadarSrc+'"></iframe>'+
+      '<div class="fc-radar-ctl"><button id="fcRadarPlay" type="button" title="Play / pause">▶</button><input id="fcRadarSlider" type="range" min="0" max="0" value="0"><span class="fc-radar-time" id="fcRadarTime">Loading…</span><button id="fcRadarLayer" type="button" class="fc-radar-layer" title="Switch radar / satellite">🛰 Satellite</button></div>'+
       '<div class="fc-radar-tap" onclick="this.parentNode.classList.add(\'active\')"><span>Tap to interact</span></div>'+
     '</div>'+
     '<a class="fc-radar" href="'+radarHref+'" target="_blank" rel="noopener">📡 Open NWS radar full-screen →</a>'+

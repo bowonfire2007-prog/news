@@ -1694,9 +1694,29 @@ const FEED_TIMEOUT_MS      = 6000;   // reduced from 8s
 const STOCKS_CACHE_TTL_MS  = 60*1000;
 const WEATHER_CACHE_TTL_MS = 15*60*1000;
 const ALERTS_CACHE_TTL_MS  = 5*60*1000;
-const DEFAULT_TICKERS = ["AAPL","MSFT","NVDA","GOOGL","TSLA","SPY","MMM","AMD","INTC","MU","LRCX","GME","TSM","WMT","LLY","AMC","BTC-USD","XRP-USD","CL=F","BZ=F","GF=F","LE=F","ZC=F","ZS=F"];
-const WATCHLIST_VERSION = 6;
-const TICKER_DISPLAY = { "BZ=F":"BRENT","CL=F":"WTI","BTC-USD":"BITCOIN","XRP-USD":"XRP","GF=F":"FEEDER CATTLE","LE=F":"LIVE CATTLE","ZC=F":"CORN","ZS=F":"SOYBEANS" };
+const DEFAULT_TICKERS = [
+  // ── Major market indices ──
+  "SPY","QQQ","DIA","IWM",
+  // ── Volatility & bonds ──
+  "^VIX","TLT",
+  // ── Commodities & safe havens ──
+  "GLD","CL=F","BZ=F",
+  // ── Ag futures ──
+  "ZC=F","ZS=F","GF=F","LE=F",
+  // ── Tech mega-caps ──
+  "AAPL","MSFT","NVDA","GOOGL","AMD","LRCX","MU","TSM","INTC",
+  // ── Other stocks ──
+  "TSLA","SPCX","WMT","LLY","MMM","GME","AMC",
+  // ── Crypto ──
+  "BTC-USD","XRP-USD"
+];
+const WATCHLIST_VERSION = 8;
+const TICKER_DISPLAY = {
+  "BZ=F":"BRENT","CL=F":"WTI",
+  "BTC-USD":"BITCOIN","XRP-USD":"XRP",
+  "GF=F":"FEEDER CATTLE","LE=F":"LIVE CATTLE","ZC=F":"CORN","ZS=F":"SOYBEANS",
+  "^VIX":"VIX","GLD":"GOLD ETF","TLT":"20Y BONDS","IWM":"RUSSELL 2K"
+};
 
 // ── SOURCE TRUST WEIGHTS ──
 const SOURCE_WEIGHT = {
@@ -7736,7 +7756,10 @@ async function fetchTextThroughProxies(targetUrl) {
 }
 
 async function fetchQuoteYahoo(ticker) {
-  const yahooUrl="https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(ticker)+"?interval=1d&range=1mo";
+  // Use 5-minute intraday bars for today's sparkline chart.
+  // meta.previousClose and meta.regularMarketPrice are always present in the response
+  // regardless of interval/range, so daily change math is unaffected.
+  const yahooUrl="https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(ticker)+"?interval=5m&range=1d&includePrePost=false";
   const text=await fetchTextThroughProxies(yahooUrl);
   const data=JSON.parse(text);
   const result=data&&data.chart&&data.chart.result&&data.chart.result[0];
@@ -7795,7 +7818,8 @@ async function fetchQuote(ticker, force) {
   }
   return null;
 }
-function sparklineSvg(closes) {
+// isUp: pass q.change>=0 so color always matches the daily up/down badge.
+function sparklineSvg(closes, isUp) {
   if (!closes||closes.length<2) return '<div class="stock-spark"></div>';
   const w=70,h=30,pad=2,min=Math.min(...closes),max=Math.max(...closes),range=max-min||1;
   const points=closes.map((c,i)=>{
@@ -7803,7 +7827,8 @@ function sparklineSvg(closes) {
     const y=h-pad-((c-min)/range)*(h-2*pad);
     return x.toFixed(1)+","+y.toFixed(1);
   }).join(" ");
-  const up=closes[closes.length-1]>=closes[0];
+  // Prefer the explicit isUp flag; fall back to comparing last vs first bar.
+  const up = (isUp !== undefined) ? isUp : (closes[closes.length-1]>=closes[0]);
   return '<svg class="stock-spark" viewBox="0 0 '+w+' '+h+'" xmlns="http://www.w3.org/2000/svg"><polyline fill="none" stroke="'+(up?"#22c55e":"#ef4444")+'" stroke-width="1.5" points="'+points+'"/></svg>';
 }
 function fmtMoney(n,currency) {
@@ -7906,7 +7931,7 @@ async function loadStocks(force) {
       const up=q.change>=0;
       row.querySelector(".stock-name").textContent=q.name+(q.source?" · "+q.source:"");
       const oldSpark=row.querySelector(".stock-spark");
-      if (oldSpark) oldSpark.outerHTML=sparklineSvg(q.closes);
+      if (oldSpark) oldSpark.outerHTML=sparklineSvg(q.closes, q.change>=0);
       row.querySelector(".stock-price").innerHTML=
         '<div class="price">'+fmtMoney(q.price,q.currency)+'</div>'+
         '<div class="change '+(up?"up":"down")+'">'+fmtChange(q.change,q.changePct)+'</div>';

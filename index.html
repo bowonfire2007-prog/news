@@ -2123,28 +2123,6 @@ const WATCH_TOPICS = {
   ]
 };
 
-// ── JBTDS / InnovaPrep monitoring items ──────────────────────────────────────
-// Pinned to the top of the Local tab. Update dates/descriptions/URLs as new
-// developments are found; set `pinned:true` so they skip the relevance sort.
-const LOCAL_PINNED = [
-  {
-    title:       "Chemring H1 2026: JBTDS Full-Rate Production Expected by Oct 2026",
-    source:      "📌 Chemring Group PLC · Interim Results",
-    description: "Chemring's June 2 interim results confirm all LRIP deliverables are complete and the company is now supporting US Army field testing and acceptance trials. Management says the FRP contract is 'expected in FY26' (Chemring FY ends Oct 31, 2026). No award announced yet.",
-    link:        "https://www.chemring.com/~/media/Files/C/Chemring-V3/press-releases/interim-results-2026.pdf",
-    pubDate:     new Date("2026-06-02").getTime(),
-    pinned:      true
-  },
-  {
-    title:       "InnovaPrep Files $1M Debt Offering with SEC — Not a Business Combination (Dec 2025)",
-    source:      "📌 SEC EDGAR · Form D",
-    description: "InnovaPrep Inc. filed a Form D on Dec 17, 2025 for a private offering of up to $1M in debt and options to acquire, with $100K sold to two investors as of Dec 5, 2025. The filing explicitly marks 'business combination transaction: false.' Company remains at 132 E. Main St, Drexel MO; Kathleen Ruegsegger listed as President.",
-    link:        "https://www.sec.gov/Archives/edgar/data/1753878/000175387825000002/primary_doc.xml",
-    pubDate:     new Date("2025-12-17").getTime(),
-    pinned:      true
-  }
-];
-
 async function renderWatchCards(slot) {
   const topics = WATCH_TOPICS[activeCat] || [];
   if (!topics.length) { slot.innerHTML = ""; return; }
@@ -2192,7 +2170,7 @@ async function renderWatchCards(slot) {
 //   type:"reference" → static reference card
 const TAB_RAIL = {
   cannabis: [ { type:"tracker", key:"cannabis" } ],
-  local:    [ { type:"brief", key:"local" }, { type:"brief", key:"mostate" }, { type:"watch" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" } ], // re-add { type:"bills" } when the Jan 2027 session opens
+  local:    [ { type:"data", id:"jbtdsMonitor" }, { type:"brief", key:"local" }, { type:"brief", key:"mostate" }, { type:"watch" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" } ], // re-add { type:"bills" } when the Jan 2027 session opens
   science:  [ { type:"tracker", key:"science" } ],
   world:    [ { type:"brief", key:"world" }, { type:"watch" } ],
   usa:      [ { type:"brief", key:"usa" }, { type:"watch" } ],
@@ -2302,6 +2280,43 @@ const DATA_MODULES = {
         html += '<div class="tc-srcline">☀ ' + fmt(d.sunrise[0]) + '  ·  🌙 ' + fmt(d.sunset[0]) + '  ·  ' + escapeHtml(WEATHER_LOCATION.name) + '</div>';
       }
       return html;
+    }
+  },
+  jbtdsMonitor: {
+    title: "JBTDS / InnovaPrep Watch", icon: "🔬", color: "#5f6b8a",
+    load: () => railFetchJson("/jbtds-monitor"),
+    render: (data) => {
+      if (!data) return '<div class="rail-err">Monitor data unavailable.</div>';
+      const items = data.items || [];
+      const checked = data.checked_at
+        ? new Date(data.checked_at).toLocaleDateString("en-US", { month:"short", day:"numeric" })
+        : "";
+      if (!items.length) {
+        return '<div class="tc-note" style="color:var(--text-soft);padding:.5em 0">Nothing new found yet.' +
+          (checked ? ' Last checked ' + checked + '.' : '') + '</div>' +
+          '<div class="tc-srcline">Checks daily · Chemring RNS · SEC EDGAR · DoD news</div>';
+      }
+      const sigColor = { award:"#c49b3f", sale:"#e85d26", relocation:"#e85d26", neutral:"var(--text-soft)" };
+      const sigDot   = { high:"🔴", medium:"🟡", low:"⚪" };
+      const rows = items.slice(0, 8).map(it => {
+        const col = sigColor[it.signal] || "var(--text-soft)";
+        const dot = sigDot[it.signal_strength] || "⚪";
+        const dateStr = it.date
+          ? new Date(it.date + "T12:00:00").toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" })
+          : "";
+        return '<li class="tc-head" style="padding:.55em 0;border-bottom:1px solid var(--border)">' +
+          '<a href="' + encodeURI(it.source_url || "#") + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">' +
+          '<span style="font-size:.68em;color:var(--text-soft);text-transform:uppercase;letter-spacing:.03em">' +
+            escapeHtml(it.category || "") + (dateStr ? " · " + dateStr : "") + ' ' + dot +
+          '</span>' +
+          '<div style="font-weight:700;margin:.18em 0 .2em;line-height:1.3">' + escapeHtml(it.title) + '</div>' +
+          '<div class="tc-note" style="margin-bottom:.25em">' + escapeHtml(it.summary || "") + '</div>' +
+          '<div style="font-size:.75em;font-weight:600;color:' + col + '">' + escapeHtml(it.why_it_matters || "") + '</div>' +
+          '</a></li>';
+      }).join("");
+      return '<ul class="tc-heads" style="list-style:none;padding:0;margin:0">' + rows + '</ul>' +
+        '<div class="tc-srcline" style="margin-top:.5em">Checked ' + escapeHtml(checked) +
+        ' · Chemring · SEC EDGAR · DoD</div>';
     }
   },
   marketSnapshot: {
@@ -9309,11 +9324,6 @@ async function loadCategory(force) {
       '<span style="opacity:.6">Tried: '+cat.feeds.map(f=>f.source).join(", ")+'</span><br>' +
       '<button class="retry-btn" onclick="loadCategory(true)">Try again</button>';
     return;
-  }
-
-  // Prepend pinned monitoring items on the Local tab (skip dedup/sort for them).
-  if (cat.id === "local") {
-    deduped = [...LOCAL_PINNED, ...deduped];
   }
 
   markTrending(deduped);

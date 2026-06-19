@@ -859,6 +859,167 @@ async function handleBriefsRefresh(url, env, ctx) {
   return jsonResponse(await runBriefsScheduled(env, ctx, force));
 }
 
+// ─────────────── JBTDS / INNOVAPREP MONITOR ──────────────────────────────────
+// Daily: searches Google News + SEC EDGAR for signals on JBTDS FRP, Chemring,
+// and InnovaPrep; asks Claude to extract only genuinely new items; caches in KV.
+// Endpoint: GET /jbtds-monitor          → returns cached payload
+//           GET /jbtds-monitor-refresh  → re-runs now (?force=1 ignores hash)
+const JBTDS_QUERIES = [
+  '"JBTDS" OR "Joint Biological Tactical Detection System" "full rate production" OR "FRP" Chemring contract DoD',
+  'Chemring Group "biological detection" OR "JBTDS" OR "US Sensors" results announcement',
+  'InnovaPrep Missouri DoD contract OR acquisition OR merger OR award',
+  '"JBTDS" OR "Joint Biological Tactical Detection" export OR "Foreign Military Sales" OR FMS'
+];
+
+async function fetchJbtdsHeadlines() {
+  const all = [];
+  // Google News RSS for each watch query
+  for (const q of JBTDS_QUERIES) {
+    try {
+      const items = await fetchTopicHeadlines(q, 6);
+      all.push(...items);
+    } catch(_) {}
+  }
+  // Direct SEC EDGAR full-text search for InnovaPrep filings (last 18 months)
+  try {
+    const cutoff = new Date(Date.now() - 18 * 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const today  = new Date().toISOString().slice(0, 10);
+    const eftsUrl = "https://efts.sec.gov/LATEST/search-index?q=%22InnovaPrep%22" +
+                    "&dateRange=custom&startdt=" + cutoff + "&enddt=" + today;
+    const r = await fetch(eftsUrl, {
+      headers: { "User-Agent": "MattDashboard/1.0 (personal; bowonfire2007@gmail.com)" }
+    });
+    if (r.ok) {
+      const js = await r.json();
+      for (const h of (js?.hits?.hits || []).slice(0, 5)) {
+        const s = h._source || {};
+        all.push({
+          title: "InnovaPrep SEC " + (s.form || "filing") + " — " + (s.file_date || ""),
+          src:   "SEC EDGAR",
+          url:   "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001753878&type=" +
+                 encodeURIComponent(s.form || "") + "&dateb=&owner=include&count=5",
+          date:  s.file_date || "",
+          desc:  "Form " + (s.form || "?") + " filed " + (s.file_date || "") + " by INNOVAPREP INC. (CIK 0001753878)"
+        });
+      }
+    }
+  } catch(_) {}
+  // Deduplicate by URL
+  const seen = new Set();
+  return all.filter(h => { if (!h.url || seen.has(h.url)) return false; seen.add(h.url); return true; });
+}
+
+async function runJbtdsMonitor(env, ctx, force = false) {
+  if (!env.BILLS_KV)        return { error: "BILLS_KV not bound" };
+  if (!env.ANTHROPIC_API_KEY) return { error: "ANTHROPIC_API_KEY not set" };
+  try {
+    const headlines = await fetchJbtdsHeadlines();
+    const fingerprint = headlines.map(h => h.title + h.url).join("|");
+    const newHash = await hashKey(fingerprint);
+    const prevHash   = await env.BILLS_KV.get("jbtds:hash");
+    const existingRaw = await env.BILLS_KV.get("jbtds:data");
+    if (!force && prevHash === newHash && existingRaw) {
+      return { changed: false, cached: true };
+    }
+
+    // Previously seen URLs — keep items out of Claude prompt that were already reported
+    const seenRaw  = await env.BILLS_KV.get("jbtds:seen_urls");
+    const seenUrls = seenRaw ? JSON.parse(seenRaw) : [];
+    const today    = new Date().toISOString().slice(0, 10);
+
+    const list = headlines.map((h, i) =>
+      "[" + i + "] " + h.title + " — " + (h.src || "source") + (h.date ? " (" + h.date + ")" : "") +
+      "\nURL: " + h.url + (h.desc ? "\nDesc: " + h.desc.slice(0, 160) : "")
+    ).join("\n\n");
+
+    const prompt =
+      "Today is " + today + ". You monitor a private dashboard tracking:\n" +
+      "1. JBTDS Full-Rate Production (FRP): has the FRP contract been awarded? Watch Chemring, DoD, SAM.gov signals.\n" +
+      "2. Chemring Group: financial results, RNS announcements mentioning JBTDS, US Sensors, or biological detection.\n" +
+      "3. InnovaPrep Inc. (Drexel MO): new SEC filings, acquisition/sale, leadership changes, new contracts, facility news.\n" +
+      "4. JBTDS export / Foreign Military Sales variants offered to allied nations.\n\n" +
+      "ALREADY-SEEN URLs — skip any item whose source_url exactly matches one of these:\n" +
+      (seenUrls.length ? seenUrls.slice(-80).join("\n") : "(none yet)") + "\n\n" +
+      "HEADLINES (filter to only genuinely relevant, new items):\n" + (list || "(none)") + "\n\n" +
+      "Return ONLY valid JSON, no markdown. If nothing new, return exactly: []\n" +
+      "[\n  {\n" +
+      '    "title": "short headline under 12 words",\n' +
+      '    "date": "YYYY-MM-DD or empty string",\n' +
+      '    "category": "FRP | Chemring | InnovaPrep | Export | Corporate",\n' +
+      '    "source_url": "verbatim URL from the headline list above",\n' +
+      '    "summary": "2-3 sentence paraphrase. No quotes over 15 words.",\n' +
+      '    "why_it_matters": "one sentence on implication for InnovaPrep or FRP award",\n' +
+      '    "signal": "award | sale | relocation | neutral",\n' +
+      '    "signal_strength": "low | medium | high"\n' +
+      "  }\n]\n\n" +
+      "Rules: source_url must be verbatim from the list. Do not invent URLs. Do not speculate. Skip seen URLs.";
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model: env_model_safe(),
+        max_tokens: 1400,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    if (!res.ok) throw new Error("Claude " + res.status);
+    const aiData = await res.json();
+    let txt = (aiData.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim();
+    const a = txt.indexOf("["), z = txt.lastIndexOf("]");
+    let items = [];
+    if (a !== -1 && z !== -1) {
+      try { items = JSON.parse(txt.slice(a, z + 1)); } catch(_) {}
+    }
+    // Validate: source_url must exist in the fetched headlines list
+    const validUrls = new Set(headlines.map(h => h.url));
+    items = (Array.isArray(items) ? items : []).filter(it =>
+      it && typeof it.source_url === "string" && validUrls.has(it.source_url)
+    );
+
+    // Merge new items on top of historical items (keep last 30 across runs)
+    let historical = [];
+    if (existingRaw) {
+      try { historical = JSON.parse(existingRaw).items || []; } catch(_) {}
+    }
+    const allUrls = new Set(items.map(it => it.source_url));
+    const merged = [...items, ...historical.filter(it => !allUrls.has(it.source_url))].slice(0, 30);
+
+    // Update seen-URL log
+    const newSeen = [...new Set([...seenUrls, ...headlines.map(h => h.url)])].slice(-300);
+    const payload = {
+      items: merged,
+      updated: today,
+      checked_at: new Date().toISOString(),
+      new_this_run: items.length
+    };
+    const TTL = 2 * 365 * 24 * 3600;
+    await env.BILLS_KV.put("jbtds:data",      JSON.stringify(payload),  { expirationTtl: TTL });
+    await env.BILLS_KV.put("jbtds:seen_urls", JSON.stringify(newSeen),  { expirationTtl: TTL });
+    await env.BILLS_KV.put("jbtds:hash",      newHash);
+    return { changed: true, new_items: items.length, total: merged.length, checked_at: payload.checked_at };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+async function handleJbtdsMonitor(url, env) {
+  if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
+  const raw = await env.BILLS_KV.get("jbtds:data");
+  if (!raw) return jsonResponse({ items: [], updated: null, checked_at: null });
+  return jsonResponse(JSON.parse(raw));
+}
+
+async function handleJbtdsMonitorRefresh(url, env, ctx) {
+  const force = url.searchParams.get("force") === "1";
+  const result = await runJbtdsMonitor(env, ctx, force);
+  return jsonResponse(result);
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
@@ -920,9 +1081,11 @@ export default {
     if (url.pathname === "/bills-refresh") return handleBillsRefresh(request, url, env, ctx);
     if (url.pathname === "/trackers")         return handleTrackers(url, env);
     if (url.pathname === "/trackers-refresh") return handleTrackersRefresh(url, env, ctx);
-    if (url.pathname === "/tabbriefs")         return handleBriefs(url, env);
-    if (url.pathname === "/tabbriefs-refresh") return handleBriefsRefresh(url, env, ctx);
-    if (url.pathname === "/wx-forecast")       return handleTomorrowForecast(url, env, ctx);
+    if (url.pathname === "/tabbriefs")              return handleBriefs(url, env);
+    if (url.pathname === "/tabbriefs-refresh")      return handleBriefsRefresh(url, env, ctx);
+    if (url.pathname === "/jbtds-monitor")          return handleJbtdsMonitor(url, env);
+    if (url.pathname === "/jbtds-monitor-refresh")  return handleJbtdsMonitorRefresh(url, env, ctx);
+    if (url.pathname === "/wx-forecast")            return handleTomorrowForecast(url, env, ctx);
     return handleRssProxy(url);
   },
 
@@ -939,6 +1102,7 @@ export default {
     if (cron === "0 13 * * *" || cron === "0 1 * * *") ctx.waitUntil(runBillsScheduled(env, ctx));
     if (cron === "0 13 * * *") ctx.waitUntil(runTrackersScheduled(env, ctx));
     if (cron === "0 13 * * *") ctx.waitUntil(runBriefsScheduled(env, ctx));
+    if (cron === "0 13 * * *") ctx.waitUntil(runJbtdsMonitor(env, ctx));
   }
 };
 

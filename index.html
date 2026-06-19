@@ -2123,6 +2123,28 @@ const WATCH_TOPICS = {
   ]
 };
 
+// ── JBTDS / InnovaPrep monitoring items ──────────────────────────────────────
+// Pinned to the top of the Local tab. Update dates/descriptions/URLs as new
+// developments are found; set `pinned:true` so they skip the relevance sort.
+const LOCAL_PINNED = [
+  {
+    title:       "Chemring H1 2026: JBTDS Full-Rate Production Expected by Oct 2026",
+    source:      "📌 Chemring Group PLC · Interim Results",
+    description: "Chemring's June 2 interim results confirm all LRIP deliverables are complete and the company is now supporting US Army field testing and acceptance trials. Management says the FRP contract is 'expected in FY26' (Chemring FY ends Oct 31, 2026). No award announced yet.",
+    link:        "https://www.chemring.com/~/media/Files/C/Chemring-V3/press-releases/interim-results-2026.pdf",
+    pubDate:     new Date("2026-06-02").getTime(),
+    pinned:      true
+  },
+  {
+    title:       "InnovaPrep Files $1M Debt Offering with SEC — Not a Business Combination (Dec 2025)",
+    source:      "📌 SEC EDGAR · Form D",
+    description: "InnovaPrep Inc. filed a Form D on Dec 17, 2025 for a private offering of up to $1M in debt and options to acquire, with $100K sold to two investors as of Dec 5, 2025. The filing explicitly marks 'business combination transaction: false.' Company remains at 132 E. Main St, Drexel MO; Kathleen Ruegsegger listed as President.",
+    link:        "https://www.sec.gov/Archives/edgar/data/1753878/000175387825000002/primary_doc.xml",
+    pubDate:     new Date("2025-12-17").getTime(),
+    pinned:      true
+  }
+];
+
 async function renderWatchCards(slot) {
   const topics = WATCH_TOPICS[activeCat] || [];
   if (!topics.length) { slot.innerHTML = ""; return; }
@@ -9287,6 +9309,11 @@ async function loadCategory(force) {
       '<span style="opacity:.6">Tried: '+cat.feeds.map(f=>f.source).join(", ")+'</span><br>' +
       '<button class="retry-btn" onclick="loadCategory(true)">Try again</button>';
     return;
+  }
+
+  // Prepend pinned monitoring items on the Local tab (skip dedup/sort for them).
+  if (cat.id === "local") {
+    deduped = [...LOCAL_PINNED, ...deduped];
   }
 
   markTrending(deduped);

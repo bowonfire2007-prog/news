@@ -1524,7 +1524,7 @@ async function handleLakeHistory(url, env, ctx) {
 // GET /reps — returns every elected official for Bethel Township / Clinton, MO
 // from the Google Civic Information API, slimmed and cached in BILLS_KV for 24hr.
 // GET /reps-refresh — forces a fresh pull (use after elections or when data looks stale).
-const CIVIC_ADDRESS = "Bethel Township, Clinton, MO 64735";
+const CIVIC_ADDRESS = "Clinton, MO 64735";
 
 async function fetchCivicReps(env) {
   if (!env.GOOGLE_CIVIC_API_KEY) return { error: "GOOGLE_CIVIC_API_KEY not set" };

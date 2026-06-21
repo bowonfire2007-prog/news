@@ -3246,6 +3246,45 @@ function tomorrowNowcast(minutely) {
   return wet ? { state:"starting", mins:Math.max(1,Math.round((wet.t-now)/60000)) } : { state:"dry" };
 }
 
+// Tomorrow.io weather code → emoji (day/night aware).
+// Codes: https://docs.tomorrow.io/reference/data-layers-weather-codes
+function tomorrowEmojiFromWC(wc, isDaytime) {
+  const d = isDaytime !== false;
+  if (wc === 8000) return "⛈️";
+  if (wc >= 7000 && wc < 8000) return "🌨️"; // ice pellets
+  if (wc >= 6000 && wc < 7000) return "🌧️"; // freezing rain
+  if (wc === 5101) return "❄️";              // heavy snow
+  if (wc >= 5000 && wc < 6000) return "🌨️"; // snow / flurries
+  if (wc === 4001 || wc === 4201) return "🌧️"; // rain / heavy rain
+  if (wc >= 4000 && wc < 5000) return "🌦️"; // drizzle / light rain
+  if (wc === 2000 || wc === 2100) return "🌫️"; // fog
+  if (wc === 1001) return "☁️";              // cloudy
+  if (wc === 1102) return d ? "🌥️" : "☁️";  // mostly cloudy
+  if (wc === 1101) return d ? "⛅" : "☁️";   // partly cloudy
+  if (wc === 1100) return d ? "🌤️" : "🌙";  // mostly clear
+  if (wc === 1000) return d ? "☀️" : "🌙";   // clear
+  return d ? "🌡️" : "🌙";
+}
+function renderTomorrowHourly(hourly) {
+  if (!hourly || !hourly.length) return null;
+  const now = Date.now();
+  let out = '<div class="fc-hourly">', n = 0;
+  for (let i = 0; i < hourly.length && n < 18; i++) {
+    const h = hourly[i];
+    const t = new Date(h.t).getTime();
+    if (t < now - 1800000) continue;
+    n++;
+    const localHour = +new Date(h.t).toLocaleString("en-US", { hour:"2-digit", hour12:false, timeZone:WEATHER_LOCATION.tz });
+    const emoji = tomorrowEmojiFromWC(h.wc, localHour >= 6 && localHour < 20);
+    const lbl = n === 1 ? "Now" : new Date(h.t).toLocaleTimeString("en-US", { hour:"numeric", timeZone:WEATHER_LOCATION.tz }).replace(" AM","a").replace(" PM","p");
+    const temp = isFinite(h.temp) ? Math.round(h.temp) : "—";
+    const wet = isFinite(h.pp) && h.pp > 0;
+    out += '<div class="fc-hr"><div class="fc-hr-t">'+lbl+'</div><div class="fc-hr-i">'+emoji+'</div><div class="fc-hr-d">'+temp+'°</div><div class="fc-hr-p'+(wet?' wet':'')+'">'+(wet?Math.round(h.pp)+'%':'')+'</div></div>';
+  }
+  if (n === 0) return null;
+  return out + '</div>';
+}
+
 // ── Live radar: Leaflet + RainViewer tiles, built in-page (no third-party iframe) ──
 let FC_RADAR_MAP=null, FC_RADAR_TIMER=null;
 function ensureLeaflet(){
@@ -3428,8 +3467,19 @@ async function loadForecast() {
   fetchNwsForecast().then(periods => { const el=document.getElementById("fcPeriods"); if(el) el.innerHTML=renderNwsPeriods(periods); });
   fetchNwsHourly().then(periods => { const h=renderNwsHourly(periods); if(!h) return; const el=document.getElementById("fcHourly"); if(el) el.innerHTML=h; const s=document.getElementById("fcHourlySrc"); if(s) s.textContent="· official NWS"; });
   fetch(CF_WORKER+"wx-forecast?lat="+WEATHER_LOCATION.lat+"&lon="+WEATHER_LOCATION.lon).then(r=>r.ok?r.json():null).then(j=>{
-    if(!j||!j.minutely) return; const nc=tomorrowNowcast(j.minutely); if(!nc) return;
-    const el=document.getElementById("fcNowcast"); if(el) el.innerHTML=nowcastBarHtml(nc,"Tomorrow.io");
+    if (!j) return;
+    // Nowcast bar (rain starting/ending in X min)
+    if (j.minutely) { const nc=tomorrowNowcast(j.minutely); if(nc){ const el=document.getElementById("fcNowcast"); if(el) el.innerHTML=nowcastBarHtml(nc,"Tomorrow.io"); } }
+    // Hourly strip — replace Open-Meteo model data with Tomorrow.io (NWS will still override if it loads)
+    if (j.hourly && j.hourly.length) {
+      const h = renderTomorrowHourly(j.hourly);
+      if (h) {
+        const el = document.getElementById("fcHourly");
+        const s = document.getElementById("fcHourlySrc");
+        // Don't overwrite if NWS already loaded (it's more authoritative)
+        if (el && s && s.textContent !== "· official NWS") { el.innerHTML = h; s.textContent = "· Tomorrow.io"; }
+      }
+    }
   }).catch(()=>{});
   loadForecastWeatherNews();
 }

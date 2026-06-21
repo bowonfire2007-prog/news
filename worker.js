@@ -1544,7 +1544,7 @@ async function handleTomorrowForecast(url, env, ctx) {
   const tl = (data && data.timelines) || {};
   const slim = {
     minutely: (tl.minutely || []).map(m => ({ t: m.time, pi: m.values?.precipitationIntensity ?? null, pp: m.values?.precipitationProbability ?? null })),
-    hourly:   (tl.hourly   || []).slice(0, 24).map(h => ({ t: h.time, temp: h.values?.temperature ?? null, pp: h.values?.precipitationProbability ?? null, pi: h.values?.precipitationIntensity ?? null, wind: h.values?.windSpeed ?? null, gust: h.values?.windGust ?? null })),
+    hourly:   (tl.hourly   || []).slice(0, 24).map(h => ({ t: h.time, temp: h.values?.temperature ?? null, pp: h.values?.precipitationProbability ?? null, pi: h.values?.precipitationIntensity ?? null, wind: h.values?.windSpeed ?? null, gust: h.values?.windGust ?? null, wc: h.values?.weatherCode ?? null })),
     source: "Tomorrow.io"
   };
 

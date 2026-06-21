@@ -1565,42 +1565,36 @@ const STATIC_REPS = {
       phone:"573-751-2108", phone2:null, url:"https://www.senate.mo.gov/mem28/", email:null,
       upNext:"Nov 2026 — TERM LIMITED, new senator takes office Jan 2027" },
     { level:"administrativeArea1", levelLabel:"Missouri State",
-      office:"MO House District 57", name:"Rodger Reedy", party:"Republican",
-      phone:"573-751-2205", phone2:null, url:"https://www.house.mo.gov/memberdetails.aspx?district=057", email:null,
+      office:"MO House District 126", name:"Jim Kalberloh", party:"Republican",
+      phone:"573-751-2205", phone2:null, url:"https://www.house.mo.gov/memberdetails.aspx?district=126", email:null,
       upNext:"Nov 2026" },
     // ── HENRY COUNTY ─────────────────────────────────────────────────────────
-    // ⚠ Verify commissioner names at henrycountymo.org — update after county elections.
     { level:"administrativeArea2", levelLabel:"Henry County",
-      office:"Presiding Commissioner", name:"⚠ Verify at henrycountymo.org", party:null,
+      office:"Presiding Commissioner", name:"Jim Hampton", party:null,
       phone:"660-885-7200", phone2:null, url:"https://www.henrycountymo.org/", email:"commissioner@henrycountymo.org",
       upNext:null },
     { level:"administrativeArea2", levelLabel:"Henry County",
-      office:"Associate Commissioner (District 1)", name:"⚠ Verify at henrycountymo.org", party:null,
+      office:"South District Commissioner (your district)", name:"Jake Bradley", party:null,
       phone:"660-885-7200", phone2:null, url:"https://www.henrycountymo.org/", email:null,
       upNext:null },
     { level:"administrativeArea2", levelLabel:"Henry County",
-      office:"Associate Commissioner (District 2)", name:"⚠ Verify at henrycountymo.org", party:null,
+      office:"County Clerk", name:"Rick Watson", party:null,
       phone:"660-885-7200", phone2:null, url:"https://www.henrycountymo.org/", email:null,
       upNext:null },
     { level:"administrativeArea2", levelLabel:"Henry County",
-      office:"Henry County Sheriff", name:"⚠ Verify at henrycountymo.org", party:null,
-      phone:"660-885-4811", phone2:null, url:"https://www.henrycountymo.org/", email:null,
+      office:"Henry County Sheriff", name:"Aaron Brown", party:null,
+      phone:"660-885-7300", phone2:null, url:"https://www.henrycosheriff.gov/", email:null,
       upNext:null },
     // ── CITY OF CLINTON ───────────────────────────────────────────────────────
-    // ⚠ Verify mayor name at clintonmo.com — update after city elections.
     { level:"locality", levelLabel:"City of Clinton",
-      office:"Mayor of Clinton", name:"⚠ Verify at clintonmo.com", party:null,
-      phone:"660-885-2021", phone2:null, url:"https://www.clintonmo.com/government/", email:"cityoffice@clintonmo.com",
-      upNext:null },
-    { level:"locality", levelLabel:"City of Clinton",
-      office:"Clinton City Administrator", name:"⚠ Verify at clintonmo.com", party:null,
-      phone:"660-885-2021", phone2:null, url:"https://www.clintonmo.com/government/", email:"cityoffice@clintonmo.com",
+      office:"Mayor of Clinton", name:"Carla Moberly", party:null,
+      phone:"660-885-8121", phone2:null, url:"https://www.clintonmo.com/government/", email:"cityoffice@clintonmo.com",
       upNext:null },
     // ── BETHLEHEM TOWNSHIP ────────────────────────────────────────────────────
     { level:"special", levelLabel:"Bethlehem Township",
-      office:"Township Trustee / Road Board", name:"⚠ Verify at Henry County Courthouse", party:null,
+      office:"Township Board (write-in seats — 2 board members, Clerk, Treasurer)", name:"Jim & Karen Switzer (SE 200 Rd) — active central reps", party:null,
       phone:"660-885-7200", phone2:null, url:"https://www.henrycountymo.org/", email:null,
-      upNext:null }
+      upNext:"Full list: request current term registry from Henry County Clerk (Rick Watson)" }
   ]
 };
 

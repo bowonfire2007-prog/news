@@ -1119,6 +1119,8 @@ export default {
     if (url.pathname === "/jbtds-monitor")          return handleJbtdsMonitor(url, env);
     if (url.pathname === "/jbtds-monitor-refresh")  return handleJbtdsMonitorRefresh(url, env, ctx);
     if (url.pathname === "/wx-forecast")            return handleTomorrowForecast(url, env, ctx);
+    if (url.pathname === "/reps")                   return handleReps(env);
+    if (url.pathname === "/reps-refresh")           return handleRepsRefresh(env);
     return handleRssProxy(url);
   },
 
@@ -1518,6 +1520,84 @@ async function handleLakeHistory(url, env, ctx) {
 
 // GET /stockquote?ticker=AAPL
 // Returns current price, daily change, 52w high/low, company name + industry.
+// ─────────────── CIVIC REPRESENTATIVES ───────────────
+// GET /reps — returns every elected official for Bethel Township / Clinton, MO
+// from the Google Civic Information API, slimmed and cached in BILLS_KV for 24hr.
+// GET /reps-refresh — forces a fresh pull (use after elections or when data looks stale).
+const CIVIC_ADDRESS = "Bethel Township, Clinton, MO 64735";
+
+async function fetchCivicReps(env) {
+  if (!env.GOOGLE_CIVIC_API_KEY) return { error: "GOOGLE_CIVIC_API_KEY not set" };
+  const url = "https://www.googleapis.com/civicinfo/v2/representatives?address=" +
+    encodeURIComponent(CIVIC_ADDRESS) + "&key=" + env.GOOGLE_CIVIC_API_KEY;
+  const r = await fetch(url, { headers: { "Accept": "application/json" } });
+  if (!r.ok) return { error: "Civic API HTTP " + r.status };
+  const raw = await r.json();
+
+  // Build a slimmed payload grouped by level so the frontend can render without logic.
+  const officials = raw.officials || [];
+  const groups = [];
+
+  const LEVEL_LABELS = {
+    country:             "Federal",
+    administrativeArea1: "Missouri State",
+    administrativeArea2: "Henry County",
+    locality:            "City of Clinton",
+    regional:            "Regional",
+    special:             "Special District"
+  };
+
+  for (const office of (raw.offices || [])) {
+    const level = (office.levels || [])[0] || "other";
+    const label = LEVEL_LABELS[level] || level;
+    for (const idx of (office.officialIndices || [])) {
+      const o = officials[idx];
+      if (!o) continue;
+      const phones  = (o.phones  || []).slice(0, 1);
+      const urls    = (o.urls    || []).slice(0, 1);
+      const emails  = (o.emails  || []).slice(0, 1);
+      // Best social: prefer official website, then Twitter/X handle
+      const twitter = (o.channels || []).find(c => /twitter|x\.com/i.test(c.type));
+      groups.push({
+        level,
+        levelLabel: label,
+        office: office.name,
+        name:   o.name,
+        party:  o.party || null,
+        phone:  phones[0]  || null,
+        url:    urls[0]    || null,
+        email:  emails[0]  || null,
+        twitter: twitter ? twitter.id : null
+      });
+    }
+  }
+
+  return { groups, address: CIVIC_ADDRESS, fetched_at: new Date().toISOString() };
+}
+
+async function handleReps(env) {
+  if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
+  const cached = await env.BILLS_KV.get("reps:data");
+  if (cached) return jsonResponse({ ...JSON.parse(cached), cached: true });
+  try {
+    const data = await fetchCivicReps(env);
+    if (data.error) return jsonResponse(data, 502);
+    await env.BILLS_KV.put("reps:data", JSON.stringify(data), { expirationTtl: 24 * 3600 });
+    return jsonResponse({ ...data, cached: false });
+  } catch (e) { return jsonResponse({ error: e.message }, 500); }
+}
+
+async function handleRepsRefresh(env) {
+  if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
+  await env.BILLS_KV.delete("reps:data");
+  try {
+    const data = await fetchCivicReps(env);
+    if (data.error) return jsonResponse(data, 502);
+    await env.BILLS_KV.put("reps:data", JSON.stringify(data), { expirationTtl: 24 * 3600 });
+    return jsonResponse({ ...data, refreshed: true });
+  } catch (e) { return jsonResponse({ error: e.message }, 500); }
+}
+
 // GET /wx-forecast?lat=&lon=
 // Hyperlocal Tomorrow.io forecast (minutely 60m + hourly), proxied so the API key
 // stays server-side. Cached 10 min so we make at most ~6 origin calls/hour — well

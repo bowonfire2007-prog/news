@@ -211,6 +211,18 @@
   .fc-temp { margin-left:auto; font-weight:700; color:var(--text); }
   .fc-lo { color:var(--text-soft); font-weight:400; }
   .tracker-col[hidden] { display:none; }
+  /* ── Representatives card ── */
+  .reps-toggle { display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-size:12px; font-weight:700; color:var(--text-muted); padding:2px 0 4px; user-select:none; }
+  .reps-toggle:hover { color:var(--text); }
+  .reps-arrow { font-size:11px; }
+  .reps-group-head { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin:10px 0 2px; }
+  .reps-item { padding:5px 0; border-top:1px solid var(--border); }
+  .reps-item-name { font-size:13px; font-weight:700; color:var(--text); }
+  .reps-party { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; padding:1px 4px; border-radius:3px; margin-left:4px; background:color-mix(in srgb,var(--accent) 15%,transparent); color:var(--accent); }
+  .reps-item-role { font-size:11px; color:var(--text-muted); margin-top:1px; }
+  .reps-item-contact { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
+  .reps-item-contact a { font-size:11px; color:var(--accent); text-decoration:none; }
+  .reps-item-contact a:hover { text-decoration:underline; }
   .track-card { border:1px solid var(--border); border-top:3px solid var(--tc, var(--sage)); border-radius:6px; background:color-mix(in srgb,var(--bg) 60%,#fff); box-shadow:var(--shadow); overflow:hidden; }
   .track-card-head { display:flex; align-items:center; gap:8px; padding:11px 14px 9px; border-bottom:1px solid var(--border); }
   .track-card-head .tc-icon { font-size:18px; line-height:1; }
@@ -2170,7 +2182,7 @@ async function renderWatchCards(slot) {
 //   type:"reference" → static reference card
 const TAB_RAIL = {
   cannabis: [ { type:"tracker", key:"cannabis" } ],
-  local:    [ { type:"data", id:"jbtdsMonitor" }, { type:"brief", key:"local" }, { type:"brief", key:"mostate" }, { type:"watch" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" } ], // re-add { type:"bills" } when the Jan 2027 session opens
+  local:    [ { type:"data", id:"jbtdsMonitor" }, { type:"brief", key:"local" }, { type:"brief", key:"mostate" }, { type:"watch" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" }, { type:"data", id:"repsCard" } ], // re-add { type:"bills" } when the Jan 2027 session opens
   science:  [ { type:"tracker", key:"science" } ],
   tech:     [ { type:"brief", key:"tech" }, { type:"tracker", key:"quantum" }, { type:"tracker", key:"ai_agi" } ],
   world:    [ { type:"brief", key:"world" }, { type:"watch" } ],
@@ -2318,6 +2330,51 @@ const DATA_MODULES = {
       return '<ul class="tc-heads" style="list-style:none;padding:0;margin:0">' + rows + '</ul>' +
         '<div class="tc-srcline" style="margin-top:.5em">Checked ' + escapeHtml(checked) +
         ' · Chemring · SEC EDGAR · DoD</div>';
+    }
+  },
+  repsCard: {
+    title: "Your Representatives", icon: "🗳️", color: "#5f6b8a",
+    load: () => railFetchJson("/reps"),
+    render: (data) => {
+      if (!data || !data.groups || !data.groups.length) {
+        return '<div class="rail-err">No data yet — hit <a href="' + CF_WORKER + 'reps-refresh" target="_blank" rel="noopener" style="color:var(--accent)">/reps-refresh</a> once to seed.</div>';
+      }
+      const LEVEL_ORDER = ["country","administrativeArea1","administrativeArea2","locality","regional","special","other"];
+      const LEVEL_EMOJI = { country:"🇺🇸", administrativeArea1:"🏛️", administrativeArea2:"🏡", locality:"🏙️", regional:"📍", special:"📋" };
+      // De-duplicate and sort levels
+      const seenLevels = [], levelMap = {};
+      for (const g of data.groups) {
+        if (!levelMap[g.levelLabel]) { levelMap[g.levelLabel] = { key:g.level, reps:[] }; seenLevels.push(g.levelLabel); }
+        levelMap[g.levelLabel].reps.push(g);
+      }
+      seenLevels.sort((a,b) => (LEVEL_ORDER.indexOf(levelMap[a].key)+1||99) - (LEVEL_ORDER.indexOf(levelMap[b].key)+1||99));
+      const rows = seenLevels.map(lbl => {
+        const { key, reps } = levelMap[lbl];
+        const repHtml = reps.map(r => {
+          const contact = [];
+          if (r.phone) contact.push('<a href="tel:'+escapeHtml(r.phone)+'">📞 '+escapeHtml(r.phone)+'</a>');
+          if (r.url) contact.push('<a href="'+encodeURI(r.url)+'" target="_blank" rel="noopener">🌐 Website</a>');
+          if (r.email) contact.push('<a href="mailto:'+escapeHtml(r.email)+'">✉️ Email</a>');
+          const party = r.party ? ' <span class="reps-party">' + escapeHtml(r.party.charAt(0).toUpperCase() + r.party.slice(1)) + '</span>' : '';
+          return '<div class="reps-item">'+
+            '<div class="reps-item-name">'+escapeHtml(r.name)+party+'</div>'+
+            '<div class="reps-item-role">'+escapeHtml(r.office)+'</div>'+
+            (contact.length ? '<div class="reps-item-contact">'+contact.join('')+'</div>' : '')+
+          '</div>';
+        }).join('');
+        return '<div class="reps-group"><div class="reps-group-head">'+(LEVEL_EMOJI[key]||'📌')+' '+escapeHtml(lbl)+'</div>'+repHtml+'</div>';
+      }).join('');
+      const fetched = data.fetched_at
+        ? new Date(data.fetched_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})
+        : "";
+      const body = rows +
+        '<div class="tc-srcline" style="margin-top:8px">Google Civic Info'+(fetched?' · updated '+fetched:'')+
+        ' · <a href="'+CF_WORKER+'reps-refresh" target="_blank" rel="noopener" style="color:var(--accent)">refresh after elections</a></div>';
+      return '<div class="reps-toggle" onclick="var b=this.nextElementSibling,o=b.style.display===\'block\';b.style.display=o?\'none\':\'block\';this.querySelector(\'.reps-arrow\').textContent=o?\'▾\':\'▴\'">'+
+        '<span>'+data.groups.length+' representatives · tap to expand</span>'+
+        '<span class="reps-arrow">▾</span>'+
+      '</div>'+
+      '<div class="reps-body" style="display:none">'+body+'</div>';
     }
   },
   marketSnapshot: {

@@ -530,6 +530,24 @@ const TRACKERS_CONFIG = [
     title: "InnovaPrep / Sample-Prep Watch",
     query: "InnovaPrep OR bioaerosol OR \"air sampling\" OR \"wastewater surveillance\" pathogen concentration sample prep",
     scaffold: "This card tracks topics relevant to InnovaPrep's actual field. InnovaPrep makes bioconcentration instruments for BOTH air and liquid samples, for lab AND field use (e.g. the Concentrating Pipette / CP Select for liquids and bioaerosol/air samplers), runs an in-house wind tunnel, and does R&D developing new concentration methods. Relevant themes: aerosol/bioaerosol collection and air sampling, liquid/water/wastewater concentration, field-deployable sample prep, wastewater-based epidemiology, CDC NWSS, H5N1/avian-flu detection, and new concentration vs. extraction methods or benchmarking. Use up to 4 step items for the most relevant current developments. Keep claims supported by the headlines or well-established facts; avoid anything proprietary or speculative."
+  },
+  {
+    key:        "quantum",
+    color:      "#0ea5e9",
+    icon:       "⚛️",
+    title:      "Quantum Computing Watch",
+    minAgeDays: 3,
+    query:      "quantum computing OR \"quantum processor\" OR \"quantum advantage\" OR \"quantum supremacy\" OR qubit OR \"quantum error correction\" OR \"fault-tolerant quantum\"",
+    scaffold:   "Tracks the state of quantum computing. Relevant themes: hardware milestones (qubit counts, error rates, coherence times, logical qubits), quantum advantage / supremacy claims, major investments and lab announcements (Google, IBM, Microsoft, IonQ, Quantinuum, PsiQuantum, AWS), government programs (NIST, NSF, DOE, CHIPS Act quantum initiatives), and real-world applications (chemistry, cryptography, optimization). Use up to 5 step items for the most concrete current milestones or race updates — e.g. fault-tolerant logical qubit demos, chip announcements, or policy milestones. state: done = achieved / deployed, current = actively racing / latest announcement, todo = projected next target. Keep big milestones pinned even if only one headline surfaced; base claims on the headlines or well-established facts."
+  },
+  {
+    key:        "ai_agi",
+    color:      "#f97316",
+    icon:       "🤖",
+    title:      "AI & AGI Watch",
+    minAgeDays: 3,
+    query:      "(\"artificial general intelligence\" OR AGI OR \"frontier AI\" OR \"AI safety\" OR \"AI regulation\" OR \"large language model\" OR \"foundation model\" OR OpenAI OR Anthropic OR Gemini OR \"AI policy\" OR \"AI Act\") (breakthrough OR release OR regulation OR warning OR risk OR announced OR milestone)",
+    scaffold:   "Tracks the frontier of AI and AGI development. Relevant themes: major model releases and capability leaps (GPT, Claude, Gemini, Llama, Grok, etc.), safety research milestones and alignment breakthroughs, government regulation and policy (EU AI Act, US executive orders, congressional hearings, export controls on chips), expert warnings about risk and timelines, and major lab news (OpenAI, Anthropic, Google DeepMind, Meta AI, xAI, Mistral). Use up to 5 step items for the most relevant current developments — e.g. latest flagship model release, key regulatory vote, or a notable safety/risk event. state: done = released / enacted / published, current = latest news / actively debated, todo = announced / pending / next expected. Keep high-impact headlines pinned for context even across days; base claims on the headlines or well-established facts."
   }
 ];
 
@@ -647,11 +665,26 @@ async function runTrackersScheduled(env, ctx, force = false) {
 
   for (const cfg of TRACKERS_CONFIG) {
     try {
+      const existingRaw = await env.BILLS_KV.get("trackers:data:" + cfg.key);
+
+      // minAgeDays: keep card pinned for N days even if new headlines arrive.
+      if (!force && existingRaw && cfg.minAgeDays) {
+        try {
+          const existing = JSON.parse(existingRaw);
+          if (existing.updated) {
+            const ageDays = (Date.now() - new Date(existing.updated).getTime()) / (1000 * 60 * 60 * 24);
+            if (ageDays < cfg.minAgeDays) {
+              results.push({ key: cfg.key, changed: false, note: "within minAgeDays" });
+              continue;
+            }
+          }
+        } catch {}
+      }
+
       const headlines = await fetchTopicHeadlines(cfg.query, 8);
       const fingerprint = headlines.map(h => h.title).join("|");
       const newHash = await hashKey(fingerprint);
       const prevHash = await env.BILLS_KV.get("trackers:hash:" + cfg.key);
-      const existingRaw = await env.BILLS_KV.get("trackers:data:" + cfg.key);
 
       // No new headlines and not forced → keep what we have (saves an API call).
       if (!force && prevHash === newHash && existingRaw) {

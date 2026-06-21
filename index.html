@@ -223,7 +223,8 @@
   .reps-item-contact { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
   .reps-item-contact a { font-size:11px; color:var(--accent); text-decoration:none; }
   .reps-item-contact a:hover { text-decoration:underline; }
-  .reps-item-forwhat { font-size:11px; color:var(--text-soft); margin-top:3px; line-height:1.45; }
+  .reps-item-forwhat { font-size:11px; color:var(--text-muted); margin-top:4px; line-height:1.45; padding:6px 8px; background:var(--card-hover); border-radius:5px; }
+  .reps-info { font-size:10px; color:var(--accent); cursor:pointer; margin-left:4px; user-select:none; }
   .reps-item-upnext { font-size:10px; color:var(--accent); font-weight:700; margin-top:4px; }
   .track-card { border:1px solid var(--border); border-top:3px solid var(--tc, var(--sage)); border-radius:6px; background:color-mix(in srgb,var(--bg) 60%,#fff); box-shadow:var(--shadow); overflow:hidden; }
   .track-card-head { display:flex; align-items:center; gap:8px; padding:11px 14px 9px; border-bottom:1px solid var(--border); }
@@ -2133,7 +2134,8 @@ const WATCH_TOPICS = {
     // Clinton / Henry County delegation as of mid-2026: Alford = US House MO-4,
     // Hawley + Schmitt = US Senate, Crawford = MO Senate 28 (term-limited 2026),
     // Reedy = MO House 57. Update names after elections.
-    { label:"Your Representatives", icon:"🗳️", color:"#5f6b8a", q:'"Mark Alford" OR "Josh Hawley" OR "Eric Schmitt" OR "Sandy Crawford" OR "Rodger Reedy"' }
+    { label:"Reps in the News", icon:"🗳️", color:"#5f6b8a", q:'"Mark Alford" OR "Josh Hawley" OR "Eric Schmitt" OR "Mike Kehoe" OR "Jim Kalberloh" OR "Sandy Crawford" OR "Carla Moberly" OR "Aaron Brown" OR "Jim Hampton"' },
+    { label:"Official Statements", icon:"📢", color:"#5f6b8a", q:'("Mark Alford" OR "Josh Hawley" OR "Eric Schmitt" OR "Mike Kehoe" OR "Sandy Crawford") (statement OR "press release" OR announces OR introduced OR "voted" OR "signed" OR "bill" OR "legislation")' }
   ]
 };
 
@@ -2360,11 +2362,10 @@ const DATA_MODULES = {
           if (r.email) contact.push('<a href="mailto:'+escapeHtml(r.email)+'">✉️ Email</a>');
           const party = r.party ? ' <span class="reps-party">'+escapeHtml(r.party)+'</span>' : '';
           const upNext = r.upNext ? '<div class="reps-item-upnext">🗓 Up: '+escapeHtml(r.upNext)+'</div>' : '';
-          const forWhat = r.forWhat ? '<div class="reps-item-forwhat">'+escapeHtml(r.forWhat)+'</div>' : '';
+          const roleTitle = r.forWhat ? ' title="'+escapeHtml(r.forWhat)+'"' : '';
           return '<div class="reps-item">'+
             '<div class="reps-item-name">'+escapeHtml(r.name)+party+'</div>'+
-            '<div class="reps-item-role">'+escapeHtml(r.office)+'</div>'+
-            forWhat+
+            '<div class="reps-item-role"'+roleTitle+'>'+escapeHtml(r.office)+(r.forWhat ? ' <span class="reps-info" onclick="var d=this.nextElementSibling;d.style.display=d.style.display===\'block\'?\'none\':\'block\'">ⓘ</span><div class="reps-item-forwhat" style="display:none">'+escapeHtml(r.forWhat)+'</div>' : '')+'</div>'+
             upNext+
             (contact.length ? '<div class="reps-item-contact">'+contact.join('')+'</div>' : '')+
           '</div>';

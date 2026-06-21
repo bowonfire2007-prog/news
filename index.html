@@ -223,6 +223,7 @@
   .reps-item-contact { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
   .reps-item-contact a { font-size:11px; color:var(--accent); text-decoration:none; }
   .reps-item-contact a:hover { text-decoration:underline; }
+  .reps-item-upnext { font-size:10px; color:var(--accent); font-weight:700; margin-top:2px; }
   .track-card { border:1px solid var(--border); border-top:3px solid var(--tc, var(--sage)); border-radius:6px; background:color-mix(in srgb,var(--bg) 60%,#fff); box-shadow:var(--shadow); overflow:hidden; }
   .track-card-head { display:flex; align-items:center; gap:8px; padding:11px 14px 9px; border-bottom:1px solid var(--border); }
   .track-card-head .tc-icon { font-size:18px; line-height:1; }
@@ -2352,13 +2353,16 @@ const DATA_MODULES = {
         const { key, reps } = levelMap[lbl];
         const repHtml = reps.map(r => {
           const contact = [];
-          if (r.phone) contact.push('<a href="tel:'+escapeHtml(r.phone)+'">📞 '+escapeHtml(r.phone)+'</a>');
+          if (r.phone) contact.push('<a href="tel:'+escapeHtml(r.phone)+'">📞 '+escapeHtml(r.phone)+(r.phone2?' <span style="color:var(--text-muted);font-size:10px">(DC)</span>':'')+'</a>');
+          if (r.phone2) contact.push('<a href="tel:'+escapeHtml(r.phone2)+'">📞 '+escapeHtml(r.phone2)+' <span style="color:var(--text-muted);font-size:10px">(local)</span></a>');
           if (r.url) contact.push('<a href="'+encodeURI(r.url)+'" target="_blank" rel="noopener">🌐 Website</a>');
           if (r.email) contact.push('<a href="mailto:'+escapeHtml(r.email)+'">✉️ Email</a>');
-          const party = r.party ? ' <span class="reps-party">' + escapeHtml(r.party.charAt(0).toUpperCase() + r.party.slice(1)) + '</span>' : '';
+          const party = r.party ? ' <span class="reps-party">'+escapeHtml(r.party)+'</span>' : '';
+          const upNext = r.upNext ? '<div class="reps-item-upnext">🗓 Up: '+escapeHtml(r.upNext)+'</div>' : '';
           return '<div class="reps-item">'+
             '<div class="reps-item-name">'+escapeHtml(r.name)+party+'</div>'+
             '<div class="reps-item-role">'+escapeHtml(r.office)+'</div>'+
+            upNext+
             (contact.length ? '<div class="reps-item-contact">'+contact.join('')+'</div>' : '')+
           '</div>';
         }).join('');

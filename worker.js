@@ -1521,81 +1521,96 @@ async function handleLakeHistory(url, env, ctx) {
 // GET /stockquote?ticker=AAPL
 // Returns current price, daily change, 52w high/low, company name + industry.
 // ─────────────── CIVIC REPRESENTATIVES ───────────────
-// GET /reps — returns every elected official for Bethel Township / Clinton, MO
-// from the Google Civic Information API, slimmed and cached in BILLS_KV for 24hr.
-// GET /reps-refresh — forces a fresh pull (use after elections or when data looks stale).
-const CIVIC_ADDRESS = "Clinton, MO 64735";
-
-async function fetchCivicReps(env) {
-  if (!env.GOOGLE_CIVIC_API_KEY) return { error: "GOOGLE_CIVIC_API_KEY not set" };
-  const url = "https://www.googleapis.com/civicinfo/v2/representatives?address=" +
-    encodeURIComponent(CIVIC_ADDRESS) + "&key=" + env.GOOGLE_CIVIC_API_KEY;
-  const r = await fetch(url, { headers: { "Accept": "application/json" } });
-  if (!r.ok) return { error: "Civic API HTTP " + r.status };
-  const raw = await r.json();
-
-  // Build a slimmed payload grouped by level so the frontend can render without logic.
-  const officials = raw.officials || [];
-  const groups = [];
-
-  const LEVEL_LABELS = {
-    country:             "Federal",
-    administrativeArea1: "Missouri State",
-    administrativeArea2: "Henry County",
-    locality:            "City of Clinton",
-    regional:            "Regional",
-    special:             "Special District"
-  };
-
-  for (const office of (raw.offices || [])) {
-    const level = (office.levels || [])[0] || "other";
-    const label = LEVEL_LABELS[level] || level;
-    for (const idx of (office.officialIndices || [])) {
-      const o = officials[idx];
-      if (!o) continue;
-      const phones  = (o.phones  || []).slice(0, 1);
-      const urls    = (o.urls    || []).slice(0, 1);
-      const emails  = (o.emails  || []).slice(0, 1);
-      // Best social: prefer official website, then Twitter/X handle
-      const twitter = (o.channels || []).find(c => /twitter|x\.com/i.test(c.type));
-      groups.push({
-        level,
-        levelLabel: label,
-        office: office.name,
-        name:   o.name,
-        party:  o.party || null,
-        phone:  phones[0]  || null,
-        url:    urls[0]    || null,
-        email:  emails[0]  || null,
-        twitter: twitter ? twitter.id : null
-      });
-    }
-  }
-
-  return { groups, address: CIVIC_ADDRESS, fetched_at: new Date().toISOString() };
-}
+// GET /reps — serves the static representative directory for Clinton / Henry County, MO.
+// No external API — just update STATIC_REPS below after elections.
+// GET /reps-refresh — clears KV cache so the updated list is re-served immediately.
+//
+// HOW TO UPDATE: after an election, edit STATIC_REPS and run push.bat, then /reps-refresh.
+// Update names/phones after elections. upNext = when this seat is next on the ballot.
+const STATIC_REPS = {
+  fetched_at: "2026-06-21",
+  groups: [
+    // ── FEDERAL ──────────────────────────────────────────────────────────────
+    { level:"country", levelLabel:"Federal",
+      office:"President of the United States", name:"Donald J. Trump", party:"Republican",
+      phone:"202-456-1111", phone2:null, url:"https://www.whitehouse.gov/contact/", email:null,
+      upNext:"Nov 2028" },
+    { level:"country", levelLabel:"Federal",
+      office:"Vice President", name:"JD Vance", party:"Republican",
+      phone:"202-456-1111", phone2:null, url:"https://www.whitehouse.gov/contact/", email:null,
+      upNext:"Nov 2028" },
+    { level:"country", levelLabel:"Federal",
+      office:"U.S. Senator (MO)", name:"Josh Hawley", party:"Republican",
+      phone:"202-224-6154", phone2:"816-960-4694", url:"https://www.hawley.senate.gov/contact-josh", email:null,
+      upNext:"Nov 2030" },
+    { level:"country", levelLabel:"Federal",
+      office:"U.S. Senator (MO)", name:"Eric Schmitt", party:"Republican",
+      phone:"202-224-5721", phone2:"816-421-1639", url:"https://www.schmitt.senate.gov/contact", email:null,
+      upNext:"Nov 2028" },
+    { level:"country", levelLabel:"Federal",
+      office:"U.S. Representative, MO-4", name:"Mark Alford", party:"Republican",
+      phone:"202-225-2876", phone2:"816-380-0021", url:"https://alford.house.gov/contact", email:null,
+      upNext:"Nov 2026" },
+    // ── MISSOURI STATE ───────────────────────────────────────────────────────
+    { level:"administrativeArea1", levelLabel:"Missouri State",
+      office:"Governor of Missouri", name:"Mike Kehoe", party:"Republican",
+      phone:"573-751-3222", phone2:null, url:"https://governor.mo.gov/contact-us", email:"mogovernor@mo.gov",
+      upNext:"Nov 2028" },
+    { level:"administrativeArea1", levelLabel:"Missouri State",
+      office:"Lt. Governor of Missouri", name:"David Wasinger", party:"Republican",
+      phone:"573-751-4727", phone2:null, url:"https://ltgov.mo.gov/contact/", email:null,
+      upNext:"Nov 2028" },
+    { level:"administrativeArea1", levelLabel:"Missouri State",
+      office:"MO Senate District 28", name:"Sandy Crawford", party:"Republican",
+      phone:"573-751-2108", phone2:null, url:"https://www.senate.mo.gov/mem28/", email:null,
+      upNext:"Nov 2026 — TERM LIMITED, new senator takes office Jan 2027" },
+    { level:"administrativeArea1", levelLabel:"Missouri State",
+      office:"MO House District 57", name:"Rodger Reedy", party:"Republican",
+      phone:"573-751-2205", phone2:null, url:"https://www.house.mo.gov/memberdetails.aspx?district=057", email:null,
+      upNext:"Nov 2026" },
+    // ── HENRY COUNTY ─────────────────────────────────────────────────────────
+    // ⚠ Verify commissioner names at henrycountymo.org — update after county elections.
+    { level:"administrativeArea2", levelLabel:"Henry County",
+      office:"Presiding Commissioner", name:"⚠ Verify at henrycountymo.org", party:null,
+      phone:"660-885-7200", phone2:null, url:"https://www.henrycountymo.org/", email:"commissioner@henrycountymo.org",
+      upNext:null },
+    { level:"administrativeArea2", levelLabel:"Henry County",
+      office:"Associate Commissioner (District 1)", name:"⚠ Verify at henrycountymo.org", party:null,
+      phone:"660-885-7200", phone2:null, url:"https://www.henrycountymo.org/", email:null,
+      upNext:null },
+    { level:"administrativeArea2", levelLabel:"Henry County",
+      office:"Associate Commissioner (District 2)", name:"⚠ Verify at henrycountymo.org", party:null,
+      phone:"660-885-7200", phone2:null, url:"https://www.henrycountymo.org/", email:null,
+      upNext:null },
+    { level:"administrativeArea2", levelLabel:"Henry County",
+      office:"Henry County Sheriff", name:"⚠ Verify at henrycountymo.org", party:null,
+      phone:"660-885-4811", phone2:null, url:"https://www.henrycountymo.org/", email:null,
+      upNext:null },
+    // ── CITY OF CLINTON ───────────────────────────────────────────────────────
+    // ⚠ Verify mayor name at clintonmo.com — update after city elections.
+    { level:"locality", levelLabel:"City of Clinton",
+      office:"Mayor of Clinton", name:"⚠ Verify at clintonmo.com", party:null,
+      phone:"660-885-2021", phone2:null, url:"https://www.clintonmo.com/government/", email:"cityoffice@clintonmo.com",
+      upNext:null },
+    { level:"locality", levelLabel:"City of Clinton",
+      office:"Clinton City Administrator", name:"⚠ Verify at clintonmo.com", party:null,
+      phone:"660-885-2021", phone2:null, url:"https://www.clintonmo.com/government/", email:"cityoffice@clintonmo.com",
+      upNext:null },
+    // ── BETHLEHEM TOWNSHIP ────────────────────────────────────────────────────
+    { level:"special", levelLabel:"Bethlehem Township",
+      office:"Township Trustee / Road Board", name:"⚠ Verify at Henry County Courthouse", party:null,
+      phone:"660-885-7200", phone2:null, url:"https://www.henrycountymo.org/", email:null,
+      upNext:null }
+  ]
+};
 
 async function handleReps(env) {
-  if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
-  const cached = await env.BILLS_KV.get("reps:data");
-  if (cached) return jsonResponse({ ...JSON.parse(cached), cached: true });
-  try {
-    const data = await fetchCivicReps(env);
-    if (data.error) return jsonResponse(data, 502);
-    await env.BILLS_KV.put("reps:data", JSON.stringify(data), { expirationTtl: 24 * 3600 });
-    return jsonResponse({ ...data, cached: false });
-  } catch (e) { return jsonResponse({ error: e.message }, 500); }
+  return jsonResponse({ ...STATIC_REPS, cached: false });
 }
 
 async function handleRepsRefresh(env) {
-  if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
-  await env.BILLS_KV.delete("reps:data");
-  try {
-    const data = await fetchCivicReps(env);
-    if (data.error) return jsonResponse(data, 502);
-    await env.BILLS_KV.put("reps:data", JSON.stringify(data), { expirationTtl: 24 * 3600 });
-    return jsonResponse({ ...data, refreshed: true });
-  } catch (e) { return jsonResponse({ error: e.message }, 500); }
+  // No external API — just return the current static data.
+  return jsonResponse({ ...STATIC_REPS, refreshed: true });
 }
 
 // GET /wx-forecast?lat=&lon=

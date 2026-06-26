@@ -1261,6 +1261,427 @@
   .weather .w-toggle, .weather .w-collapse { display:none !important; }
   .weather { cursor:pointer; }
   .weather::after { content:"⛅ Tap for full forecast & smart farm alerts →"; display:block; font-size:10.5px; color:var(--accent); font-weight:800; padding-top:4px; }
+
+
+  /* ════════════════════════════════════════════════════════════════════════════
+     TRUMAN LAKE VISUAL REDESIGN PREVIEW
+     Safe visual layer only: preserves existing JS, APIs, IDs, and data modules.
+     Focus: lake-area identity, stronger hierarchy, richer cards, better mobile scan.
+     ════════════════════════════════════════════════════════════════════════════ */
+  :root {
+    --bg:#f6efe2;
+    --text:#211812;
+    --text-muted:#665b4e;
+    --text-soft:#91877a;
+    --border:#ded3c0;
+    --accent:#b74325;
+    --sage:#6e8462;
+    --mustard:#c79735;
+    --lake:#2f8fa3;
+    --lake-deep:#174652;
+    --lake-soft:#d9ecea;
+    --paper:#fffaf1;
+    --paper-warm:#fbf3e5;
+    --card-hover:#efe5d4;
+    --shadow:0 14px 38px rgba(42,32,18,.16);
+    --shadow-soft:0 8px 24px rgba(42,32,18,.10);
+    --ring:0 0 0 4px color-mix(in srgb,var(--lake) 16%,transparent);
+  }
+  [data-theme="dark"] {
+    --bg:#0c1110;
+    --text:#f7f0e5;
+    --text-muted:#b6aa9a;
+    --text-soft:#817768;
+    --border:#2f332e;
+    --accent:#ff7a55;
+    --sage:#9bb98e;
+    --mustard:#edc05f;
+    --lake:#67c5d6;
+    --lake-deep:#102c33;
+    --lake-soft:#14363a;
+    --paper:#141816;
+    --paper-warm:#191b17;
+    --card-hover:#20231f;
+    --shadow:0 18px 46px rgba(0,0,0,.52);
+    --shadow-soft:0 8px 26px rgba(0,0,0,.36);
+    --ring:0 0 0 4px color-mix(in srgb,var(--lake) 18%,transparent);
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 12% 8%, color-mix(in srgb,var(--mustard) 16%,transparent) 0 18rem, transparent 32rem),
+      radial-gradient(circle at 88% 16%, color-mix(in srgb,var(--lake) 18%,transparent) 0 20rem, transparent 36rem),
+      linear-gradient(180deg, color-mix(in srgb,var(--paper) 58%,transparent), transparent 36vh);
+  }
+
+  /* Header: make the masthead feel like a local lake-area morning paper. */
+  header {
+    border-bottom:0;
+    background:
+      linear-gradient(180deg, color-mix(in srgb,var(--paper) 96%,transparent), color-mix(in srgb,var(--paper-warm) 92%,transparent)),
+      radial-gradient(circle at 50% -40%, color-mix(in srgb,var(--lake) 16%,transparent), transparent 42%);
+    box-shadow:0 10px 34px rgba(34,24,12,.12);
+    padding:max(env(safe-area-inset-top),10px) 20px 12px;
+    overflow:hidden;
+  }
+  [data-theme="dark"] header { box-shadow:0 12px 36px rgba(0,0,0,.45); }
+  header::before {
+    height:5px;
+    background:linear-gradient(90deg,var(--lake-deep),var(--lake),var(--sage),var(--mustard),var(--accent));
+  }
+  header::after {
+    content:"";
+    position:absolute;
+    left:50%;
+    bottom:-34px;
+    width:min(900px,92vw);
+    height:90px;
+    transform:translateX(-50%);
+    background:
+      radial-gradient(ellipse at center, color-mix(in srgb,var(--lake) 14%,transparent), transparent 68%),
+      repeating-linear-gradient(0deg, transparent 0 13px, color-mix(in srgb,var(--lake) 14%,transparent) 14px 15px);
+    opacity:.55;
+    pointer-events:none;
+  }
+  .header-row, .search-wrap, .dateline, .ticker-bar, .weather, .quote-bar, .section-bar, .quick-tabs, .lake-identity-strip { position:relative; z-index:2; }
+  .header-row { padding:12px 0 10px; align-items:center; }
+  .brand-wrap { flex:1; min-width:0; text-align:center; padding:0 8px; }
+  .brand {
+    font-size:clamp(31px,5.3vw,58px);
+    line-height:.9;
+    letter-spacing:-.045em;
+    text-shadow:0 2px 0 color-mix(in srgb,var(--mustard) 16%,transparent);
+  }
+  .brand span { color:var(--accent); }
+  .local-deck {
+    margin-top:8px;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.20em;
+    text-transform:uppercase;
+    color:var(--lake-deep);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  [data-theme="dark"] .local-deck { color:var(--lake); }
+  .header-actions { gap:7px; }
+  .icon-btn, .font-btn {
+    background:color-mix(in srgb,var(--paper) 76%,transparent);
+    border-color:color-mix(in srgb,var(--border) 82%,var(--lake));
+    box-shadow:0 2px 8px rgba(0,0,0,.05);
+  }
+  .icon-btn:hover, .font-btn:hover { background:color-mix(in srgb,var(--lake) 11%,var(--paper)); box-shadow:var(--ring); }
+
+  .dateline {
+    border:1px solid color-mix(in srgb,var(--border) 76%,var(--lake));
+    border-radius:999px;
+    background:color-mix(in srgb,var(--paper) 78%,transparent);
+    padding:7px 14px;
+    box-shadow:var(--shadow-soft);
+  }
+  .dateline-volume { color:var(--accent); font-weight:800; }
+  .lake-identity-strip {
+    max-width:var(--maxw);
+    margin:10px auto 0;
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .lake-identity-strip span {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 11px;
+    border-radius:999px;
+    border:1px solid color-mix(in srgb,var(--lake) 32%,var(--border));
+    background:color-mix(in srgb,var(--lake-soft) 72%,transparent);
+    color:color-mix(in srgb,var(--lake-deep) 88%,var(--text));
+    font-size:11px;
+    font-weight:850;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+  }
+  [data-theme="dark"] .lake-identity-strip span { background:color-mix(in srgb,var(--lake-soft) 72%,transparent); color:var(--text); }
+
+  /* Weather: turn the existing weather block into the command-center card. */
+  .weather {
+    margin:12px auto 10px;
+    padding:15px 16px 13px;
+    border:1px solid color-mix(in srgb,var(--lake) 28%,var(--border));
+    border-radius:22px;
+    background:
+      linear-gradient(135deg, color-mix(in srgb,var(--paper) 92%,transparent), color-mix(in srgb,var(--lake-soft) 64%,transparent)),
+      radial-gradient(circle at 100% 0, color-mix(in srgb,var(--lake) 18%,transparent), transparent 44%);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .weather::before {
+    content:"Lake Area Weather";
+    display:block;
+    margin-bottom:9px;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--lake-deep);
+  }
+  [data-theme="dark"] .weather::before { color:var(--lake); }
+  .weather.loading::before { content:"Lake Area Weather"; }
+  .w-current { padding-bottom:10px; gap:12px; }
+  .w-icon { font-size:30px; filter:drop-shadow(0 3px 5px rgba(0,0,0,.12)); }
+  .w-temp {
+    font-family:"Iowan Old Style","Palatino","Georgia",serif;
+    font-size:clamp(30px,4vw,44px);
+    letter-spacing:-.04em;
+  }
+  .w-cond { font-size:15px; font-weight:800; }
+  .w-meta {
+    padding:7px 10px;
+    border-radius:14px;
+    background:color-mix(in srgb,var(--paper) 68%,transparent);
+    border:1px solid color-mix(in srgb,var(--border) 75%,var(--lake));
+  }
+  .w-lake { background:var(--lake-deep); color:#fff; box-shadow:0 6px 14px color-mix(in srgb,var(--lake) 28%,transparent); }
+  [data-theme="dark"] .w-lake { background:color-mix(in srgb,var(--lake) 24%,#000); color:var(--text); }
+  .w-toggle { margin-top:2px; padding:9px 2px 5px; border-top:1px solid color-mix(in srgb,var(--lake) 28%,var(--border)); }
+  .w-hour, .w-day, .w-detail-hour {
+    border-radius:14px;
+    background:color-mix(in srgb,var(--paper) 67%,var(--card-hover));
+    border:1px solid color-mix(in srgb,var(--border) 74%,transparent);
+  }
+  .w-hour.now, .w-day.today, .w-day.selected { box-shadow:var(--ring); }
+
+  .ticker-bar {
+    margin-top:10px;
+    border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border));
+    border-radius:999px;
+    background:linear-gradient(90deg, color-mix(in srgb,var(--accent) 12%,transparent), color-mix(in srgb,var(--mustard) 10%,transparent));
+    box-shadow:var(--shadow-soft);
+  }
+  .quote-bar {
+    border:0;
+    border-radius:18px;
+    background:color-mix(in srgb,var(--paper) 68%,transparent);
+    padding:13px 18px;
+    box-shadow:var(--shadow-soft);
+  }
+
+  /* Section navigation: cleaner briefing controls and more tactile tabs. */
+  .section-bar {
+    margin:16px auto 0;
+    padding:12px 14px;
+    border:1px solid color-mix(in srgb,var(--border) 80%,var(--lake));
+    border-radius:18px;
+    background:color-mix(in srgb,var(--paper) 74%,transparent);
+    box-shadow:var(--shadow-soft);
+  }
+  .section-label {
+    background:linear-gradient(135deg,var(--lake-deep),var(--lake));
+    color:#fff;
+    border-radius:999px;
+    padding:5px 14px;
+    letter-spacing:.13em;
+  }
+  .section-menu-btn {
+    border:1px solid color-mix(in srgb,var(--accent) 26%,var(--border));
+    border-radius:999px;
+    padding:7px 11px;
+    background:color-mix(in srgb,var(--accent) 7%,transparent);
+    font-weight:850;
+  }
+  .quick-tabs {
+    gap:9px;
+    padding:10px 0 14px;
+  }
+  .qtab {
+    border-width:1px;
+    padding:7px 13px;
+    background:color-mix(in srgb,var(--paper) 75%,transparent);
+    box-shadow:0 3px 12px rgba(0,0,0,.045);
+  }
+  .qtab:hover { box-shadow:var(--ring); }
+  .qtab.active { color:#fff; background:linear-gradient(135deg,var(--qc),color-mix(in srgb,var(--qc) 78%,#000)); }
+
+  /* Main layout and article cards: from list feed to polished briefing cards. */
+  main {
+    padding-top:18px;
+    background:transparent;
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
+  }
+  .main-cols { gap:26px; }
+  .item-wrap { border-bottom:0; margin:0 0 14px; }
+  article.item {
+    padding:18px;
+    border:1px solid color-mix(in srgb,var(--border) 86%,var(--lake));
+    border-radius:20px;
+    background:linear-gradient(180deg, color-mix(in srgb,var(--paper) 90%,transparent), color-mix(in srgb,var(--paper-warm) 82%,transparent));
+    box-shadow:var(--shadow-soft);
+    overflow:hidden;
+  }
+  article.item::after {
+    content:"";
+    position:absolute;
+    inset:auto 16px 0 16px;
+    height:3px;
+    border-radius:999px 999px 0 0;
+    background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--lake) 34%,transparent),transparent);
+    opacity:0;
+    transition:opacity .16s ease;
+  }
+  article.item:hover { transform:translateY(-3px); box-shadow:var(--shadow); border-color:color-mix(in srgb,var(--lake) 45%,var(--border)); }
+  article.item:hover::after { opacity:1; }
+  article.item.kb-focus { outline:none; box-shadow:var(--shadow), var(--ring); }
+  .kicker {
+    color:var(--lake-deep);
+    font-size:10.5px;
+    letter-spacing:.16em;
+    font-weight:900;
+  }
+  [data-theme="dark"] .kicker { color:var(--lake); }
+  .kicker::after { background:color-mix(in srgb,var(--lake) 40%,transparent); }
+  .title { font-size:clamp(18px,1.8vw,22px); line-height:1.18; font-weight:850; }
+  .desc { font-size:15px; color:var(--text-muted); }
+  .meta { margin-top:11px; }
+  .brief-btn, .bkmk-btn {
+    border-radius:999px;
+    background:color-mix(in srgb,var(--paper) 70%,transparent);
+  }
+  .thumb {
+    width:128px;
+    height:104px;
+    border-radius:16px;
+    box-shadow:0 8px 20px rgba(0,0,0,.14);
+  }
+
+  article.item.hero {
+    padding:24px;
+    gap:18px;
+    border:1px solid color-mix(in srgb,var(--lake) 36%,var(--border));
+    border-bottom:1px solid color-mix(in srgb,var(--lake) 36%,var(--border));
+    border-radius:28px;
+    background:
+      linear-gradient(180deg, color-mix(in srgb,var(--paper) 96%,transparent), color-mix(in srgb,var(--lake-soft) 52%,var(--paper-warm))),
+      radial-gradient(circle at 10% 0, color-mix(in srgb,var(--mustard) 20%,transparent), transparent 42%);
+    box-shadow:var(--shadow);
+  }
+  article.item.hero::before {
+    content:"TOP STORY · TRUMAN LAKE MORNING BRIEFING";
+    background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 74%,var(--mustard)));
+    color:#fff;
+    letter-spacing:.15em;
+    border-radius:999px;
+    padding:6px 15px;
+  }
+  article.item.hero .thumb {
+    width:100%;
+    height:min(42vw,360px);
+    border-radius:22px;
+    object-fit:cover;
+  }
+  article.item.hero .kicker { text-align:center; }
+  article.item.hero .title {
+    font-size:clamp(30px,4vw,48px);
+    line-height:1.02;
+    letter-spacing:-.045em;
+    max-width:920px;
+    margin:0 auto;
+  }
+  article.item.hero .desc {
+    max-width:820px;
+    margin:12px auto 0;
+    text-align:center;
+    font-size:17px;
+    line-height:1.55;
+  }
+  article.item.hero .desc::first-letter { font:inherit; float:none; padding:0; color:inherit; }
+  .badge { border-radius:999px; box-shadow:0 2px 9px rgba(0,0,0,.06); }
+
+  .brief-panel.open, .sources-panel.open {
+    margin:8px 10px 18px;
+    border-radius:18px;
+    border:1px solid color-mix(in srgb,var(--accent) 24%,var(--border));
+    border-left:5px solid var(--accent);
+    box-shadow:var(--shadow-soft);
+  }
+
+  /* Right rail / data cards: make modules feel like a unified dashboard. */
+  .tracker-col { top:18px; }
+  #railModules { gap:18px; }
+  .track-card {
+    border:1px solid color-mix(in srgb,var(--border) 86%,var(--tc, var(--lake)));
+    border-left:5px solid var(--tc, var(--lake));
+    border-top:1px solid color-mix(in srgb,var(--border) 86%,var(--tc, var(--lake)));
+    border-radius:22px;
+    background:linear-gradient(180deg, color-mix(in srgb,var(--paper) 90%,transparent), color-mix(in srgb,var(--paper-warm) 82%,transparent));
+    box-shadow:var(--shadow-soft);
+  }
+  .track-card-head {
+    padding:13px 15px 11px;
+    background:linear-gradient(90deg, color-mix(in srgb,var(--tc, var(--lake)) 10%,transparent), transparent);
+  }
+  .track-card-head .tc-title { letter-spacing:.08em; }
+  .track-card-body { padding:14px 16px 16px; }
+
+  .drawer { box-shadow:22px 0 54px rgba(0,0,0,.24); }
+  footer {
+    border-top:0;
+    margin-top:46px;
+    border-radius:22px 22px 0 0;
+    background:color-mix(in srgb,var(--paper) 70%,transparent);
+  }
+  .scene-banner { margin-top:24px; }
+
+  @media (min-width:1000px) {
+    :root { --maxw:min(1240px,94vw); }
+    .main-col-left { max-width:820px; }
+  }
+
+  @media (max-width:760px) {
+    header { padding-left:14px; padding-right:14px; }
+    .header-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:8px; }
+    .brand { font-size:clamp(27px,9vw,38px); }
+    .local-deck { font-size:8.8px; letter-spacing:.12em; margin-top:5px; }
+    .header-actions { gap:4px; }
+    .font-btn { display:none; }
+    .icon-btn { width:34px; height:34px; }
+    .dateline { border-radius:16px; align-items:center; padding:7px 9px; }
+    .dateline-volume { display:none; }
+    .lake-identity-strip { justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:1px; }
+    .lake-identity-strip::-webkit-scrollbar { display:none; }
+    .lake-identity-strip span { flex:0 0 auto; font-size:9.5px; padding:5px 9px; }
+    .weather { border-radius:18px; padding:12px; }
+    .w-meta { margin-left:0; width:100%; justify-content:space-between; }
+    .quick-tabs { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:10px; }
+    .quick-tabs::-webkit-scrollbar { display:none; }
+    .qtab { flex:0 0 auto; padding:6px 11px; font-size:12px; }
+    .section-bar { padding:9px 10px; }
+    .section-label { font-size:12px; letter-spacing:.08em; }
+    .section-menu-btn { font-size:12px; padding:6px 9px; }
+    main { padding-top:12px; }
+    .item-wrap { margin-bottom:10px; }
+    article.item { padding:13px; gap:11px; border-radius:17px; }
+    .title { font-size:16.5px; }
+    .desc { font-size:13px; }
+    .thumb { width:82px; height:82px; border-radius:13px; }
+    article.item.hero { padding:15px; border-radius:21px; gap:12px; }
+    article.item.hero::before { font-size:8.5px; letter-spacing:.09em; text-align:center; }
+    article.item.hero .thumb { height:190px; border-radius:17px; }
+    article.item.hero .title { font-size:25px; }
+    article.item.hero .desc { font-size:14px; text-align:left; }
+    .tracker-col { order:0; }
+  }
+
+  @media (max-width:420px) {
+    .brand { font-size:25px; }
+    .local-deck { white-space:normal; line-height:1.25; }
+    .dateline { font-size:8px; }
+    .section-menu-btn { max-width:124px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .brief-btn, .bkmk-btn { padding:4px 7px; }
+  }
+
 </style>
 </head>
 <body>
@@ -1281,7 +1702,11 @@
     <button class="icon-btn" id="menuBtn" aria-label="Open navigation">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
-    <div class="brand">Matt's Daily<span>.</span>Read</div>
+    <!-- Truman Lake redesign: local masthead wrapper. IDs and JS hooks untouched. -->
+    <div class="brand-wrap" aria-label="Matt's Daily Read — Truman Lake / Henry County">
+      <div class="brand">Matt's Daily<span>.</span>Read</div>
+      <div class="local-deck">Truman Lake · Henry County · Clinton, Missouri</div>
+    </div>
     <div class="header-actions">
       <button class="font-btn" id="fontSmBtn" aria-label="Smaller text">A−</button>
       <button class="font-btn" id="fontLgBtn" aria-label="Larger text">A+</button>
@@ -1308,6 +1733,14 @@
     <span id="datelineDate">—</span>
     <span class="dateline-volume">"All the news that's fit to scroll."</span>
     <span id="datelineEdition">Clinton, MO Edition</span>
+  </div>
+
+  <!-- Truman Lake redesign: local identity strip, static-only and safe to remove. -->
+  <div class="lake-identity-strip" aria-label="Local edition highlights">
+    <span>🌊 Truman Lake</span>
+    <span>🌲 Henry County</span>
+    <span>📰 Morning Briefing</span>
+    <span>⛅ Weather + Lake Conditions</span>
   </div>
 
   <div class="ticker-bar" id="tickerBar"><div class="ticker-track" id="tickerTrack"></div></div>
@@ -1357,7 +1790,7 @@
 </svg>
 </div>
 
-<footer>Built for Matt · Pull-to-refresh or tap ↺ to refresh. · J/K navigate · B bookmark · Enter open</footer>
+<footer>Built for Matt · Truman Lake / Henry County daily briefing · Pull-to-refresh or tap ↺ to refresh · J/K navigate · B bookmark · Enter open</footer>
 
 <script>
 // ========== CONFIG ==========

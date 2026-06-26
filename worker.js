@@ -4,7 +4,7 @@
 // One-time setup for the AI Brief feature:
 //   1. In your Worker's dashboard → Settings → Variables → Secrets
 //   2. Add a secret named:  ANTHROPIC_API_KEY  (paste your Claude API key)
-//   3. (Optional) Add a plain variable AI_MODEL — defaults to claude-sonnet-4-5
+//   3. (Optional) Add a plain variable AI_MODEL — defaults to claude-sonnet-4-6
 //
 // Endpoints:
 //   GET  /?url=<rss_feed_url>     RSS proxy (existing)
@@ -109,7 +109,7 @@ async function extractAndSaveMoWeekly(pdfUrl, env) {
     if (!pdfRes.ok) return null;
     const pdfBase64 = arrayBufferToBase64(await pdfRes.arrayBuffer());
 
-    const model = env.AI_MODEL || "claude-sonnet-4-5";
+    const model = env.AI_MODEL || "claude-sonnet-4-6";
     const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -1176,7 +1176,7 @@ async function handleFishPlan(request, env, ctx) {
   }
 
   const prompt = buildFishPlanPrompt(body);
-  const model = env.AI_MODEL || "claude-sonnet-4-5";
+  const model = env.AI_MODEL || "claude-sonnet-4-6";
 
   let claudeRes;
   try {
@@ -2048,7 +2048,7 @@ async function handleBrief(request, env, ctx) {
 
   // ── Build prompt and call Claude with web_search ──
   const prompt = buildBriefPrompt({ title, description, source, url: articleUrl });
-  const model = env.AI_MODEL || "claude-sonnet-4-5";
+  const model = env.AI_MODEL || "claude-sonnet-4-6";
 
   let claudeRes;
   try {
@@ -2785,7 +2785,7 @@ async function handleCattlePrice(url, env, ctx) {
     return r;
   }
 
-  const model = env.AI_MODEL_VISION || "claude-sonnet-4-5";
+  const model = env.AI_MODEL_VISION || "claude-sonnet-4-6";
 
   // Common prompt body — much more directive about grade priority. The user has
   // observed Haiku picking M/L 1-2 (mixed grade) lines instead of the higher-quality
@@ -3045,7 +3045,7 @@ async function handleCattleManual(request, env, ctx) {
   catch { return jsonResponse({ error: "Invalid JSON body" }, 400); }
   if (!body.image_base64) return jsonResponse({ error: "Missing image_base64" }, 400);
   const mediaType = body.media_type || "image/jpeg";
-  const model = env.AI_MODEL_VISION || "claude-sonnet-4-5";
+  const model = env.AI_MODEL_VISION || "claude-sonnet-4-6";
 
   const prompt =
     "This is a livestock auction market report image the user uploaded from Wheeler Livestock Auction in Osceola, MO.\n\n" +
@@ -3318,7 +3318,7 @@ async function handleKingsvilleWeb(env, ctx, backfill) {
 // Tracked number = AVERAGE $/cwt for the M&L 1 steer line nearest 500 lb (the frontend
 // then interpolates a true 500 lb value from the full steer_curve).
 async function handleUsdaCattle(env, ctx, barn, pdfUrl) {
-  const model = env.AI_MODEL || "claude-sonnet-4-5";
+  const model = env.AI_MODEL || "claude-sonnet-4-6";
   const today = new Date().toISOString().slice(0, 10);
   const cacheReq = new Request("https://cattleprice-cache.local/" + encodeURIComponent("cattleprice:" + barn + ":" + today));
   const cached = await caches.default.match(cacheReq);
@@ -3426,7 +3426,7 @@ async function handleWeeklyUpload(request, env, ctx) {
   if (!body.pdf_base64) return jsonResponse({ error: "pdf_base64 is required" }, 400);
 
   // ── Call Claude with the PDF document ──────────────────────────────────
-  const model = env.AI_MODEL || "claude-sonnet-4-5";
+  const model = env.AI_MODEL || "claude-sonnet-4-6";
   let claudeRes;
   try {
     claudeRes = await fetch("https://api.anthropic.com/v1/messages", {

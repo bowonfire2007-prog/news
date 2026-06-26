@@ -8300,7 +8300,8 @@ async function loadMarket(force) {
 
   try {
     const records = await fetchWeeklyData();
-    renderMarket(records);
+    console.log("[market] fetchWeeklyData returned", records ? records.length : 0, "records");
+    try { renderMarket(records); } catch(renderErr) { console.error("[market] renderMarket threw:", renderErr); }
     const wheelerEl2 = wrap.querySelector(".outdoor-card.cattle");
     if (wheelerEl2 && !wheelerEl2.id) wheelerEl2.id = "wheelerCattle";
     wireMarketSubNav();
@@ -8311,7 +8312,7 @@ async function loadMarket(force) {
     wireHerdCalendarCard();
     wireHayDroughtCard();
     loadFarmNews();
-  } catch {}
+  } catch(e) { console.error("[market] loadMarket outer catch:", e); }
 }
 
 // ========== STOCKS ==========

@@ -5876,7 +5876,7 @@ function weeklyBuildTakeaway(records) {
   const lines = [];
 
   // Stocker formula direction
-  if (prev && isFinite(cur.stocker_formula_cwt) && isFinite(prev.stocker_formula_cwt)) {
+  if (prev && cur.stocker_formula_cwt != null && isFinite(cur.stocker_formula_cwt) && prev.stocker_formula_cwt != null && isFinite(prev.stocker_formula_cwt)) {
     const d = cur.stocker_formula_cwt - prev.stocker_formula_cwt;
     const pct = (d / prev.stocker_formula_cwt) * 100;
     if (Math.abs(d) < 0.5) {
@@ -5886,12 +5886,12 @@ function weeklyBuildTakeaway(records) {
     } else {
       lines.push(`Feeder calves softened — Stocker Formula at $${cur.stocker_formula_cwt.toFixed(2)}/cwt, down $${Math.abs(d).toFixed(2)} (${pct.toFixed(1)}%) from last week.`);
     }
-  } else if (isFinite(cur.stocker_formula_cwt)) {
+  } else if (cur.stocker_formula_cwt != null && isFinite(cur.stocker_formula_cwt)) {
     lines.push(`The MO Stocker Formula sits at $${cur.stocker_formula_cwt.toFixed(2)}/cwt this week.`);
   }
 
   // Corn impact (cost of gain proxy)
-  if (prev && isFinite(cur.corn_kc_fri) && isFinite(prev.corn_kc_fri)) {
+  if (prev && cur.corn_kc_fri != null && isFinite(cur.corn_kc_fri) && prev.corn_kc_fri != null && isFinite(prev.corn_kc_fri)) {
     const d = cur.corn_kc_fri - prev.corn_kc_fri;
     if (Math.abs(d) < 0.05) {
       // skip — no meaningful move
@@ -5903,7 +5903,7 @@ function weeklyBuildTakeaway(records) {
   }
 
   // Receipts vs year ago — supply signal
-  if (isFinite(cur.total_receipts) && isFinite(cur.year_ago_receipts) && cur.year_ago_receipts > 0) {
+  if (cur.total_receipts != null && isFinite(cur.total_receipts) && cur.year_ago_receipts != null && isFinite(cur.year_ago_receipts) && cur.year_ago_receipts > 0) {
     const d = cur.total_receipts - cur.year_ago_receipts;
     const pct = (d / cur.year_ago_receipts) * 100;
     if (Math.abs(pct) >= 10) {
@@ -5913,7 +5913,7 @@ function weeklyBuildTakeaway(records) {
   }
 
   // Boxed beef — packer demand proxy
-  if (prev && isFinite(cur.boxed_beef_choice_5day) && isFinite(prev.boxed_beef_choice_5day)) {
+  if (prev && cur.boxed_beef_choice_5day != null && isFinite(cur.boxed_beef_choice_5day) && prev.boxed_beef_choice_5day != null && isFinite(prev.boxed_beef_choice_5day)) {
     const d = cur.boxed_beef_choice_5day - prev.boxed_beef_choice_5day;
     if (Math.abs(d) >= 2) {
       if (d > 0) lines.push(`Boxed beef cutout (Choice) climbed $${d.toFixed(2)} — packers are paying more for finished beef, which usually pulls live cattle higher.`);
@@ -5923,10 +5923,10 @@ function weeklyBuildTakeaway(records) {
 
   // Action suggestion — based on stocker direction + corn + year-ago receipts
   let action = "";
-  if (prev && isFinite(cur.stocker_formula_cwt) && isFinite(prev.stocker_formula_cwt)) {
+  if (prev && cur.stocker_formula_cwt != null && isFinite(cur.stocker_formula_cwt) && prev.stocker_formula_cwt != null && isFinite(prev.stocker_formula_cwt)) {
     const calfUp   = cur.stocker_formula_cwt > prev.stocker_formula_cwt + 0.5;
     const calfDown = cur.stocker_formula_cwt < prev.stocker_formula_cwt - 0.5;
-    const cornUp   = isFinite(cur.corn_kc_fri) && isFinite(prev.corn_kc_fri) && cur.corn_kc_fri > prev.corn_kc_fri + 0.05;
+    const cornUp   = cur.corn_kc_fri != null && isFinite(cur.corn_kc_fri) && prev.corn_kc_fri != null && isFinite(prev.corn_kc_fri) && cur.corn_kc_fri > prev.corn_kc_fri + 0.05;
     if (calfUp && !cornUp) action = "Suggested: if calves are sale-ready, this is a friendly week to market them. Watch next week's MDA report to confirm the trend.";
     else if (calfDown && cornUp) action = "Suggested: cost of gain is rising and calves are softer — consider whether short-term holding is worth it, or if marketing sooner protects margin.";
     else if (calfDown) action = "Suggested: prices dipped — if you can hold without adding cost, wait a week. If calves are at target weight, don't chase the market.";

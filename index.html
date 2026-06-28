@@ -5848,7 +5848,7 @@ function weeklyFmt(v, dec) {
 // asPct=true renders the delta as a percent. dec controls decimal places.
 function weeklyDelta(curr, prev, opts) {
   opts = opts || {};
-  if (!isFinite(curr) || !isFinite(prev) || prev === 0) return "";
+  if (curr == null || prev == null || !isFinite(curr) || !isFinite(prev) || prev === 0) return "";
   const diff = curr - prev;
   if (Math.abs(diff) < (opts.minShow || 0.005)) return "";
   const sign = diff >= 0 ? "+" : "";
@@ -6283,14 +6283,15 @@ function renderWeeklyHistoryCard(records) {
     const prev = idxInAll > 0 ? records[idxInAll - 1] : null;
     const stockerD = prev ? weeklyDelta(r.stocker_formula_cwt, prev.stocker_formula_cwt, { dec:2 }) : "";
     const cornD    = prev ? weeklyDelta(r.corn_kc_fri,         prev.corn_kc_fri,         { dec:2 }) : "";
-    const stocker  = isFinite(r.stocker_formula_cwt) ? "$" + r.stocker_formula_cwt.toFixed(2) : "—";
-    const corn     = isFinite(r.corn_kc_fri) ? "$" + r.corn_kc_fri.toFixed(2) : "—";
-    const receipts = isFinite(r.total_receipts) ? Number(r.total_receipts).toLocaleString() : "—";
+    const nf = (v, d) => (v != null && isFinite(v)) ? "$" + Number(v).toFixed(d ?? 2) : "—";
+    const stocker  = nf(r.stocker_formula_cwt);
+    const corn     = nf(r.corn_kc_fri);
+    const receipts = (r.total_receipts != null && isFinite(r.total_receipts)) ? Number(r.total_receipts).toLocaleString() : "—";
     const narr     = r.market_narrative ? escapeHtml(r.market_narrative) : "<em style='opacity:.6'>No narrative on this week's report.</em>";
-    const steerLo  = isFinite(r.feeder_steer_500_600_avg_low)  ? "$" + r.feeder_steer_500_600_avg_low.toFixed(2)  : "—";
-    const steerHi  = isFinite(r.feeder_steer_500_600_avg_high) ? "$" + r.feeder_steer_500_600_avg_high.toFixed(2) : "—";
-    const soy      = isFinite(r.soybean_kc_fri) ? "$" + r.soybean_kc_fri.toFixed(2) : "—";
-    const choice   = isFinite(r.boxed_beef_choice_5day) ? "$" + r.boxed_beef_choice_5day.toFixed(2) : "—";
+    const steerLo  = nf(r.feeder_steer_500_600_avg_low);
+    const steerHi  = nf(r.feeder_steer_500_600_avg_high);
+    const soy      = nf(r.soybean_kc_fri);
+    const choice   = nf(r.boxed_beef_choice_5day);
     return `<details class="hist-row" ${i === 0 ? "open" : ""}>
       <summary class="hist-summary">
         <div class="hist-date">${escapeHtml(r.report_date || "—")}</div>

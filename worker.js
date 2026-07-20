@@ -2645,13 +2645,25 @@ async function handleCattlePrice(url, env, ctx) {
   }
   if (fresh) await cache.delete(cacheReq); // drop any stale (e.g. cron-written) entry for today
 
-  // Fetch Wheeler's market report page
-  const wheelerUrl = "https://www.wheelerlivestock.com/market-report-1";
+  // Fetch Wheeler's market report page.
+  // NOTE: this used to run with `cf: { cacheTtl: 600, cacheEverything: true }`,
+  // which let Cloudflare's edge cache serve a stale snapshot of the page —
+  // observed serving a gallery from a prior week (missing that week's
+  // "*mreport.jpg" upload entirely) well past the nominal 10-minute TTL.
+  // Since this whole handler is already cached for 12h upstream (see
+  // cacheKey below), there's no need for a second edge cache here — always
+  // hit Wix's origin fresh, plus a cache-busting query param as a second
+  // layer of defense against any intermediate caching.
+  const wheelerUrl = "https://www.wheelerlivestock.com/market-report-1?_cb=" + Date.now();
   let html;
   try {
     const res = await fetch(wheelerUrl, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; CattleReader/1.0)" },
-      cf: { cacheTtl: 600, cacheEverything: true }
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache"
+      },
+      cf: { cacheTtl: 0, cacheEverything: false }
     });
     if (!res.ok) return jsonResponse({ error: "Wheeler page returned HTTP " + res.status }, 502);
     html = await res.text();

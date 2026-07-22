@@ -2855,7 +2855,12 @@ async function handleCattlePrice(url, env, ctx) {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 1200,
+        // 1200 was too tight: the prompt asks for a steer_curve entry per
+        // M&L-1 line across up to 4 report pages, and multi-page responses
+        // were getting cut off mid-JSON (e.g. truncated at `"head": nul`),
+        // which made JSON.parse fail downstream ("Could not parse Claude
+        // response as JSON"). 4096 gives plenty of headroom.
+        max_tokens: 4096,
         messages: [{ role: "user", content: [...imgBlocks, { type: "text", text: useText }] }]
       })
     });

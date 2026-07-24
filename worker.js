@@ -577,10 +577,26 @@ function parseNewsItems(xml, max) {
   return items;
 }
 
+// Wraps fetch() with a hard deadline so one stalled upstream request can't hang
+// an entire handler forever (Workers has no default timeout on a pending fetch —
+// if the remote just never responds, await fetch() waits indefinitely).
+async function fetchWithTimeout(url, opts = {}, timeoutMs = 20000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...opts, signal: controller.signal });
+  } catch (err) {
+    if (err.name === "AbortError") throw new Error("timed out after " + timeoutMs + "ms: " + url);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchTopicHeadlines(query, max = 8) {
   const url = "https://news.google.com/rss/search?q=" + encodeURIComponent(query) +
               "&hl=en-US&gl=US&ceid=US:en";
-  const r = await fetch(url, { headers: BTS_UA, cf: { cacheTtl: 300 } });
+  const r = await fetchWithTimeout(url, { headers: BTS_UA, cf: { cacheTtl: 300 } }, 15000);
   if (!r.ok) throw new Error("news HTTP " + r.status);
   const xml = await r.text();
   return parseNewsItems(xml, max);
@@ -609,7 +625,7 @@ Return ONLY a JSON object (no markdown, no prose) with exactly these fields:
 }
 Rules: base status/steps on the headlines and well-established facts; do not invent dates. Use at most 5 steps. head_ids must be valid indices from the list (omit if no headlines). Output must be valid JSON and nothing else.`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": anthropicKey,
@@ -621,7 +637,7 @@ Rules: base status/steps on the headlines and well-established facts; do not inv
       max_tokens: 700,
       messages: [{ role: "user", content: prompt }]
     })
-  });
+  }, 25000);
   if (!res.ok) throw new Error("Claude " + res.status);
   const data = await res.json();
   let txt = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim();
@@ -658,49 +674,61 @@ Rules: base status/steps on the headlines and well-established facts; do not inv
 
 function env_model_safe() { return "claude-sonnet-4-6"; }
 
+// Processes a single tracker config: fetch headlines, decide whether to
+// regenerate, write to KV. Isolated per-config so one slow/failed topic
+// (bad RSS response, stuck Claude call, etc.) can't block the others —
+// each has its own timeout (see fetchWithTimeout) and its own try/catch.
+async function processOneTracker(cfg, env, force) {
+  try {
+    const existingRaw = await env.BILLS_KV.get("trackers:data:" + cfg.key);
+
+    // minAgeDays: keep card pinned for N days even if new headlines arrive.
+    if (!force && existingRaw && cfg.minAgeDays) {
+      try {
+        const existing = JSON.parse(existingRaw);
+        if (existing.updated) {
+          const ageDays = (Date.now() - new Date(existing.updated).getTime()) / (1000 * 60 * 60 * 24);
+          if (ageDays < cfg.minAgeDays) {
+            return { key: cfg.key, changed: false, note: "within minAgeDays" };
+          }
+        }
+      } catch {}
+    }
+
+    const headlines = await fetchTopicHeadlines(cfg.query, 8);
+    const fingerprint = headlines.map(h => h.title).join("|");
+    const newHash = await hashKey(fingerprint);
+    const prevHash = await env.BILLS_KV.get("trackers:hash:" + cfg.key);
+
+    // No new headlines and not forced → keep what we have (saves an API call).
+    if (!force && prevHash === newHash && existingRaw) {
+      return { key: cfg.key, changed: false };
+    }
+
+    const card = await generateTrackerCard(cfg, headlines, env.ANTHROPIC_API_KEY);
+    await env.BILLS_KV.put("trackers:data:" + cfg.key, JSON.stringify(card),
+      { expirationTtl: 2 * 365 * 24 * 3600 });
+    await env.BILLS_KV.put("trackers:hash:" + cfg.key, newHash);
+    return { key: cfg.key, changed: true, status: card.status };
+  } catch (err) {
+    return { key: cfg.key, error: err.message };
+  }
+}
+
 async function runTrackersScheduled(env, ctx, force = false) {
   if (!env.BILLS_KV) return { error: "BILLS_KV not bound" };
   if (!env.ANTHROPIC_API_KEY) return { error: "ANTHROPIC_API_KEY not set" };
-  const results = [];
 
-  for (const cfg of TRACKERS_CONFIG) {
-    try {
-      const existingRaw = await env.BILLS_KV.get("trackers:data:" + cfg.key);
-
-      // minAgeDays: keep card pinned for N days even if new headlines arrive.
-      if (!force && existingRaw && cfg.minAgeDays) {
-        try {
-          const existing = JSON.parse(existingRaw);
-          if (existing.updated) {
-            const ageDays = (Date.now() - new Date(existing.updated).getTime()) / (1000 * 60 * 60 * 24);
-            if (ageDays < cfg.minAgeDays) {
-              results.push({ key: cfg.key, changed: false, note: "within minAgeDays" });
-              continue;
-            }
-          }
-        } catch {}
-      }
-
-      const headlines = await fetchTopicHeadlines(cfg.query, 8);
-      const fingerprint = headlines.map(h => h.title).join("|");
-      const newHash = await hashKey(fingerprint);
-      const prevHash = await env.BILLS_KV.get("trackers:hash:" + cfg.key);
-
-      // No new headlines and not forced → keep what we have (saves an API call).
-      if (!force && prevHash === newHash && existingRaw) {
-        results.push({ key: cfg.key, changed: false });
-        continue;
-      }
-
-      const card = await generateTrackerCard(cfg, headlines, env.ANTHROPIC_API_KEY);
-      await env.BILLS_KV.put("trackers:data:" + cfg.key, JSON.stringify(card),
-        { expirationTtl: 2 * 365 * 24 * 3600 });
-      await env.BILLS_KV.put("trackers:hash:" + cfg.key, newHash);
-      results.push({ key: cfg.key, changed: true, status: card.status });
-    } catch (err) {
-      results.push({ key: cfg.key, error: err.message });
-    }
-  }
+  // Run all topics concurrently (previously sequential): each call already has
+  // its own network timeout via fetchWithTimeout, but running them in parallel
+  // also means a topic near the end of the list (e.g. "science") isn't stuck
+  // waiting behind every earlier topic finishing first.
+  const settled = await Promise.allSettled(
+    TRACKERS_CONFIG.map(cfg => processOneTracker(cfg, env, force))
+  );
+  const results = settled.map((r, i) =>
+    r.status === "fulfilled" ? r.value : { key: TRACKERS_CONFIG[i].key, error: r.reason?.message || String(r.reason) }
+  );
   return { results, ran_at: new Date().toISOString() };
 }
 

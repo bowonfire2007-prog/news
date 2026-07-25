@@ -593,13 +593,35 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = 20000) {
   }
 }
 
+const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+
+// Google News RSS occasionally answers with a bare 503/429 when it's briefly
+// rate-limiting a request (more likely now that all topics fire concurrently
+// from the same Worker egress IP) — this tends to clear within a few seconds,
+// so retry with backoff before giving up. A timeout is retried too; any other
+// error (e.g. a real 404/500) is not, since it's not a transient condition.
 async function fetchTopicHeadlines(query, max = 8) {
   const url = "https://news.google.com/rss/search?q=" + encodeURIComponent(query) +
               "&hl=en-US&gl=US&ceid=US:en";
-  const r = await fetchWithTimeout(url, { headers: BTS_UA, cf: { cacheTtl: 300 } }, 15000);
-  if (!r.ok) throw new Error("news HTTP " + r.status);
-  const xml = await r.text();
-  return parseNewsItems(xml, max);
+  const delays = [0, 1500, 4000];
+  let lastErr;
+  for (const delay of delays) {
+    if (delay) await sleep(delay);
+    try {
+      const r = await fetchWithTimeout(url, { headers: BTS_UA, cf: { cacheTtl: 300 } }, 15000);
+      if (r.ok) {
+        const xml = await r.text();
+        return parseNewsItems(xml, max);
+      }
+      if (r.status !== 503 && r.status !== 429) throw new Error("news HTTP " + r.status);
+      lastErr = new Error("news HTTP " + r.status); // transient — fall through and retry
+    } catch (err) {
+      lastErr = err;
+      const transient = err.name === "AbortError" || /^news HTTP (503|429)$/.test(err.message);
+      if (!transient) throw err;
+    }
+  }
+  throw lastErr;
 }
 
 async function generateTrackerCard(cfg, headlines, anthropicKey) {
@@ -678,8 +700,9 @@ function env_model_safe() { return "claude-sonnet-4-6"; }
 // regenerate, write to KV. Isolated per-config so one slow/failed topic
 // (bad RSS response, stuck Claude call, etc.) can't block the others —
 // each has its own timeout (see fetchWithTimeout) and its own try/catch.
-async function processOneTracker(cfg, env, force) {
+async function processOneTracker(cfg, env, force, staggerMs = 0) {
   try {
+    if (staggerMs) await sleep(staggerMs);
     const existingRaw = await env.BILLS_KV.get("trackers:data:" + cfg.key);
 
     // minAgeDays: keep card pinned for N days even if new headlines arrive.
@@ -720,11 +743,13 @@ async function runTrackersScheduled(env, ctx, force = false) {
   if (!env.ANTHROPIC_API_KEY) return { error: "ANTHROPIC_API_KEY not set" };
 
   // Run all topics concurrently (previously sequential): each call already has
-  // its own network timeout via fetchWithTimeout, but running them in parallel
-  // also means a topic near the end of the list (e.g. "science") isn't stuck
-  // waiting behind every earlier topic finishing first.
+  // its own network timeout via fetchWithTimeout, so a topic near the end of
+  // the list (e.g. "science") is no longer stuck waiting behind every earlier
+  // topic finishing first. Stagger the starts by 400ms each so we don't fire
+  // 6 simultaneous requests at news.google.com from the same egress IP —
+  // that burst is a likely cause of the 503s seen on 2026-07-25.
   const settled = await Promise.allSettled(
-    TRACKERS_CONFIG.map(cfg => processOneTracker(cfg, env, force))
+    TRACKERS_CONFIG.map((cfg, i) => processOneTracker(cfg, env, force, i * 400))
   );
   const results = settled.map((r, i) =>
     r.status === "fulfilled" ? r.value : { key: TRACKERS_CONFIG[i].key, error: r.reason?.message || String(r.reason) }
@@ -803,10 +828,10 @@ const BRIEFS_CONFIG = [
 // Fetch several feeds, merge and de-dupe by title, newest-ish first.
 async function fetchBriefHeadlines(feeds, max) {
   const lists = await Promise.all((feeds || []).map(u =>
-    fetch(u, { headers: BTS_UA, cf: { cacheTtl: 300 } })
+    fetchWithTimeout(u, { headers: BTS_UA, cf: { cacheTtl: 300 } }, 12000)
       .then(r => r.ok ? r.text() : "")
       .then(t => parseNewsItems(t, max || 10))
-      .catch(() => [])
+      .catch(() => []) // a single dead/slow feed shouldn't blank out the whole brief
   ));
   // Round-robin across feeds so one chatty feed doesn't crowd out the rest.
   const seen = new Set(), out = [];
@@ -854,11 +879,11 @@ Return ONLY JSON (no prose, no markdown):
 }
 Give 3-5 bullets. Each head_id must be a valid index. Output valid JSON only.`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": anthropicKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({ model: env_model_safe(), max_tokens: 1200, messages: [{ role: "user", content: prompt }] })
-  });
+  }, 25000);
   if (!res.ok) throw new Error("Claude " + res.status);
   const data = await res.json();
   let txt = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim();
@@ -880,26 +905,36 @@ Give 3-5 bullets. Each head_id must be a valid index. Output valid JSON only.`;
            bullets, themes, updated: today };
 }
 
+// Isolated per-topic (mirrors processOneTracker) so one slow/hung feed or
+// Claude call can't block the other brief topics. staggerMs spaces out the
+// initial RSS bursts across topics to avoid tripping upstream rate limits.
+async function processOneBrief(cfg, env, force, staggerMs = 0) {
+  try {
+    if (staggerMs) await sleep(staggerMs);
+    const headlines = await fetchBriefHeadlines(cfg.feeds, 32);
+    const newHash = await hashKey(headlines.map(h => h.title).join("|"));
+    const prevHash = await env.BILLS_KV.get("briefs:hash:" + cfg.key);
+    const existing = await env.BILLS_KV.get("briefs:data:" + cfg.key);
+    if (!force && prevHash === newHash && existing) return { key: cfg.key, changed: false };
+    let prev = null; try { prev = existing ? JSON.parse(existing) : null; } catch {}
+    const card = await generateBrief(cfg, headlines, env.ANTHROPIC_API_KEY, prev);
+    await env.BILLS_KV.put("briefs:data:" + cfg.key, JSON.stringify(card), { expirationTtl: 2 * 365 * 24 * 3600 });
+    await env.BILLS_KV.put("briefs:hash:" + cfg.key, newHash);
+    return { key: cfg.key, changed: true };
+  } catch (err) {
+    return { key: cfg.key, error: err.message };
+  }
+}
+
 async function runBriefsScheduled(env, ctx, force = false) {
   if (!env.BILLS_KV) return { error: "BILLS_KV not bound" };
   if (!env.ANTHROPIC_API_KEY) return { error: "ANTHROPIC_API_KEY not set" };
-  const results = [];
-  for (const cfg of BRIEFS_CONFIG) {
-    try {
-      const headlines = await fetchBriefHeadlines(cfg.feeds, 32);
-      const newHash = await hashKey(headlines.map(h => h.title).join("|"));
-      const prevHash = await env.BILLS_KV.get("briefs:hash:" + cfg.key);
-      const existing = await env.BILLS_KV.get("briefs:data:" + cfg.key);
-      if (!force && prevHash === newHash && existing) { results.push({ key: cfg.key, changed: false }); continue; }
-      let prev = null; try { prev = existing ? JSON.parse(existing) : null; } catch {}
-      const card = await generateBrief(cfg, headlines, env.ANTHROPIC_API_KEY, prev);
-      await env.BILLS_KV.put("briefs:data:" + cfg.key, JSON.stringify(card), { expirationTtl: 2 * 365 * 24 * 3600 });
-      await env.BILLS_KV.put("briefs:hash:" + cfg.key, newHash);
-      results.push({ key: cfg.key, changed: true });
-    } catch (err) {
-      results.push({ key: cfg.key, error: err.message });
-    }
-  }
+  const settled = await Promise.allSettled(
+    BRIEFS_CONFIG.map((cfg, i) => processOneBrief(cfg, env, force, i * 400))
+  );
+  const results = settled.map((r, i) =>
+    r.status === "fulfilled" ? r.value : { key: BRIEFS_CONFIG[i].key, error: r.reason?.message || String(r.reason) }
+  );
   return { results, ran_at: new Date().toISOString() };
 }
 

@@ -505,7 +505,14 @@ const TRACKERS_CONFIG = [
     icon:  "🌿",
     title: "Schedule III Tracker",
     query: "marijuana rescheduling Schedule III DEA hearing",
-    scaffold: "Canonical milestone order for federal marijuana rescheduling: (1) DEA proposed rule published (May 2024); (2) Public comment period (2024); (3) Final order moving FDA-approved / state-licensed medical marijuana to Schedule III (Apr 28, 2026); (4) DEA administrative-law-judge hearing on rescheduling ALL marijuana (Jun 29 – Jul 15, 2026); (5) Final rule on broader reschedule (pending). Keep these five steps in this order and set each step's state to done/current/todo based on today's date and the headlines."
+    scaffold: "Canonical milestone order for federal marijuana rescheduling: (1) DEA proposed rule published (May 2024); (2) Public comment period (2024); (3) Final order moving FDA-approved / state-licensed medical marijuana to Schedule III (Apr 28, 2026); (4) DEA administrative-law-judge hearing on rescheduling ALL marijuana (Jun 29 – Jul 15, 2026); (5) Final rule on broader reschedule (pending). Keep these five steps in this order and set each step's state to done/current/todo based on today's date and the headlines.",
+    // Fallback/supplemental direct feed — kicks in (or just adds coverage) if
+    // Google News RSS is unreachable or rate-limited, since that's a single
+    // point of failure otherwise. keywords filter a general feed down to
+    // on-topic items; null/omitted means take the feed as-is.
+    feeds: [
+      { url: "https://www.marijuanamoment.net/feed/", keywords: ["reschedul", "dea", "schedule iii", "schedule 3", "federal"] }
+    ]
   },
   {
     key:   "local",
@@ -513,7 +520,11 @@ const TRACKERS_CONFIG = [
     icon:  "🏗️",
     title: "Solar & Data Center Watch (MO)",
     query: "Missouri (\"data center\" OR \"server farm\" OR hyperscale OR \"solar farm\" OR \"battery storage\") (Ameren OR Evergy OR Google OR Amazon OR Meta OR Microsoft OR PSC OR rezoning OR county)",
-    scaffold: "This card tracks ALL of Missouri's data-center / server-farm buildout AND the solar + battery-storage projects utilities are adding to power them — statewide, not just the marquee names. Draw from the widest set of headlines: new campus announcements, individual utility-scale solar/storage filings, PSC rulings, county zoning/rezoning fights, and moratoria. Use up to 4 step items for the most concrete current projects/decisions (e.g. AWS Project Green, Google New Florence campus, Ameren Callaway solar farm, Audrain/Ralls solar+battery, specific county solar votes). state: done = built/under construction or approved, current = active/just announced, todo = pending review."
+    scaffold: "This card tracks ALL of Missouri's data-center / server-farm buildout AND the solar + battery-storage projects utilities are adding to power them — statewide, not just the marquee names. Draw from the widest set of headlines: new campus announcements, individual utility-scale solar/storage filings, PSC rulings, county zoning/rezoning fights, and moratoria. Use up to 4 step items for the most concrete current projects/decisions (e.g. AWS Project Green, Google New Florence campus, Ameren Callaway solar farm, Audrain/Ralls solar+battery, specific county solar votes). state: done = built/under construction or approved, current = active/just announced, todo = pending review.",
+    feeds: [
+      { url: "https://missouriindependent.com/feed/", keywords: ["data center", "solar", "battery storage", "ameren", "evergy", "psc", "rezoning", "hyperscale", "server farm"] },
+      { url: "https://www.datacenterdynamics.com/en/rss/", keywords: ["missouri"] }
+    ]
   },
   {
     key:   "cannabis_mo",
@@ -521,15 +532,35 @@ const TRACKERS_CONFIG = [
     icon:  "⚖️",
     title: "Missouri Cannabis Law Watch",
     query: "Missouri (marijuana OR cannabis OR hemp OR \"delta-8\") (bill OR law OR legislature OR DHSS OR regulation OR license OR dispensary)",
-    scaffold: "This card tracks MISSOURI STATE cannabis law and legislation — NOT the federal reschedule. Missouri legalized adult-use cannabis via Amendment 3 (2022); the DHSS Division of Cannabis Regulation oversees licensing. Relevant themes: bills moving through the Missouri General Assembly affecting marijuana or intoxicating hemp / delta-8 (e.g. the 2026 Intoxicating Cannabinoid Control Act / HB 2641), DHSS rule changes, microbusiness license rounds, expungement, lab-testing and product-safety rules, and ballot measures. Use up to 4 step items for the most concrete current bills or rule changes. state: done = enacted/signed/in effect, current = active/moving/just filed, todo = pending/under review or future effective date. Base claims on the headlines or well-established facts; do not invent bill numbers or dates."
+    scaffold: "This card tracks MISSOURI STATE cannabis law and legislation — NOT the federal reschedule. Missouri legalized adult-use cannabis via Amendment 3 (2022); the DHSS Division of Cannabis Regulation oversees licensing. Relevant themes: bills moving through the Missouri General Assembly affecting marijuana or intoxicating hemp / delta-8 (e.g. the 2026 Intoxicating Cannabinoid Control Act / HB 2641), DHSS rule changes, microbusiness license rounds, expungement, lab-testing and product-safety rules, and ballot measures. Use up to 4 step items for the most concrete current bills or rule changes. state: done = enacted/signed/in effect, current = active/moving/just filed, todo = pending/under review or future effective date. Base claims on the headlines or well-established facts; do not invent bill numbers or dates.",
+    feeds: [
+      { url: "https://www.marijuanamoment.net/feed/", keywords: ["missouri"] },
+      { url: "https://missouriindependent.com/feed/", keywords: ["marijuana", "cannabis", "hemp", "delta-8", "dhss", "cannabinoid"] }
+    ]
   },
   {
     key:   "science",
     color: "#8b5cf6",
     icon:  "🧫",
     title: "InnovaPrep / Sample-Prep Watch",
-    query: "InnovaPrep OR bioaerosol OR \"air sampling\" OR \"wastewater surveillance\" pathogen concentration sample prep",
-    scaffold: "This card tracks topics relevant to InnovaPrep's actual field. InnovaPrep makes bioconcentration instruments for BOTH air and liquid samples, for lab AND field use (e.g. the Concentrating Pipette / CP Select for liquids and bioaerosol/air samplers), runs an in-house wind tunnel, and does R&D developing new concentration methods. Relevant themes: aerosol/bioaerosol collection and air sampling, liquid/water/wastewater concentration, field-deployable sample prep, wastewater-based epidemiology, CDC NWSS, H5N1/avian-flu detection, and new concentration vs. extraction methods or benchmarking. Use up to 4 step items for the most relevant current developments. Keep claims supported by the headlines or well-established facts; avoid anything proprietary or speculative."
+    // Widened 2026-07-26: the narrow InnovaPrep/bioaerosol/wastewater query
+    // was turning up almost nothing (tested: ~1 matching Google hit and 0
+    // fallback hits in a 120-day window) because it's a very small niche.
+    // Broadened to the wider biosurveillance/biodefense/pathogen-detection
+    // space InnovaPrep actually sells into, so there's enough real news flow
+    // to make an interesting, frequently-updating card.
+    query: "InnovaPrep OR bioaerosol OR \"air sampling\" OR \"wastewater surveillance\" OR \"wastewater-based epidemiology\" OR biosurveillance OR \"pathogen detection\" OR \"biodefense\" OR \"CBRN detection\" OR \"rapid pathogen test\" OR \"environmental DNA\" OR eDNA OR \"sample concentration\" pathogen OR outbreak",
+    scaffold: "This card tracks InnovaPrep's business AND the broader biosurveillance/biodefense/pathogen-detection space it sells into — cast a wide net, not just literal InnovaPrep mentions. InnovaPrep makes bioconcentration instruments for BOTH air and liquid samples, for lab AND field use (e.g. the Concentrating Pipette / CP Select for liquids and bioaerosol/air samplers), runs an in-house wind tunnel, and does R&D developing new concentration methods. Relevant themes, roughly in priority order: (1) InnovaPrep itself — contracts, product news, leadership, filings; (2) aerosol/bioaerosol collection, air sampling, and liquid/water/wastewater concentration technology; (3) wastewater-based epidemiology and biosurveillance programs (CDC NWSS, WastewaterSCAN, Biobot-style efforts) — funding, expansion, new pathogens tracked; (4) outbreak and emerging-pathogen news that drives demand for detection tech (H5N1/avian flu, mpox, novel respiratory viruses); (5) biodefense/CBRN detection programs and government funding (BARDA, DoD, DHS, NIH); (6) adjacent sample-prep/concentration/rapid-detection technology and competitor or research advances (new extraction methods, eDNA, microfluidics, benchmarking studies). Use up to 4 step items for the most concrete current developments across these themes — don't limit yourself to literal InnovaPrep headlines if there aren't enough; a notable outbreak, a big NWSS funding move, or a competitor's new instrument are all fair game. Keep claims supported by the headlines or well-established facts; avoid anything proprietary or speculative.",
+    // NOTE: cidrap.umn.edu/rss.xml was tried here first but its feed turned out
+    // to be effectively dead — every item returned had a multi-year-old
+    // pubDate (2018-2022), i.e. it's serving a static/cached snapshot, not
+    // live news. Swapped for GEN (genengnews.com) plus two more direct feeds
+    // to widen the net along with the broadened query above.
+    feeds: [
+      { url: "https://www.genengnews.com/feed/", keywords: ["wastewater", "bioaerosol", "air sampl", "sample prep", "surveillance", "h5n1", "avian flu", "nwss", "biosurveillance", "biodefense", "cbrn", "outbreak", "pathogen", "edna", "environmental dna"] },
+      { url: "https://outbreaknewstoday.com/feed/" }, // dedicated outbreak/infectious-disease beat — relevant as-is, no filter needed
+      { url: "https://www.statnews.com/feed/", keywords: ["wastewater", "biosurveillance", "biodefense", "surveillance", "outbreak", "h5n1", "avian flu", "pandemic preparedness", "cdc", "barda", "pathogen"] }
+    ]
   },
   {
     key:        "quantum",
@@ -538,7 +569,10 @@ const TRACKERS_CONFIG = [
     title:      "Quantum Computing Watch",
     minAgeDays: 3,
     query:      "quantum computing OR \"quantum processor\" OR \"quantum advantage\" OR \"quantum supremacy\" OR qubit OR \"quantum error correction\" OR \"fault-tolerant quantum\"",
-    scaffold:   "Tracks the state of quantum computing. Relevant themes: hardware milestones (qubit counts, error rates, coherence times, logical qubits), quantum advantage / supremacy claims, major investments and lab announcements (Google, IBM, Microsoft, IonQ, Quantinuum, PsiQuantum, AWS), government programs (NIST, NSF, DOE, CHIPS Act quantum initiatives), and real-world applications (chemistry, cryptography, optimization). Use up to 5 step items for the most concrete current milestones or race updates — e.g. fault-tolerant logical qubit demos, chip announcements, or policy milestones. state: done = achieved / deployed, current = actively racing / latest announcement, todo = projected next target. Keep big milestones pinned even if only one headline surfaced; base claims on the headlines or well-established facts."
+    scaffold:   "Tracks the state of quantum computing. Relevant themes: hardware milestones (qubit counts, error rates, coherence times, logical qubits), quantum advantage / supremacy claims, major investments and lab announcements (Google, IBM, Microsoft, IonQ, Quantinuum, PsiQuantum, AWS), government programs (NIST, NSF, DOE, CHIPS Act quantum initiatives), and real-world applications (chemistry, cryptography, optimization). Use up to 5 step items for the most concrete current milestones or race updates — e.g. fault-tolerant logical qubit demos, chip announcements, or policy milestones. state: done = achieved / deployed, current = actively racing / latest announcement, todo = projected next target. Keep big milestones pinned even if only one headline surfaced; base claims on the headlines or well-established facts.",
+    feeds: [
+      { url: "https://thequantuminsider.com/feed/" } // dedicated beat feed, no filter needed
+    ]
   },
   {
     key:        "ai_agi",
@@ -547,7 +581,11 @@ const TRACKERS_CONFIG = [
     title:      "AI & AGI Watch",
     minAgeDays: 3,
     query:      "(\"artificial general intelligence\" OR AGI OR \"frontier AI\" OR \"AI safety\" OR \"AI regulation\" OR \"large language model\" OR \"foundation model\" OR OpenAI OR Anthropic OR Gemini OR \"AI policy\" OR \"AI Act\") (breakthrough OR release OR regulation OR warning OR risk OR announced OR milestone)",
-    scaffold:   "Tracks the frontier of AI and AGI development. Relevant themes: major model releases and capability leaps (GPT, Claude, Gemini, Llama, Grok, etc.), safety research milestones and alignment breakthroughs, government regulation and policy (EU AI Act, US executive orders, congressional hearings, export controls on chips), expert warnings about risk and timelines, and major lab news (OpenAI, Anthropic, Google DeepMind, Meta AI, xAI, Mistral). Use up to 5 step items for the most relevant current developments — e.g. latest flagship model release, key regulatory vote, or a notable safety/risk event. state: done = released / enacted / published, current = latest news / actively debated, todo = announced / pending / next expected. Keep high-impact headlines pinned for context even across days; base claims on the headlines or well-established facts."
+    scaffold:   "Tracks the frontier of AI and AGI development. Relevant themes: major model releases and capability leaps (GPT, Claude, Gemini, Llama, Grok, etc.), safety research milestones and alignment breakthroughs, government regulation and policy (EU AI Act, US executive orders, congressional hearings, export controls on chips), expert warnings about risk and timelines, and major lab news (OpenAI, Anthropic, Google DeepMind, Meta AI, xAI, Mistral). Use up to 5 step items for the most relevant current developments — e.g. latest flagship model release, key regulatory vote, or a notable safety/risk event. state: done = released / enacted / published, current = latest news / actively debated, todo = announced / pending / next expected. Keep high-impact headlines pinned for context even across days; base claims on the headlines or well-established facts.",
+    feeds: [
+      { url: "https://arstechnica.com/ai/feed/" },
+      { url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml" }
+    ]
   }
 ];
 
@@ -595,14 +633,13 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = 20000) {
 
 const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
-// Google News RSS occasionally answers with a bare 503/429 when it's briefly
-// rate-limiting a request (more likely now that all topics fire concurrently
-// from the same Worker egress IP) — this tends to clear within a few seconds,
-// so retry with backoff before giving up. A timeout is retried too; any other
-// error (e.g. a real 404/500) is not, since it's not a transient condition.
-async function fetchTopicHeadlines(query, max = 8) {
-  const url = "https://news.google.com/rss/search?q=" + encodeURIComponent(query) +
-              "&hl=en-US&gl=US&ceid=US:en";
+// Fetches one RSS URL and returns its items, retrying with backoff on
+// 503/429/timeout (Google News RSS in particular has been observed to answer
+// with a bare 503 — as of Jul 2026 this looks like a standing block/throttle
+// on this Worker's Cloudflare egress IP specifically, not a general outage).
+// Never throws: a source that's down just contributes zero items, so one dead
+// feed can't blank out an entire tracker (see fetchTopicHeadlines below).
+async function fetchRSSItems(url, max) {
   const delays = [0, 1500, 4000];
   let lastErr;
   for (const delay of delays) {
@@ -611,17 +648,85 @@ async function fetchTopicHeadlines(query, max = 8) {
       const r = await fetchWithTimeout(url, { headers: BTS_UA, cf: { cacheTtl: 300 } }, 15000);
       if (r.ok) {
         const xml = await r.text();
-        return parseNewsItems(xml, max);
+        return { items: parseNewsItems(xml, max), error: null };
       }
-      if (r.status !== 503 && r.status !== 429) throw new Error("news HTTP " + r.status);
-      lastErr = new Error("news HTTP " + r.status); // transient — fall through and retry
+      lastErr = "HTTP " + r.status;
+      if (r.status !== 503 && r.status !== 429) break; // not transient — don't retry
     } catch (err) {
-      lastErr = err;
-      const transient = err.name === "AbortError" || /^news HTTP (503|429)$/.test(err.message);
-      if (!transient) throw err;
+      lastErr = err.message;
+      if (err.name !== "AbortError") break; // only timeouts are treated as transient here
     }
   }
-  throw lastErr;
+  return { items: [], error: lastErr };
+}
+
+function filterByKeywords(items, keywords) {
+  if (!keywords || !keywords.length) return items;
+  const needles = keywords.map(k => k.toLowerCase());
+  return items.filter(it => {
+    const hay = (it.title + " " + (it.desc || "")).toLowerCase();
+    return needles.some(k => hay.includes(k));
+  });
+}
+
+// Drops items whose pubDate parses to older than maxAgeDays. Direct-publisher
+// feeds are a less controlled input than a Google News search — one was
+// caught here serving multi-year-old items despite returning HTTP 200 (see
+// the science tracker's feeds comment) — so this is a blanket safeguard
+// against any fallback feed quietly injecting stale content into a card.
+// Items with no parseable date are kept (assume recent rather than drop).
+function filterRecent(items, maxAgeDays) {
+  const cutoff = Date.now() - maxAgeDays * 24 * 3600 * 1000;
+  return items.filter(it => {
+    if (!it.date) return true;
+    const t = Date.parse(it.date);
+    return Number.isNaN(t) || t >= cutoff;
+  });
+}
+
+// Pulls headlines for one tracker topic from Google News RSS PLUS any
+// supplemental direct-publisher feeds configured on cfg.feeds (see
+// TRACKERS_CONFIG). Sources are fetched in parallel and merged round-robin
+// (like fetchBriefHeadlines); a source that fails just contributes nothing.
+// Only throws if every single source failed, so the caller can skip
+// regenerating the card off a genuinely empty result rather than blanking it.
+async function fetchTopicHeadlines(cfg, max = 8) {
+  const googleUrl = "https://news.google.com/rss/search?q=" + encodeURIComponent(cfg.query) +
+                     "&hl=en-US&gl=US&ceid=US:en";
+  const sources = [{ url: googleUrl, keywords: null }, ...(cfg.feeds || [])];
+
+  const fetched = await Promise.all(sources.map(async (src) => {
+    const { items, error } = await fetchRSSItems(src.url, max * 2);
+    // 120-day window: generous enough that a genuinely quiet niche topic
+    // (e.g. science/quantum on a slow week) doesn't get its real "freshest
+    // available" headlines filtered out, while still catching a feed like
+    // cidrap.umn.edu/rss.xml that was serving multi-year-old items.
+    return { items: filterRecent(filterByKeywords(items, src.keywords), 120), error };
+  }));
+
+  if (fetched.every(f => f.error)) {
+    throw new Error(fetched[0].error || "all sources failed");
+  }
+
+  // Round-robin merge & de-dupe by title so one chatty source doesn't crowd
+  // out the rest.
+  const lists = fetched.map(f => f.items);
+  const seen = new Set(), out = [];
+  let added = true;
+  for (let i = 0; added && out.length < max; i++) {
+    added = false;
+    for (const list of lists) {
+      if (out.length >= max) break;
+      const it = list[i];
+      if (!it) continue;
+      const k = it.title.toLowerCase().slice(0, 60);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(it);
+      added = true;
+    }
+  }
+  return out;
 }
 
 async function generateTrackerCard(cfg, headlines, anthropicKey) {
@@ -718,7 +823,16 @@ async function processOneTracker(cfg, env, force, staggerMs = 0) {
       } catch {}
     }
 
-    const headlines = await fetchTopicHeadlines(cfg.query, 8);
+    const headlines = await fetchTopicHeadlines(cfg, 8);
+
+    // A genuinely empty result (every source reachable but nothing recent to
+    // report — normal for a quiet niche topic) should not blank out or
+    // regenerate an existing card; just leave it as-is and let it get picked
+    // up again on a later run once there's something to say.
+    if (headlines.length === 0 && existingRaw) {
+      return { key: cfg.key, changed: false, note: "no recent headlines from any source" };
+    }
+
     const fingerprint = headlines.map(h => h.title).join("|");
     const newHash = await hashKey(fingerprint);
     const prevHash = await env.BILLS_KV.get("trackers:hash:" + cfg.key);
@@ -972,7 +1086,7 @@ async function fetchJbtdsHeadlines() {
   // Google News RSS for each watch query
   for (const q of JBTDS_QUERIES) {
     try {
-      const items = await fetchTopicHeadlines(q, 6);
+      const items = await fetchTopicHeadlines({ query: q }, 6);
       all.push(...items);
     } catch(_) {}
   }

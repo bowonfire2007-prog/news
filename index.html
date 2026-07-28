@@ -135,6 +135,9 @@
   .w-day-pop { font-size:10px; color:var(--text-soft); font-variant-numeric:tabular-nums; min-height:13px; }
   .w-day-pop.wet { color:#3b82f6; font-weight:700; }
   [data-theme="dark"] .w-day-pop.wet { color:#60a5fa; }
+  .w-day.lowconf { opacity:0.72; }
+  .w-day.lowconf .w-day-name::after { content:"~"; margin-left:2px; opacity:0.7; }
+  .w-forecast-note { font-size:10.5px; color:var(--text-muted); padding:4px 2px 0; flex-basis:100%; }
   .w-radar-wrap { display:flex; align-items:center; flex-shrink:0; padding-left:4px; }
   .w-radar { color:var(--accent); font-weight:600; white-space:nowrap; text-decoration:none; font-size:13px; padding:4px 6px; }
   .w-radar:hover { text-decoration:underline; }
@@ -3514,7 +3517,7 @@ async function loadWeather(force) {
     "&hourly=temperature_2m,apparent_temperature,weather_code,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,relative_humidity_2m" +
     "&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,weather_code,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset" +
     "&minutely_15=precipitation,precipitation_probability" +
-    "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone="+encodeURIComponent(WEATHER_LOCATION.tz)+"&forecast_days=10&past_days=1";
+    "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone="+encodeURIComponent(WEATHER_LOCATION.tz)+"&forecast_days=10&past_days=1&models=gfs_seamless";
   try {
     const [wRes, lakeData] = await Promise.all([fetchWithTimeout(url, FEED_TIMEOUT_MS), fetchTrumanLake()]);
     if (!wRes.ok) throw new Error("HTTP "+wRes.status);
@@ -4057,7 +4060,7 @@ function renderWeather(data, lake) {
       ? '<span class="w-day-pop wet">💧'+pop+'%</span>'
       : '<span class="w-day-pop"></span>';
     forecastHtml +=
-      '<div class="w-day'+(dispIdx===0?' today':'')+'" data-disp-idx="'+dispIdx+'">'+
+      '<div class="w-day'+(dispIdx===0?' today':'')+(dispIdx>=5?' lowconf':'')+'" data-disp-idx="'+dispIdx+'">'+
         '<span class="w-day-name">'+nameLabel+'</span>'+
         '<span class="w-day-icon">'+e[1]+'</span>'+
         '<div class="w-day-temps">'+
@@ -4096,6 +4099,7 @@ function renderWeather(data, lake) {
     '<div class="w-collapse" id="wForecastCollapse">'+
       '<div class="w-forecast">'+forecastHtml+
         '<div class="w-radar-wrap"><a class="w-radar" target="_blank" href="'+radarHref+'">📡 Radar →</a></div>'+
+        '<div class="w-forecast-note">~ Days 6–10 are lower-confidence model guidance, not a locked-in forecast.</div>'+
       '</div>'+
       '<div class="w-day-detail" id="wDayDetail"></div>'+
     '</div>';

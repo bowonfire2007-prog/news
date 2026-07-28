@@ -523,7 +523,7 @@ const TRACKERS_CONFIG = [
     scaffold: "This card tracks ALL of Missouri's data-center / server-farm buildout AND the solar + battery-storage projects utilities are adding to power them — statewide, not just the marquee names. Draw from the widest set of headlines: new campus announcements, individual utility-scale solar/storage filings, PSC rulings, county zoning/rezoning fights, and moratoria. Use up to 4 step items for the most concrete current projects/decisions (e.g. AWS Project Green, Google New Florence campus, Ameren Callaway solar farm, Audrain/Ralls solar+battery, specific county solar votes). state: done = built/under construction or approved, current = active/just announced, todo = pending review.",
     feeds: [
       { url: "https://missouriindependent.com/feed/", keywords: ["data center", "solar", "battery storage", "ameren", "evergy", "psc", "rezoning", "hyperscale", "server farm"] },
-      { url: "https://www.datacenterdynamics.com/en/rss/", keywords: ["missouri"] }
+      { url: "https://www.datacenterdynamics.com/en/rss/", keywords: ["missouri", "ameren", "evergy"] }
     ]
   },
   {
@@ -696,7 +696,17 @@ async function fetchTopicHeadlines(cfg, max = 8) {
   const sources = [{ url: googleUrl, keywords: null }, ...(cfg.feeds || [])];
 
   const fetched = await Promise.all(sources.map(async (src) => {
-    const { items, error } = await fetchRSSItems(src.url, max * 2);
+    // A source with a keyword filter is a general-purpose feed being narrowed
+    // down (e.g. Missouri Independent's whole homepage feed filtered to
+    // data-center/solar stories). Verified directly: Missouri Independent's
+    // RSS is NOT strictly reverse-chronological by pubDate (a Jul-22 story
+    // sat at item #40, later ones at #74/#79/#81 in a feed that goes up to
+    // ~100 items) — a shallow fetch reliably missed real, current matches.
+    // A source with no filter is already narrow/dedicated (a Google search or
+    // a beat-specific feed like The Quantum Insider), so the smaller default
+    // is plenty there.
+    const fetchMax = src.keywords ? 80 : max * 2;
+    const { items, error } = await fetchRSSItems(src.url, fetchMax);
     // 120-day window: generous enough that a genuinely quiet niche topic
     // (e.g. science/quantum on a slow week) doesn't get its real "freshest
     // available" headlines filtered out, while still catching a feed like

@@ -1596,29 +1596,95 @@ async function handleWaterTemp(url, ctx) {
 
   let tempF = null;
   try {
+    // NOTE: the old /Missouri-lakes/... path now 308-redirects to /Missouri/...
+    // Hit the canonical URL directly and follow redirects if they move it again.
     const res = await fetch(
-      "https://lakemonster.com/lake/Missouri-lakes/Harry-S.-Truman-Reservoir-water-temperature-650",
-      { headers: { "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)" } }
+      "https://lakemonster.com/lake/Missouri/Harry-S.-Truman-Reservoir-650",
+      { headers: { "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)" }, redirect: "follow" }
     );
     if (res.ok) {
       const html = await res.text();
-      // og:description contains e.g. 'Water temp: 65°F - Perfect for fishing!'
-      const m = html.match(/Water temp:\s*(\d+)°F/i);
-      if (m) tempF = parseInt(m[1], 10);
+      // LakeMonster has changed this string at least twice, so try each known
+      // shape in turn instead of relying on one exact phrase:
+      //   old: 'Water temp: 65°F - Perfect for fishing!'
+      //   new: 'Current water temperature: 83°F'
+      const patterns = [
+        /Water temp:\s*(\d{2,3})\s*°?F/i,
+        /Current water temperature:\s*(\d{2,3})\s*°?F/i,
+        /water temperature(?:\s+is)?[:\s]+(\d{2,3})\s*°?F/i
+      ];
+      for (const re of patterns) {
+        const m = html.match(re);
+        if (m) {
+          const v = parseInt(m[1], 10);
+          // Sanity-gate it: a Missouri reservoir is never outside this range.
+          // Keeps a layout change from silently feeding us a bogus number.
+          if (v >= 32 && v <= 95) { tempF = v; break; }
+        }
+      }
     }
   } catch {}
 
-  if (tempF === null) {
-    return jsonResponse({ error: "Could not parse water temp from LakeMonster" }, 502);
+  // ── Cross-check against the USGS inflow gauge ──────────────────────────────
+  // USGS 06918250 (Osage River at Taberville) is the ONLY official, always-on
+  // water-temp gauge in the Truman watershed. It measures river inflow, not the
+  // lake, so it can't replace LakeMonster — but it bounds it. A scraped value
+  // that disagrees with the river by more than ~25°F is a parsing artifact, not
+  // a real reading, and gets rejected instead of poisoning the fishing advisor.
+  const inflow = await fetchInflowTempF();
+  let source = "LakeMonster / Harry S. Truman Reservoir";
+  let confidence = "measured";
+
+  if (tempF !== null && inflow !== null && Math.abs(tempF - inflow) > 25) {
+    tempF = null; // implausible vs. the river — discard
   }
 
-  const result = { tempF, source: "LakeMonster / Harry S. Truman Reservoir", fetched_at: new Date().toISOString() };
+  if (tempF === null && inflow !== null) {
+    // Fall back to an inflow-derived estimate. In summer the shallow river runs
+    // hotter than the reservoir body; in winter it runs colder. Damp toward the
+    // lake's thermal inertia rather than using the river figure raw.
+    const m = new Date().getUTCMonth() + 1;
+    const summer = m >= 5 && m <= 9;
+    tempF = Math.round(summer ? inflow - 4 : inflow + 3);
+    source = "Estimated from USGS 06918250 (Osage R. at Taberville) inflow";
+    confidence = "estimated";
+  }
+
+  if (tempF === null) {
+    return jsonResponse({
+      error: "No usable water temp — LakeMonster parse failed and USGS inflow gauge unavailable",
+      confidence: "none"
+    }, 502);
+  }
+
+  const result = { tempF, source, confidence, inflowTempF: inflow, fetched_at: new Date().toISOString() };
   const cacheRes = new Response(JSON.stringify(result), {
     headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=10800" } // 3h
   });
   ctx.waitUntil(cache.put(cacheReq, cacheRes.clone()));
 
   return jsonResponse({ ...result, cached: false });
+}
+
+// Reads water temperature from USGS 06918250 — Osage River at Taberville, MO.
+// Official USGS instantaneous-values API, 15-minute cadence, no key required.
+// Returns °F, or null if the gauge is down or reporting nonsense.
+async function fetchInflowTempF() {
+  try {
+    const res = await fetch(
+      "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=06918250&parameterCd=00010&siteStatus=active",
+      { headers: { "User-Agent": "NewsBot/1.0 (truman-fishing-dashboard)" } }
+    );
+    if (!res.ok) return null;
+    const j = await res.json();
+    const series = j?.value?.timeSeries?.[0]?.values?.[0]?.value;
+    if (!Array.isArray(series) || !series.length) return null;
+    const raw = parseFloat(series[series.length - 1].value);
+    // USGS uses -999999 as its "no data" sentinel.
+    if (!Number.isFinite(raw) || raw <= -100) return null;
+    const f = raw * 9 / 5 + 32;
+    return (f >= 32 && f <= 100) ? Math.round(f * 10) / 10 : null;
+  } catch { return null; }
 }
 
 // ─────────────── LAKE LEVEL HISTORY ───────────────

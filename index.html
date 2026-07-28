@@ -544,6 +544,28 @@
   .fish-stat-trend.stable { color:var(--text-muted); }
   .fish-section { margin:12px 0; }
   .fish-section-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:6px; }
+  /* Zone / thermocline model */
+  .zone-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; }
+  .zone-card { border:1px solid var(--border); border-radius:10px; padding:11px 12px; background:var(--card-hover); }
+  .zone-card.home { border-color:#7c3aed; box-shadow:inset 0 0 0 1px rgba(124,58,237,.25); }
+  .zone-name { font-weight:700; font-size:13.5px; }
+  .zone-detail { font-size:11px; color:var(--text-muted); margin-top:1px; }
+  .zone-home-tag { display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.04em; color:#7c3aed; background:rgba(124,58,237,.12); padding:1px 5px; border-radius:6px; margin-left:5px; vertical-align:middle; }
+  .zone-row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-top:7px; font-size:12.5px; }
+  .zone-lbl { color:var(--text-muted); }
+  .zone-val { font-weight:700; font-variant-numeric:tabular-nums; }
+  .zone-ox { margin-top:7px; font-size:11.5px; padding:6px 8px; border-radius:6px; line-height:1.4; }
+  .zone-ox.good { background:color-mix(in srgb,var(--sage) 14%,transparent); }
+  .zone-ox.warn { background:color-mix(in srgb,var(--mustard) 18%,transparent); }
+  .zone-ox.bad  { background:color-mix(in srgb,#c2410c 14%,transparent); }
+  .zone-why { font-size:10.5px; color:var(--text-muted); margin-top:6px; line-height:1.45; }
+  .zone-conf { display:inline-block; font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px; border-radius:6px; margin-left:4px; }
+  .zone-conf.calibrated { color:#fff; background:#7c3aed; }
+  .zone-conf.good { color:#fff; background:#2f7d32; }
+  .zone-conf.moderate { color:#fff; background:#b58955; }
+  .zone-conf.low { color:#fff; background:#8b5a2b; }
+  .zone-conf.high { color:#fff; background:#2f7d32; }
+  .zone-disclaimer { font-size:10.5px; color:var(--text-muted); margin-top:8px; font-style:italic; line-height:1.45; }
   .fish-chip { display:inline-block; padding:4px 10px; border-radius:999px; background:color-mix(in srgb,var(--accent) 13%,transparent); color:var(--accent); font-size:12px; font-weight:600; margin:2px 3px 2px 0; }
   .fish-chip-bait { background:color-mix(in srgb,#2563eb 10%,transparent); color:#2563eb; }
   [data-theme="dark"] .fish-chip-bait { color:#60a5fa; background:color-mix(in srgb,#60a5fa 13%,transparent); }
@@ -4481,6 +4503,9 @@ function getForecastAtTime(targetDate) {
 
 const WATERTEMP_ENDPOINT = CF_WORKER.replace(/\/$/, "") + "/watertemp";
 const WATERTEMP_CACHE_KEY = "news.fishing.watertemp.v2";
+// Side-channel for the extra fields the /watertemp endpoint now returns
+// (USGS inflow temp + whether the lake reading was measured or estimated).
+let _waterTempMeta = { inflowTempF: null, confidence: null, source: null };
 
 async function fetchWaterTemp() {
   // Try worker scrape of LakeMonster first (cached 3h server-side)
@@ -4489,6 +4514,13 @@ async function fetchWaterTemp() {
     const res = await fetch(WATERTEMP_ENDPOINT);
     if (res.ok) {
       const data = await res.json();
+      // Stash the whole payload — the zone model needs the USGS inflow temp to
+      // derive the upstream↔downstream gradient, and we want the confidence flag.
+      _waterTempMeta = {
+        inflowTempF: Number.isFinite(data.inflowTempF) ? data.inflowTempF : null,
+        confidence: data.confidence || null,
+        source: data.source || null
+      };
       if (isFinite(data.tempF)) {
         // Cache locally too so it survives brief worker hiccups
         try { localStorage.setItem(WATERTEMP_CACHE_KEY, JSON.stringify({ temp: data.tempF, ts: Date.now(), source: "lakemonster" })); } catch {}
@@ -4563,6 +4595,20 @@ function renderTripLogPanel(panel, lake, waterTempF) {
       <input type="number" id="tl-count" class="fish-trip-input" placeholder="# fish" style="width:80px">
     </div>
     <div class="trip-log-field-row">
+      <label>Zone</label>
+      <select id="tl-zone" class="fish-trip-input" style="flex:1">
+        <option value="">— which part of the lake —</option>
+        ${TRUMAN_ZONES.map(z => `<option value="${z.id}"${z.id === "mid" ? " selected" : ""}>${escapeHtml(z.name)} (${escapeHtml(z.detail)})</option>`).join("")}
+      </select>
+    </div>
+    <div class="trip-log-field-row">
+      <label title="Turn your sonar sensitivity up — the thermocline shows as a fuzzy horizontal band. Logging it here teaches the model this lake.">Thermocline seen on sonar (ft)</label>
+      <input type="number" id="tl-thermo" class="fish-trip-input" placeholder="optional" min="3" max="80" style="width:100px">
+    </div>
+    <div style="font-size:10.5px;color:var(--text-muted);margin:-2px 0 8px;line-height:1.45">
+      💡 That last field is the important one. Crank sonar sensitivity until you see a fuzzy band — that's the thermocline. Two logged readings per zone and the estimates start correcting themselves to Truman instead of guessing from theory.
+    </div>
+    <div class="trip-log-field-row">
       <label>Notes</label>
       <input type="text" id="tl-notes" class="fish-trip-input" placeholder="Anything else — bait size, bite timing, action" style="flex:1">
     </div>
@@ -4587,7 +4633,7 @@ function renderTripLogPanel(panel, lake, waterTempF) {
         ${e.count?`🐟 ${e.count} fish `:""}
       </div>
       ${e.notes?`<div class="trip-log-notes">${escapeHtml(e.notes)}</div>`:""}
-      ${e.lakeElev?`<div class="trip-log-cond">Pool ${e.lakeElev.toFixed(1)}ft${e.waterTempF?" · "+e.waterTempF+"°F water":""}</div>`:""}
+      ${e.lakeElev?`<div class="trip-log-cond">Pool ${e.lakeElev.toFixed(1)}ft${e.waterTempF?" · "+e.waterTempF+"°F water":""}${e.zoneName?" · "+escapeHtml(e.zoneName):""}${Number.isFinite(e.thermoclineObsFt)?` · 🌡️ thermocline ${e.thermoclineObsFt} ft${Number.isFinite(e.thermoclinePredFt)?` (model said ${e.thermoclinePredFt})`:""}`:""}</div>`:""}
     </div>`).join("")}
   </div>` : `<div style="text-align:center;color:var(--text-soft);padding:20px 0;font-size:13px">No catches logged yet.</div>`;
 
@@ -4627,6 +4673,25 @@ function renderTripLogPanel(panel, lake, waterTempF) {
         lakeElev:   lake?.stage ?? null,
         waterTempF: waterTempF ?? null
       };
+
+      // ── Sonar calibration capture ──
+      // Store BOTH the observed thermocline and what the model predicted for
+      // that zone at the time. The running difference between them is the bias
+      // that getThermoclineBias() feeds back into future estimates.
+      const zoneId = panel.querySelector("#tl-zone")?.value || "";
+      const obs    = parseFloat(panel.querySelector("#tl-thermo")?.value);
+      if (zoneId && Number.isFinite(obs) && obs >= 3 && obs <= 80) {
+        const zone = TRUMAN_ZONES.find(z => z.id === zoneId);
+        const pred = _lastZoneReport?.find(r => r.zone.id === zoneId)?.thermo?.depthFt;
+        entry.zone = zoneId;
+        entry.thermoclineObsFt = obs;
+        // Only record a prediction if the model actually made one (stratified).
+        if (Number.isFinite(pred)) entry.thermoclinePredFt = pred;
+        if (zone) entry.zoneName = zone.name;
+      } else if (zoneId) {
+        entry.zone = zoneId;
+      }
+
       addTripEntry(entry);
       renderTripLogPanel(panel, lake, waterTempF);
     });
@@ -4644,7 +4709,10 @@ function renderTripLogPanel(panel, lake, waterTempF) {
 //   pre-summer      78-82F   — flathead peak pre-spawn feed
 //   summer          >82F     — full summer pattern
 function getSubSeason(month, waterTempF) {
-  if (isFinite(waterTempF)) {
+  // NOTE: isFinite(null) === true and null < 50 === true, so a plain isFinite()
+  // check here made a failed water-temp fetch look like 0°F and forced "cold"
+  // (Winter / Cold Water) in the middle of July. Require a real number.
+  if (typeof waterTempF === "number" && Number.isFinite(waterTempF)) {
     if (waterTempF < 50) return "cold";
     if (waterTempF < 58) return "pre-spawn";
     if (waterTempF < 62) return "pre-spawn-warm";
@@ -4655,29 +4723,37 @@ function getSubSeason(month, waterTempF) {
     return "summer";
   }
   // Calendar fallback tuned for Henry County, MO.
-  if (month <= 1 || month === 11) return "cold";
-  if (month === 2) return "pre-spawn";
-  if (month === 3) return "pre-spawn-warm";
-  if (month === 4) return "spawn";
-  if (month === 5) {
-    const day = new Date().getDate();
-    if (day < 10) return "spawn";
-    if (day < 26) return "post-spawn";
+  // `month` is 0-indexed from Date.getMonth(): 0=Jan … 11=Dec.
+  // This block used to be written as if it were 1-indexed, which shifted every
+  // sub-season a full month early (July was reporting June's pattern).
+  const m1 = month + 1; // 1=Jan … 12=Dec, so the ranges below read naturally.
+  const day = new Date().getDate();
+  if (m1 === 12 || m1 === 1) return "cold";           // Dec–Jan
+  if (m1 === 2) return "cold";                        // Feb — still cold water here
+  if (m1 === 3) return "pre-spawn";                   // Mar
+  if (m1 === 4) return "pre-spawn-warm";              // Apr
+  if (m1 === 5) {                                     // May — the spawn month
+    if (day < 20) return "spawn";
+    return "post-spawn";
+  }
+  if (m1 === 6) {                                     // Jun
+    if (day < 15) return "post-spawn";
     return "blue-lockdown";
   }
-  if (month === 6) {
-    const day = new Date().getDate();
-    if (day < 15) return "blue-lockdown";
-    return "pre-summer";
+  if (m1 === 7) {                                     // Jul
+    if (day < 10) return "pre-summer";
+    return "summer";
   }
-  if (month === 7 || month === 8) return "summer";
-  if (month === 9 || month === 10) return "fall";
+  if (m1 === 8) return "summer";                      // Aug
+  if (m1 === 9) return "summer";                      // Sep — Truman still hot early
+  if (m1 === 10 || m1 === 11) return "fall";          // Oct–Nov
   return "cold";
 }
 
 // Crappie holding depth keyed off water temp (replaces static numbers).
 function getCrappieDepthForTemp(tempF) {
-  if (!isFinite(tempF)) return null;
+  // Same isFinite(null) trap as getSubSeason — null would fall through as 0°F.
+  if (typeof tempF !== "number" || !Number.isFinite(tempF)) return null;
   if (tempF < 50) return "20-30 ft (deep brush, dead-slow vertical)";
   if (tempF < 58) return "12-18 ft (deep brush staging)";
   if (tempF < 62) return "8-14 ft (transitioning shallow)";
@@ -4686,6 +4762,283 @@ function getCrappieDepthForTemp(tempF) {
   if (tempF < 78) return "12-20 ft (deep brush, summer pattern setting in)";
   if (tempF < 82) return "15-22 ft (deep brush, slow vertical)";
   return "18-25 ft (shaded brush, often need a slow drop)";
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TRUMAN ZONE / THERMOCLINE / OXYGEN MODEL
+//
+// IMPORTANT HONESTY NOTE: everything below is a physics-informed ESTIMATE, not
+// a measurement. There is no in-lake temperature or DO gauge on Truman — the
+// only official water-temp gauge in the whole watershed is USGS 06918250 on
+// the Osage inflow at Taberville. So we reason from the drivers we CAN measure
+// (heat input, wind work, flow-through) and then let real sonar observations
+// from the trip log correct the model over time. Treat output as a starting
+// hypothesis to verify on the graph, never as gospel.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Truman's conservation-pool storage. Used for residence-time / flushing math.
+const TRUMAN_STORAGE_ACFT = 1200000;
+const CFS_TO_ACFT_PER_DAY = 1.98347;
+
+// Three zones running down the Grand arm, ordered upstream → downstream.
+// stratTendency: how readily this zone can hold layers at all. The upper arm is
+// shallow and riverine and effectively never stratifies; the lower lake near the
+// dam is deep and slow and does so every summer.
+const TRUMAN_ZONES = [
+  {
+    id: "upper",
+    name: "Upper Grand",
+    detail: "Osceola ↔ Hwy 18 / Tightwad",
+    typicalDepthFt: 18,
+    stratTendency: 0.05,
+    riverBlend: 0.55   // how much this zone tracks river inflow temp vs. lake body
+  },
+  {
+    id: "mid",
+    name: "Mid Grand",
+    detail: "Hwy 18 ↔ Sparrowfoot / Berry Bend (your home water)",
+    typicalDepthFt: 32,
+    stratTendency: 0.55,
+    riverBlend: 0.15
+  },
+  {
+    id: "lower",
+    name: "Lower Grand → Dam",
+    detail: "Bucksaw down to Truman Dam",
+    typicalDepthFt: 60,
+    stratTendency: 1.0,
+    riverBlend: -0.22  // negative: runs cooler than the lake average in summer
+  }
+];
+
+// Pull ~60 days of daily climate drivers. Uses the forecast endpoint's past_days
+// (not the archive API) because the archive lags several days and we need the
+// most recent week to judge whether wind has just broken the layers up.
+const CLIMATE_HIST_KEY = "news.fishing.climatehist.v1";
+async function fetchClimateHistory() {
+  try {
+    const raw = localStorage.getItem(CLIMATE_HIST_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && Date.now() - p.ts < 12 * 3600000 && p.data) return p.data;
+    }
+  } catch {}
+  try {
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=" + WEATHER_LOCATION.lat +
+      "&longitude=" + WEATHER_LOCATION.lon +
+      "&daily=temperature_2m_mean,shortwave_radiation_sum,wind_speed_10m_mean" +
+      "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=" +
+      encodeURIComponent(WEATHER_LOCATION.tz) + "&past_days=60&forecast_days=1";
+    const res = await fetchWithTimeout(url, FEED_TIMEOUT_MS);
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (!j?.daily?.time) return null;
+    try { localStorage.setItem(CLIMATE_HIST_KEY, JSON.stringify({ ts: Date.now(), data: j.daily })); } catch {}
+    return j.daily;
+  } catch { return null; }
+}
+
+// Integrate a 0–1 stratification index day by day over the history window.
+//   + surface heating (air-temp excess × solar) builds layers
+//   − wind work (scales with windspeed³) erodes them
+//   − flow-through flushing pushes the whole lake toward mixed
+// The wind term is damped by (1 − 0.55·S) because an already-stable water
+// column resists further mixing — the Richardson-number effect.
+function computeStratification(daily, outflowCfs) {
+  if (!daily?.time?.length) return null;
+  const air = daily.temperature_2m_mean || [];
+  const sun = daily.shortwave_radiation_sum || [];
+  const wnd = daily.wind_speed_10m_mean || [];
+
+  const outflow = Number.isFinite(outflowCfs) && outflowCfs > 0 ? outflowCfs : 8000;
+  const flushPerDay = (outflow * CFS_TO_ACFT_PER_DAY) / TRUMAN_STORAGE_ACFT;
+  const residenceDays = Math.round(1 / flushPerDay);
+
+  let S = 0;
+  const series = [];
+  for (let i = 0; i < daily.time.length; i++) {
+    const a = air[i], s = sun[i], w = wnd[i];
+    if (!Number.isFinite(a) || !Number.isFinite(s) || !Number.isFinite(w)) { series.push(S); continue; }
+    const buoy = Math.max(0, (a - 60) / 20) * Math.min(1.3, s / 23);
+    const mix  = Math.pow(w / 8.5, 3) * 0.055 * (1 - 0.55 * S);
+    S = Math.max(0, Math.min(1, S + buoy * 0.065 - mix - flushPerDay * 1.5));
+    series.push(S);
+  }
+
+  // How many consecutive days have we been meaningfully layered? This drives
+  // oxygen depletion below the thermocline.
+  let stratDays = 0;
+  for (let i = series.length - 1; i >= 0; i--) { if (series[i] >= 0.45) stratDays++; else break; }
+
+  const tail = wnd.slice(-7).filter(Number.isFinite);
+  const meanWind7 = tail.length ? tail.reduce((x, y) => x + y, 0) / tail.length : 6;
+  const prior = wnd.slice(-14, -7).filter(Number.isFinite);
+  const meanWindPrior = prior.length ? prior.reduce((x, y) => x + y, 0) / prior.length : meanWind7;
+
+  return {
+    index: S,
+    stratDays,
+    meanWind7,
+    windTrend: meanWind7 - meanWindPrior,   // + = windier lately, layers eroding
+    residenceDays,
+    outflowCfs: outflow
+  };
+}
+
+// Per-zone surface temp. Rather than hardcoding a gradient, we drive it off the
+// LIVE measured difference between river inflow and lake body — so it self-
+// corrects season to season (river runs hotter in summer, colder in winter).
+// Caveat: Taberville gauges the Osage arm, not the Grand, so this is a proxy for
+// "river vs lake" behavior generally, not a Grand-arm measurement.
+function getZoneWaterTemp(lakeTempF, inflowTempF, zone) {
+  if (typeof lakeTempF !== "number" || !Number.isFinite(lakeTempF)) return null;
+  if (typeof inflowTempF !== "number" || !Number.isFinite(inflowTempF)) {
+    return Math.round(lakeTempF * 10) / 10;
+  }
+  const delta = inflowTempF - lakeTempF;
+  return Math.round((lakeTempF + delta * zone.riverBlend) * 10) / 10;
+}
+
+// Estimated thermocline depth for a zone, plus a confidence rating and the
+// plain-English reasoning behind it.
+function estimateThermocline(strat, zone, biasFt) {
+  if (!strat) return null;
+  const reasons = [];
+
+  // Zones that can't hold layers simply don't have one.
+  const effective = strat.index * zone.stratTendency;
+  if (effective < 0.25) {
+    let why;
+    if (zone.stratTendency < 0.2) why = "shallow and riverine here — current keeps it mixed top to bottom";
+    else if (strat.residenceDays < 25) why = "heavy release (" + strat.outflowCfs.toLocaleString() + " cfs, ~" + strat.residenceDays + "-day turnover) is flushing the layers out";
+    else if (strat.meanWind7 > 9) why = "windy stretch (" + strat.meanWind7.toFixed(1) + " mph avg) has mixed the column";
+    else why = "not enough accumulated heat to stratify yet";
+    return { stratified: false, depthFt: null, confidence: "high", reasons: [why] };
+  }
+
+  // Mixed-layer depth is set mainly by wind work over the basin, so it's broadly
+  // similar across the open lake — it does NOT get shallower just because a zone
+  // is deeper. Weak stratification makes the boundary somewhat deeper and fuzzier
+  // rather than inverting it.
+  let depth = 10 + 1.0 * strat.meanWind7;
+  depth *= 1 + 0.35 * (1 - effective);
+  if (Number.isFinite(biasFt)) { depth += biasFt; reasons.push("adjusted " + (biasFt >= 0 ? "+" : "") + biasFt.toFixed(1) + " ft from your logged sonar readings"); }
+  depth = Math.max(6, Math.round(depth));
+
+  // If the estimated boundary sits near the bottom of this zone, there isn't a
+  // meaningful layer here — the whole column is effectively the mixed layer.
+  if (depth > zone.typicalDepthFt * 0.7) {
+    return {
+      stratified: false,
+      depthFt: null,
+      confidence: "moderate",
+      reasons: ["mixing reaches most of the way down in water this shallow — no usable layer here"]
+    };
+  }
+
+  reasons.push(strat.stratDays + " straight days layered · " + strat.meanWind7.toFixed(1) + " mph avg wind · ~" + strat.residenceDays + "-day lake turnover");
+  if (strat.windTrend > 2.5) reasons.push("wind picking up — boundary is eroding and will push deeper");
+  else if (strat.windTrend < -2.5) reasons.push("wind laying down — boundary tightening and setting up shallower");
+
+  // Confidence: high only when we've got a settled, well-established setup.
+  let confidence = "moderate";
+  if (Number.isFinite(biasFt)) confidence = "calibrated";
+  else if (effective > 0.8 && Math.abs(strat.windTrend) < 2.5 && strat.stratDays > 20) confidence = "good";
+  else if (effective < 0.45 || Math.abs(strat.windTrend) > 4) confidence = "low";
+
+  return { stratified: true, depthFt: depth, confidence, reasons };
+}
+
+// Oxygen below the thermocline. In a fertile, turbid reservoir the trapped
+// bottom layer loses its oxygen over the stratified season — the longer it's
+// been sealed off and the warmer it is, the deader it gets.
+function estimateOxygen(strat, zone, thermo) {
+  if (!strat || !thermo || !thermo.stratified) {
+    return { status: "oxygenated", label: "Oxygenated top to bottom", note: "Mixed water column — fish can hold at any depth that suits them.", severity: "good" };
+  }
+  const d = strat.stratDays;
+  if (d < 12) {
+    return { status: "fresh", label: "Still breathable below", note: "Only " + d + " days layered — the deep water hasn't burned through its oxygen yet. Fish can still use it, but they won't for long.", severity: "good" };
+  }
+  if (d < 26) {
+    return { status: "thinning", label: "Oxygen thinning below", note: d + " days layered. Deep water is losing oxygen. Fish are starting to stack at or just above " + thermo.depthFt + " ft rather than under it.", severity: "warn" };
+  }
+  return {
+    status: "hypoxic",
+    label: "Dead water below " + thermo.depthFt + " ft",
+    note: d + " days layered — the bottom layer is very likely oxygen-starved. Baits fished below " + thermo.depthFt + " ft are almost certainly sitting in water nothing will hold in. Fish the band just above it.",
+    severity: "bad"
+  };
+}
+
+// ── SONAR CALIBRATION ──
+// Every modern fish finder shows the thermocline as a fuzzy horizontal band when
+// you turn sensitivity up. Those observations are the only ground truth that
+// exists for this lake, so we use them to correct the model per zone.
+function getThermoclineBias(zoneId) {
+  const log = getTripLog().filter(e =>
+    e.zone === zoneId &&
+    Number.isFinite(e.thermoclineObsFt) &&
+    Number.isFinite(e.thermoclinePredFt)
+  );
+  if (log.length < 2) return null;                 // need at least two before trusting a correction
+  const recent = log.slice(-8);                    // recent readings only — the lake changes
+  const bias = recent.reduce((s, e) => s + (e.thermoclineObsFt - e.thermoclinePredFt), 0) / recent.length;
+  if (!Number.isFinite(bias) || Math.abs(bias) > 20) return null;  // reject nonsense
+  return bias;
+}
+
+// Build the full per-zone picture. Returns null if we lack the climate history.
+// Most recent zone report, so the trip-log form can record what the model
+// predicted at the moment an observation was taken.
+let _lastZoneReport = null;
+
+function buildZoneReport(strat, lakeTempF, inflowTempF) {
+  if (!strat) { _lastZoneReport = null; return null; }
+  const rep = TRUMAN_ZONES.map(zone => {
+    const bias   = getThermoclineBias(zone.id);
+    const thermo = estimateThermocline(strat, zone, bias);
+    const oxygen = estimateOxygen(strat, zone, thermo);
+    return {
+      zone,
+      tempF: getZoneWaterTemp(lakeTempF, inflowTempF, zone),
+      thermo,
+      oxygen,
+      calibrated: Number.isFinite(bias)
+    };
+  });
+  _lastZoneReport = rep;
+  return rep;
+}
+
+function renderZonePanel(report, strat) {
+  if (!report || !report.length) return "";
+  const cards = report.map(r => {
+    const t = r.thermo, ox = r.oxygen;
+    const isHome = r.zone.id === "mid";
+    const thermoVal = !t ? "—"
+      : t.stratified ? `${t.depthFt} ft` : "none — mixed";
+    const confCls = t ? t.confidence : "moderate";
+    return `
+    <div class="zone-card${isHome ? " home" : ""}">
+      <div class="zone-name">${escapeHtml(r.zone.name)}${isHome ? '<span class="zone-home-tag">YOUR WATER</span>' : ""}</div>
+      <div class="zone-detail">${escapeHtml(r.zone.detail)}</div>
+      <div class="zone-row"><span class="zone-lbl">Surface temp</span><span class="zone-val">${r.tempF != null ? r.tempF + "°F" : "—"}</span></div>
+      <div class="zone-row"><span class="zone-lbl">Thermocline</span><span class="zone-val">${escapeHtml(thermoVal)}<span class="zone-conf ${confCls}">${escapeHtml(confCls)}</span></span></div>
+      <div class="zone-ox ${ox.severity}">${escapeHtml(ox.label)}<br><span style="opacity:.85">${escapeHtml(ox.note)}</span></div>
+      ${t?.reasons?.length ? `<div class="zone-why">${t.reasons.map(escapeHtml).join(" · ")}</div>` : ""}
+    </div>`;
+  }).join("");
+
+  const drivers = `${strat.stratDays} days layered · ${strat.meanWind7.toFixed(1)} mph 7-day wind · ${strat.outflowCfs.toLocaleString()} cfs out (~${strat.residenceDays}-day turnover)`;
+
+  return `
+  <div class="fish-section">
+    <div class="fish-section-label">🌡️ Water Column by Zone — Estimated</div>
+    <div class="zone-grid">${cards}</div>
+    <div class="zone-why" style="margin-top:8px"><strong>Drivers:</strong> ${escapeHtml(drivers)}</div>
+    <div class="zone-disclaimer">Estimated from heat, wind and flow-through — there is no in-lake temperature or oxygen gauge on Truman, so nothing here is measured. Crank your sonar sensitivity and the thermocline shows as a fuzzy band; log what you actually see below and these numbers correct themselves to this lake.</div>
+  </div>`;
 }
 
 // Recent rainfall total in inches over the last N hours (uses cached hourly precip).
@@ -5291,7 +5644,7 @@ function generateFishingAdvice(lake, weather, waterTempF, mdcBulletin, southGran
     shadTip, pondTip, bankTip, windBankAdvice, closestBankSpot,
     clarity: clarityNote, clarityReasons: clarityInfo.reasons,
     zoneTip, mdcLine, tripLogLine,
-    waterTempF: isFinite(waterTempF) ? waterTempF : null,
+    waterTempF: (typeof waterTempF === "number" && Number.isFinite(waterTempF)) ? waterTempF : null,
     pressureForecast: pressFc, holiday
   };
 }
@@ -7825,7 +8178,7 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, wa
   };
   const subSeasonLabel = subSeasonLabels[advice.subSeason] || "";
   const subSeasonHtml = subSeasonLabel
-    ? `<div class="fish-subseason" style="display:inline-block;font-size:11px;font-weight:700;color:var(--sage,#6a9);background:rgba(106,153,153,0.10);padding:3px 8px;border-radius:10px;margin-left:6px">${escapeHtml(subSeasonLabel)}${advice.waterTempF != null ? ` · ${advice.waterTempF}°F water` : ""}</div>`
+    ? `<div class="fish-subseason" style="display:inline-block;font-size:11px;font-weight:700;color:var(--sage,#6a9);background:rgba(106,153,153,0.10);padding:3px 8px;border-radius:10px;margin-left:6px">${escapeHtml(subSeasonLabel)}${advice.waterTempF != null ? ` · ${advice.waterTempF}°F water` : " · est. from calendar"}</div>`
     : "";
 
   const clarityBadge = advice.clarity
@@ -7875,7 +8228,9 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, wa
       ${(lake && Number.isFinite(lake.inflow))  ? `<div class="fish-lake-stat"><div class="fish-stat-val">${lake.inflow.toLocaleString()}</div><div class="fish-stat-lbl">Inflow cfs</div></div>` : ""}
       ${(lake && Number.isFinite(lake.outflow)) ? `<div class="fish-lake-stat"><div class="fish-stat-val">${lake.outflow.toLocaleString()}</div><div class="fish-stat-lbl">Outflow cfs</div></div>` : ""}
       <div class="fish-lake-stat"><div class="fish-stat-val">${temp}</div><div class="fish-stat-lbl">Air Temp</div></div>
-      ${waterTempF != null ? `<div class="fish-lake-stat"><div class="fish-stat-val">${waterTempF}°F</div><div class="fish-stat-lbl">Water Temp</div></div>` : ""}
+      ${waterTempF != null
+        ? `<div class="fish-lake-stat"><div class="fish-stat-val">${waterTempF}°F</div><div class="fish-stat-lbl">Water Temp</div></div>`
+        : `<div class="fish-lake-stat" title="Water-temp source unavailable — sub-season is estimated from the calendar. Enter a reading below for a sharper call."><div class="fish-stat-val" style="opacity:.55">—</div><div class="fish-stat-lbl">Water Temp</div></div>`}
       ${southGrandHtml}
       <div class="fish-lake-stat"><div class="fish-stat-val">${wind}</div><div class="fish-stat-lbl">Wind</div></div>
     </div>
@@ -7930,6 +8285,7 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, wa
   </div>
   <div class="fish-log-panel" id="fishLogPanel"></div>
   <div class="fish-section"><div class="fish-section-label">🎯 Target Species</div>${speciesHtml}</div>
+  ${advice.zoneReport ? renderZonePanel(advice.zoneReport, advice.strat) : ""}
   ${tipsHtml}
   ${zoneHtml}
   ${tripLogHtml}
@@ -8176,13 +8532,14 @@ async function loadOutdoor(force) {
   const cat = CATEGORIES.find(c => c.id==="outdoor");
   if (force) cat.feeds.forEach(f => localStorage.removeItem("news.cache."+f.url));
 
-  const [lakeData, weeklyRecords, lakeHistoryResult, waterTempF, newsResults, southGrandFlow] = await Promise.all([
+  const [lakeData, weeklyRecords, lakeHistoryResult, waterTempF, newsResults, southGrandFlow, climateHist] = await Promise.all([
     fetchTrumanLake(),
     fetchWeeklyData(),
     fetch(LAKE_HISTORY_ENDPOINT).then(r => r.ok ? r.json() : { readings: [] }).catch(() => ({ readings: [] })),
     fetchWaterTemp(),
     Promise.all(cat.feeds.map(f => fetchFeed(f).catch(()=>[]))),
-    fetchSouthGrandFlow().catch(() => null)
+    fetchSouthGrandFlow().catch(() => null),
+    fetchClimateHistory().catch(() => null)
   ]);
 
   // Store today's reading in KV (fire-and-forget)
@@ -8200,6 +8557,13 @@ async function loadOutdoor(force) {
   // Find a recent Truman-specific MDC bulletin from the outdoor news feeds
   const mdcBulletin = findMDCTrumanBulletin(newsResults.flat());
   const advice = generateFishingAdvice(lakeData, weatherData, waterTempF, mdcBulletin, southGrandFlow);
+
+  // ── Zone / thermocline / oxygen model ──
+  const strat = computeStratification(climateHist, lakeData?.outflow);
+  const zoneReport = buildZoneReport(strat, waterTempF, _waterTempMeta.inflowTempF);
+  advice.strat = strat;
+  advice.zoneReport = zoneReport;
+
   advisorDiv.innerHTML = renderFishingAdvisor(lakeData, weatherData, advice, weeklyRecords, lakeHistory, waterTempF, southGrandFlow);
   // Wire up the AI Smart Plan button now that the advisor markup is in the DOM
   wireFishSmartPlan(lakeData, weatherData, advice, lakeHistory, waterTempF);

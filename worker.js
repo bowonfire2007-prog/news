@@ -71,16 +71,27 @@ async function findMoWeeklyPdfUrls() {
       const res = await fetch(MO_ARCHIVE_URL_FMT + year, {
         headers: { "User-Agent": "Mozilla/5.0 (compatible; MoMarketBot/1.0)" }
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.warn("[mo-weekly] archive index " + year + " returned HTTP " + res.status);
+        return;
+      }
       const html = await res.text();
       // Match /Market/pdf/YYYY_MMDD.pdf entries. MDA lists newest-first.
       const re = /\/Market\/pdf\/(20\d{2})_(\d{4})\.pdf/g;
       let m;
+      let found = 0;
       while ((m = re.exec(html)) !== null) {
         const full = "https://agriculture.mo.gov" + m[0];
+        found++;
         if (!seen.has(full)) { seen.add(full); urls.push(full); }
       }
-    } catch (_) {}
+      // NOTE: the archive index lags — a dated PDF can be live and fetchable
+      // for a day or more before it is linked here. If the newest entry below
+      // is older than the current week, that lag is why.
+      console.log("[mo-weekly] archive index " + year + ": " + found + " link(s), newest = " + (urls[0] || "none"));
+    } catch (err) {
+      console.error("[mo-weekly] archive index " + year + " threw: " + (err && err.stack ? err.stack : String(err)));
+    }
   };
   // Try current year, then previous (handles early-January rollover where
   // the new year's archive may not yet have the late-December report).
@@ -102,14 +113,24 @@ function isoDateFromMoUrl(url) {
 // Send a single PDF to Claude → extract → save to KV. Returns the saved date
 // on success, or null on any failure.
 async function extractAndSaveMoWeekly(pdfUrl, env) {
+  // Diagnostic tag so every line from one attempt is greppable together in
+  // `wrangler tail`. Logging only — none of it changes what this returns.
+  const LOG = "[mo-weekly] " + pdfUrl + " — ";
+  const t0 = Date.now();
   try {
     const pdfRes = await fetch(pdfUrl, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; MoMarketBot/1.0)" }
     });
-    if (!pdfRes.ok) return null;
-    const pdfBase64 = arrayBufferToBase64(await pdfRes.arrayBuffer());
+    if (!pdfRes.ok) {
+      console.warn(LOG + "PDF fetch failed: HTTP " + pdfRes.status + " after " + (Date.now() - t0) + "ms");
+      return null;
+    }
+    const pdfBytes = await pdfRes.arrayBuffer();
+    const pdfBase64 = arrayBufferToBase64(pdfBytes);
+    console.log(LOG + "PDF ok: " + pdfBytes.byteLength + " bytes → " + pdfBase64.length + " b64 chars, " + (Date.now() - t0) + "ms");
 
     const model = env.AI_MODEL || "claude-sonnet-4-6";
+    const tClaude = Date.now();
     const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -154,7 +175,15 @@ Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY 
         }]
       })
     });
-    if (!claudeRes.ok) return null;
+    if (!claudeRes.ok) {
+      // Read the body — Anthropic puts the real reason here (rate limit,
+      // oversize payload, bad key). Swallowing it is what hid this failure.
+      let errBody = "";
+      try { errBody = (await claudeRes.text()).slice(0, 400); } catch (_) {}
+      console.warn(LOG + "Claude HTTP " + claudeRes.status + " after " + (Date.now() - tClaude) + "ms: " + errBody);
+      return null;
+    }
+    console.log(LOG + "Claude responded in " + (Date.now() - tClaude) + "ms");
 
     const claudeData = await claudeRes.json();
     const rawText = (claudeData.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
@@ -162,8 +191,14 @@ Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY 
     try {
       const cleaned = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
       extracted = JSON.parse(cleaned);
-    } catch { return null; }
-    if (!extracted.report_date || !/^\d{4}-\d{2}-\d{2}$/.test(extracted.report_date)) return null;
+    } catch {
+      console.warn(LOG + "JSON parse failed. stop_reason=" + (claudeData.stop_reason || "?") + " raw head: " + rawText.slice(0, 300));
+      return null;
+    }
+    if (!extracted.report_date || !/^\d{4}-\d{2}-\d{2}$/.test(extracted.report_date)) {
+      console.warn(LOG + "bad/missing report_date: " + JSON.stringify(extracted.report_date));
+      return null;
+    }
 
     const record = { ...extracted, uploaded_at: new Date().toISOString(), model, source: "scheduled", pdf_url: pdfUrl };
     const kvKey = "weekly:" + extracted.report_date;
@@ -177,15 +212,25 @@ Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY 
       await env.WEEKLY_KV.put("weekly:index", JSON.stringify(index), { expirationTtl: 4 * 365 * 24 * 3600 });
     }
     await caches.default.delete(new Request("https://weeklydata-cache.local/v1/limit=300"));
+    console.log(LOG + "SAVED " + extracted.report_date + " (total " + (Date.now() - t0) + "ms)");
     return extracted.report_date;
-  } catch (_) {
+  } catch (err) {
+    // Previously `catch (_) { return null; }` — a thrown error here (Worker
+    // CPU/subrequest limit, OOM on the base64 expansion, network reset) was
+    // indistinguishable from "no new report this week". Same return, now visible.
+    console.error(LOG + "threw after " + (Date.now() - t0) + "ms: " + (err && err.stack ? err.stack : String(err)));
     return null;
   }
 }
 
 async function runMissouriScheduled(env, ctx) {
+  const CLOG = "[mo-weekly cron] ";
+  const tRun = Date.now();
   try {
-    if (!env.ANTHROPIC_API_KEY || !env.WEEKLY_KV) return;
+    if (!env.ANTHROPIC_API_KEY || !env.WEEKLY_KV) {
+      console.error(CLOG + "aborted — missing " + (!env.ANTHROPIC_API_KEY ? "ANTHROPIC_API_KEY" : "WEEKLY_KV"));
+      return;
+    }
 
     // Snapshot the index up-front so we can skip URLs whose date we already have.
     const indexRaw = await env.WEEKLY_KV.get("weekly:index");
@@ -193,15 +238,26 @@ async function runMissouriScheduled(env, ctx) {
     const knownDates = new Set(index);
 
     const urls = await findMoWeeklyPdfUrls();
+    console.log(CLOG + "discovered " + urls.length + " candidate URL(s); newest known date in KV = " + (index.length ? index[index.length - 1] : "none"));
     // Walk newest-first. Skip URLs whose date is already in KV. Stop at the
     // first successful new save — no need to re-fetch every older report.
+    let attempted = 0;
     for (const pdfUrl of urls) {
       const urlDate = isoDateFromMoUrl(pdfUrl);
       if (urlDate && knownDates.has(urlDate)) continue;
+      attempted++;
       const savedDate = await extractAndSaveMoWeekly(pdfUrl, env);
-      if (savedDate && !knownDates.has(savedDate)) return; // new report saved, done
+      if (savedDate && !knownDates.has(savedDate)) {
+        console.log(CLOG + "done — saved " + savedDate + " in " + (Date.now() - tRun) + "ms");
+        return; // new report saved, done
+      }
     }
-  } catch (_) {}
+    // Falling out of the loop is the silent case that bit us: every candidate
+    // was either already known or failed, and nothing was saved.
+    console.warn(CLOG + "NO NEW REPORT SAVED — " + urls.length + " candidate(s), " + attempted + " actually attempted, " + (Date.now() - tRun) + "ms");
+  } catch (err) {
+    console.error(CLOG + "threw after " + (Date.now() - tRun) + "ms: " + (err && err.stack ? err.stack : String(err)));
+  }
 }
 
 // Manual-trigger HTTP endpoint. Hit GET /weeklyrefresh to force a fetch.

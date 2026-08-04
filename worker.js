@@ -61,11 +61,52 @@ async function runKingsvilleScheduled(env, ctx) {
 const MO_WEEKLY_LATEST_URL  = "https://agriculture.mo.gov/Market/pdf/weeklysummary.pdf";
 const MO_ARCHIVE_URL_FMT    = "https://agriculture.mo.gov/abd/wklymarketarchive.php?cyear=";
 
-// Scrape the archive page → return dated PDF URLs, newest first, plus the
-// legacy "latest" URL as a final fallback.
+// The ISO date of the most recent Monday (UTC). Every report_date MDA has ever
+// published lands on a Monday, so this is the date we expect to already have.
+// Written with UTC getters + setUTCDate so it can't drift on a DST boundary.
+function mostRecentMondayISO(now) {
+  const d = new Date(Date.UTC(
+    (now || new Date()).getUTCFullYear(),
+    (now || new Date()).getUTCMonth(),
+    (now || new Date()).getUTCDate()
+  ));
+  const back = (d.getUTCDay() + 6) % 7;   // Mon→0, Tue→1 … Sun→6
+  d.setUTCDate(d.getUTCDate() - back);
+  return d.toISOString().slice(0, 10);
+}
+
+// "2026-08-03" → "https://agriculture.mo.gov/Market/pdf/2026_0803.pdf"
+function moUrlFromIsoDate(iso) {
+  return "https://agriculture.mo.gov/Market/pdf/" + iso.slice(0, 4) + "_" + iso.slice(5, 7) + iso.slice(8, 10) + ".pdf";
+}
+
+// Return candidate PDF URLs in the order we should actually try them.
+//
+// Ordering matters a lot here. The archive index LAGS — a dated PDF is live and
+// fetchable for a day or more before it gets linked on the index page — so the
+// index is the worst place to look for the newest report, not the best.
+// Meanwhile the legacy "latest" alias is current again (it is byte-identical to
+// the newest dated PDF as of Aug 2026), despite the note above saying MDA
+// abandoned it in April. So:
+//
+//   1. the legacy alias        — one fetch, usually the answer
+//   2. this week's dated URL   — both spellings, see below
+//   3. the archive index       — historical backfill only
+//
+// (2) needs two guesses because MDA is inconsistent about the filename date:
+// some weeks it is the Monday the report covers (2026_0727 → 2026-07-27), some
+// weeks it is the Sunday before (2026_0628 → 2026-06-29). A 404 on the wrong
+// guess is cheap; guessing only one of them is how a week gets missed.
 async function findMoWeeklyPdfUrls() {
   const urls = [];
   const seen = new Set();
+  const push = (u) => { if (!seen.has(u)) { seen.add(u); urls.push(u); } };
+
+  push(MO_WEEKLY_LATEST_URL);
+  const monday = mostRecentMondayISO();
+  push(moUrlFromIsoDate(monday));
+  const sunday = new Date(Date.parse(monday + "T00:00:00Z") - 86400000).toISOString().slice(0, 10);
+  push(moUrlFromIsoDate(sunday));
   const tryYear = async (year) => {
     try {
       const res = await fetch(MO_ARCHIVE_URL_FMT + year, {
@@ -80,15 +121,14 @@ async function findMoWeeklyPdfUrls() {
       const re = /\/Market\/pdf\/(20\d{2})_(\d{4})\.pdf/g;
       let m;
       let found = 0;
+      let newestOnIndex = null;
       while ((m = re.exec(html)) !== null) {
         const full = "https://agriculture.mo.gov" + m[0];
         found++;
-        if (!seen.has(full)) { seen.add(full); urls.push(full); }
+        if (!newestOnIndex) newestOnIndex = full;
+        push(full);
       }
-      // NOTE: the archive index lags — a dated PDF can be live and fetchable
-      // for a day or more before it is linked here. If the newest entry below
-      // is older than the current week, that lag is why.
-      console.log("[mo-weekly] archive index " + year + ": " + found + " link(s), newest = " + (urls[0] || "none"));
+      console.log("[mo-weekly] archive index " + year + ": " + found + " link(s), newest = " + (newestOnIndex || "none"));
     } catch (err) {
       console.error("[mo-weekly] archive index " + year + " threw: " + (err && err.stack ? err.stack : String(err)));
     }
@@ -96,15 +136,54 @@ async function findMoWeeklyPdfUrls() {
   // Try current year, then previous (handles early-January rollover where
   // the new year's archive may not yet have the late-December report).
   const now = new Date();
-  await tryYear(now.getFullYear());
-  if (now.getMonth() === 0) await tryYear(now.getFullYear() - 1);
-  // Final fallback — the legacy "latest" URL. Usually stale but no harm in trying.
-  if (!seen.has(MO_WEEKLY_LATEST_URL)) urls.push(MO_WEEKLY_LATEST_URL);
+  await tryYear(now.getUTCFullYear());
+  if (now.getUTCMonth() === 0) await tryYear(now.getUTCFullYear() - 1);
   return urls;
+}
+
+// ── Processed-URL ledger ────────────────────────────────────────────────────
+// We used to decide "already have this one" by parsing the date out of the
+// filename and checking it against the saved report_dates. That is wrong: MDA
+// sometimes names the file with the Sunday before the report date, so the
+// filename date never matched what was in KV, and those PDFs were re-fetched
+// and re-sent to Claude on EVERY run — which is what stalled the whole loop
+// before it could reach the report we actually wanted.
+//
+// Instead we record the URLs we have successfully processed. Exact identity,
+// no date arithmetic.
+//
+// Only DATED urls go in the ledger. The legacy alias must never be recorded:
+// its content changes every week, so skipping it by identity would blind us.
+const MO_SEEN_URLS_KEY = "weekly:seen_urls";
+
+async function moLoadSeenUrls(env) {
+  try {
+    const raw = await env.WEEKLY_KV.get(MO_SEEN_URLS_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch (err) {
+    console.warn("[mo-weekly] seen_urls load failed, treating as empty: " + String(err));
+    return new Set();
+  }
+}
+
+async function moRecordSeenUrl(env, url) {
+  if (url === MO_WEEKLY_LATEST_URL) return;   // mutable alias — never blacklist
+  try {
+    const seen = await moLoadSeenUrls(env);
+    if (seen.has(url)) return;
+    seen.add(url);
+    await env.WEEKLY_KV.put(MO_SEEN_URLS_KEY, JSON.stringify([...seen]), { expirationTtl: 4 * 365 * 24 * 3600 });
+  } catch (err) {
+    console.warn("[mo-weekly] seen_urls write failed for " + url + ": " + String(err));
+  }
 }
 
 // Parse the dated URL pattern /YYYY_MMDD.pdf → "YYYY-MM-DD". Returns null on
 // the legacy URL (which has no date hint).
+//
+// CAUTION: this is the FILENAME date, which is not reliably the report_date —
+// see the ledger note above. Use it for logging and ordering, never to decide
+// whether a report is already saved.
 function isoDateFromMoUrl(url) {
   const m = url && url.match(/\/(20\d{2})_(\d{2})(\d{2})\.pdf$/);
   return m ? (m[1] + "-" + m[2] + "-" + m[3]) : null;
@@ -212,6 +291,9 @@ Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY 
       await env.WEEKLY_KV.put("weekly:index", JSON.stringify(index), { expirationTtl: 4 * 365 * 24 * 3600 });
     }
     await caches.default.delete(new Request("https://weeklydata-cache.local/v1/limit=300"));
+    // Record the URL, not the date — so the next run skips this exact file even
+    // if MDA named it with a date that doesn't match the report inside.
+    await moRecordSeenUrl(env, pdfUrl);
     console.log(LOG + "SAVED " + extracted.report_date + " (total " + (Date.now() - t0) + "ms)");
     return extracted.report_date;
   } catch (err) {
@@ -232,29 +314,56 @@ async function runMissouriScheduled(env, ctx) {
       return;
     }
 
-    // Snapshot the index up-front so we can skip URLs whose date we already have.
     const indexRaw = await env.WEEKLY_KV.get("weekly:index");
     const index = indexRaw ? JSON.parse(indexRaw) : [];
     const knownDates = new Set(index);
 
+    // Cheapest possible exit: every report_date MDA publishes is a Monday, so
+    // if we already hold the most recent Monday there is nothing to go get.
+    // Steady state now costs zero PDF fetches and zero Claude calls.
+    const wantDate = mostRecentMondayISO();
+    if (knownDates.has(wantDate)) {
+      console.log(CLOG + "up to date — already hold " + wantDate + ", nothing to fetch");
+      return;
+    }
+
+    const seenUrls = await moLoadSeenUrls(env);
     const urls = await findMoWeeklyPdfUrls();
-    console.log(CLOG + "discovered " + urls.length + " candidate URL(s); newest known date in KV = " + (index.length ? index[index.length - 1] : "none"));
-    // Walk newest-first. Skip URLs whose date is already in KV. Stop at the
-    // first successful new save — no need to re-fetch every older report.
+    console.log(CLOG + "want " + wantDate + "; newest in KV = " + (index.length ? index[index.length - 1] : "none") + "; " + urls.length + " candidate(s), " + seenUrls.size + " already processed");
+
+    // Hard cap on Claude calls per run. The previous version had no cap: a bad
+    // skip check meant it re-parsed the entire back catalogue and ran out of
+    // Worker budget before reaching the report it was looking for.
+    const MAX_ATTEMPTS = 3;
     let attempted = 0;
+
     for (const pdfUrl of urls) {
-      const urlDate = isoDateFromMoUrl(pdfUrl);
-      if (urlDate && knownDates.has(urlDate)) continue;
+      // Skip on URL identity, never on a date parsed from the filename.
+      if (seenUrls.has(pdfUrl)) continue;
+      if (attempted >= MAX_ATTEMPTS) {
+        console.warn(CLOG + "attempt cap (" + MAX_ATTEMPTS + ") reached — stopping before " + pdfUrl);
+        break;
+      }
       attempted++;
       const savedDate = await extractAndSaveMoWeekly(pdfUrl, env);
+      // Success means we got the report we were LOOKING for — not merely a
+      // report we didn't have. If the legacy alias ever goes stale again it
+      // will serve some old week; saving that is a fine backfill, but treating
+      // it as success would stop the walk before reaching the current report.
+      if (savedDate === wantDate) {
+        console.log(CLOG + "done — saved " + savedDate + " from " + pdfUrl + " in " + (Date.now() - tRun) + "ms");
+        return;
+      }
       if (savedDate && !knownDates.has(savedDate)) {
-        console.log(CLOG + "done — saved " + savedDate + " in " + (Date.now() - tRun) + "ms");
-        return; // new report saved, done
+        knownDates.add(savedDate);
+        console.log(CLOG + "backfilled " + savedDate + " (wanted " + wantDate + ") — continuing");
+      } else if (savedDate) {
+        console.log(CLOG + "candidate held " + savedDate + ", already known — continuing");
       }
     }
-    // Falling out of the loop is the silent case that bit us: every candidate
-    // was either already known or failed, and nothing was saved.
-    console.warn(CLOG + "NO NEW REPORT SAVED — " + urls.length + " candidate(s), " + attempted + " actually attempted, " + (Date.now() - tRun) + "ms");
+    // Reaching here means MDA genuinely has not posted wantDate yet. That is a
+    // normal Monday-morning outcome; the Tuesday backup cron will retry.
+    console.warn(CLOG + "NO NEW REPORT SAVED — wanted " + wantDate + ", " + urls.length + " candidate(s), " + attempted + " attempted, " + (Date.now() - tRun) + "ms");
   } catch (err) {
     console.error(CLOG + "threw after " + (Date.now() - tRun) + "ms: " + (err && err.stack ? err.stack : String(err)));
   }
@@ -267,25 +376,58 @@ async function handleWeeklyRefresh(request, env, ctx) {
   if (!env.ANTHROPIC_API_KEY || !env.WEEKLY_KV) {
     return jsonResponse({ error: "ANTHROPIC_API_KEY or WEEKLY_KV not configured" }, 500);
   }
+  const url = new URL(request.url);
+  // ?force=1 ignores the "already have this Monday" early exit so you can
+  // re-pull on demand. It does NOT ignore the processed-URL ledger or the
+  // attempt cap — those are what keep this from running away.
+  const force = url.searchParams.get("force") === "1";
+
   const indexRaw = await env.WEEKLY_KV.get("weekly:index");
   const index = indexRaw ? JSON.parse(indexRaw) : [];
   const knownDates = new Set(index);
+  const wantDate = mostRecentMondayISO();
 
+  if (!force && knownDates.has(wantDate)) {
+    return jsonResponse({
+      saved: null,
+      up_to_date: true,
+      want_date: wantDate,
+      note: "Already hold " + wantDate + ". Add ?force=1 to re-check anyway.",
+      already_known_dates: index.length
+    }, 200);
+  }
+
+  const seenUrls = await moLoadSeenUrls(env);
   const urls = await findMoWeeklyPdfUrls();
   const tried = [];
   let saved = null;
 
+  const MAX_ATTEMPTS = 3;
+  let attempted = 0;
+
   for (const pdfUrl of urls) {
     const urlDate = isoDateFromMoUrl(pdfUrl);
-    if (urlDate && knownDates.has(urlDate)) {
-      tried.push({ url: pdfUrl, urlDate, action: "skipped-already-have" });
+    // Skip on URL identity. The filename date is unreliable — MDA sometimes
+    // names a file with the Sunday before the report_date inside it.
+    if (seenUrls.has(pdfUrl)) {
+      tried.push({ url: pdfUrl, urlDate, action: "skipped-already-processed" });
       continue;
     }
+    if (attempted >= MAX_ATTEMPTS) {
+      tried.push({ url: pdfUrl, urlDate, action: "skipped-attempt-cap" });
+      continue;
+    }
+    attempted++;
     const savedDate = await extractAndSaveMoWeekly(pdfUrl, env);
-    if (savedDate && !knownDates.has(savedDate)) {
-      tried.push({ url: pdfUrl, urlDate, savedDate, action: "saved-new" });
+    // Only the report we were looking for counts as done — see the matching
+    // note in runMissouriScheduled.
+    if (savedDate === wantDate) {
+      tried.push({ url: pdfUrl, urlDate, savedDate, action: "saved-wanted" });
       saved = savedDate;
       break;
+    } else if (savedDate && !knownDates.has(savedDate)) {
+      knownDates.add(savedDate);
+      tried.push({ url: pdfUrl, urlDate, savedDate, action: "backfilled-older" });
     } else if (savedDate) {
       tried.push({ url: pdfUrl, urlDate, savedDate, action: "claude-returned-known-date" });
     } else {
@@ -294,7 +436,11 @@ async function handleWeeklyRefresh(request, env, ctx) {
   }
   return jsonResponse({
     saved,
+    want_date: wantDate,
+    forced: force,
     discovered_urls: urls.length,
+    attempted,
+    attempt_cap: MAX_ATTEMPTS,
     already_known_dates: index.length,
     attempts: tried
   }, 200);

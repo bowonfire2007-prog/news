@@ -3428,7 +3428,7 @@ async function fetchTrumanLake() {
           source = "USGS 06922440 (" + paramCode + ")";
           isElevation = true;
           dayAgo = findHoursAgo(numeric, 24);
-        } else if (paramCode === "00060" && isFinite(last.value)) {
+        } else if (paramCode === "00060" && Number.isFinite(last.value)) {
           // Discharge (cfs). On a dam gauge this is typically the outflow / release.
           outflow = Math.round(last.value);
         }
@@ -3535,7 +3535,7 @@ async function loadWeather(force) {
   weatherEl.className="weather loading";
   weatherEl.innerHTML='<span class="spinner"></span><span>Loading weather…</span>';
   const url = "https://api.open-meteo.com/v1/forecast?latitude="+WEATHER_LOCATION.lat+"&longitude="+WEATHER_LOCATION.lon+
-    "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m" +
+    "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,dew_point_2m,precipitation,rain,wind_speed_10m,wind_direction_10m,wind_gusts_10m" +
     "&hourly=temperature_2m,apparent_temperature,weather_code,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,relative_humidity_2m" +
     "&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,weather_code,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset" +
     "&minutely_15=precipitation,precipitation_probability" +
@@ -3591,7 +3591,7 @@ function computeSmartForecast(data) {
     let bs=-1, bl=0, rs=-1, rl=0;
     for (let i=tIdx;i<d.time.length;i++){ if(dry(i)){ if(rl===0)rs=i; rl++; if(rl>bl){bl=rl;bs=rs;} } else rl=0; }
     if (bl>=3) {
-      let s=0,n=0; for(let i=bs;i<bs+bl;i++){ if(isFinite(d.wind_speed_10m_max?.[i])){s+=d.wind_speed_10m_max[i];n++;} }
+      let s=0,n=0; for(let i=bs;i<bs+bl;i++){ if(Number.isFinite(d.wind_speed_10m_max?.[i])){s+=d.wind_speed_10m_max[i];n++;} }
       const wa=n?s/n:0, qual = wa>=9?"good drying (breezy)":wa>=5?"fair drying":"slow drying (light wind)";
       out.push({ icon:"🌾", lvl: bs===tIdx?"good":"info", title:"Hay window", text:"Best cut "+fcDayLabel(d.time[bs])+"–"+fcDayLabel(d.time[bs+bl-1])+" · "+bl+" dry days · "+qual+"." });
     } else {
@@ -3800,8 +3800,8 @@ function renderTomorrowHourly(hourly) {
     const localHour = +new Date(h.t).toLocaleString("en-US", { hour:"2-digit", hour12:false, timeZone:WEATHER_LOCATION.tz });
     const emoji = tomorrowEmojiFromWC(h.wc, localHour >= 6 && localHour < 20);
     const lbl = n === 1 ? "Now" : new Date(h.t).toLocaleTimeString("en-US", { hour:"numeric", timeZone:WEATHER_LOCATION.tz }).replace(" AM","a").replace(" PM","p");
-    const temp = isFinite(h.temp) ? Math.round(h.temp) : "—";
-    const wet = isFinite(h.pp) && h.pp > 0;
+    const temp = Number.isFinite(h.temp) ? Math.round(h.temp) : "—";
+    const wet = Number.isFinite(h.pp) && h.pp > 0;
     out += '<div class="fc-hr"><div class="fc-hr-t">'+lbl+'</div><div class="fc-hr-i">'+emoji+'</div><div class="fc-hr-d">'+temp+'°</div><div class="fc-hr-p'+(wet?' wet':'')+'">'+(wet?Math.round(h.pp)+'%':'')+'</div></div>';
   }
   if (n === 0) return null;
@@ -3902,8 +3902,8 @@ async function loadForecast() {
   const c=data.current||{}, d=data.daily||{}, h=data.hourly||{};
   const tIdx=findTodayIndex(d.time||[], WEATHER_LOCATION.tz);
   const entry=WEATHER_CODE_MAP[c.weather_code]||["—","🌡️"];
-  const hi=isFinite(d.temperature_2m_max?.[tIdx])?Math.round(d.temperature_2m_max[tIdx]):"—";
-  const lo=isFinite(d.temperature_2m_min?.[tIdx])?Math.round(d.temperature_2m_min[tIdx]):"—";
+  const hi=Number.isFinite(d.temperature_2m_max?.[tIdx])?Math.round(d.temperature_2m_max[tIdx]):"—";
+  const lo=Number.isFinite(d.temperature_2m_min?.[tIdx])?Math.round(d.temperature_2m_min[tIdx]):"—";
   const insights = computeSmartForecast(data);
 
   let hourly='<div class="fc-hourly">';
@@ -3919,25 +3919,28 @@ async function loadForecast() {
   let tenday='<div class="fc-tenday">';
   if (d.time) { for (let i=tIdx;i<d.time.length;i++){ const de=WEATHER_CODE_MAP[d.weather_code?.[i]]||["",""];
       const dl=i===tIdx?"Today":new Date(d.time[i]+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",timeZone:WEATHER_LOCATION.tz});
-      const hh=Math.round(d.temperature_2m_max?.[i]), ll=Math.round(d.temperature_2m_min?.[i]);
+      // Guard BEFORE rounding: Math.round(null) is 0, which would turn a missing
+      // low into a "❄ Freeze 0°" badge in August. Keep nulls as null.
+      const hh=Number.isFinite(d.temperature_2m_max?.[i])?Math.round(d.temperature_2m_max[i]):null;
+      const ll=Number.isFinite(d.temperature_2m_min?.[i])?Math.round(d.temperature_2m_min[i]):null;
       const pop=d.precipitation_probability_max?.[i], psum=d.precipitation_sum?.[i], gust=d.wind_gusts_10m_max?.[i];
       // Plain-English notice so the row is never blank — severe stuff first, else the sky.
       let note, ncls;
-      if (isFinite(ll)&&ll<=32){ note="❄ Freeze "+ll+"°"; ncls="n-cold"; }
-      else if (isFinite(ll)&&ll<=36){ note="❄ Frost "+ll+"°"; ncls="n-cold"; }
-      else if (isFinite(hh)&&hh>=95){ note="🔥 Heat "+hh+"°"; ncls="n-hot"; }
-      else if (isFinite(pop)&&pop>=50){ note="🌧 "+pop+"% rain"+(isFinite(psum)&&psum>=0.1?' · '+psum.toFixed(2)+'"':''); ncls="n-rain"; }
-      else if (isFinite(hh)&&hh>=90){ note="🥵 Hot "+hh+"°"; ncls="n-hot"; }
-      else if (isFinite(gust)&&gust>=30){ note="💨 Gusts "+Math.round(gust)+" mph"; ncls="n-wind"; }
-      else if (isFinite(pop)&&pop>=25){ note="🌦 "+pop+"% rain"; ncls="n-rain"; }
+      if (Number.isFinite(ll)&&ll<=32){ note="❄ Freeze "+ll+"°"; ncls="n-cold"; }
+      else if (Number.isFinite(ll)&&ll<=36){ note="❄ Frost "+ll+"°"; ncls="n-cold"; }
+      else if (Number.isFinite(hh)&&hh>=95){ note="🔥 Heat "+hh+"°"; ncls="n-hot"; }
+      else if (Number.isFinite(pop)&&pop>=50){ note="🌧 "+pop+"% rain"+(Number.isFinite(psum)&&psum>=0.1?' · '+psum.toFixed(2)+'"':''); ncls="n-rain"; }
+      else if (Number.isFinite(hh)&&hh>=90){ note="🥵 Hot "+hh+"°"; ncls="n-hot"; }
+      else if (Number.isFinite(gust)&&gust>=30){ note="💨 Gusts "+Math.round(gust)+" mph"; ncls="n-wind"; }
+      else if (Number.isFinite(pop)&&pop>=25){ note="🌦 "+pop+"% rain"; ncls="n-rain"; }
       else { note=de[0]||"Quiet"; ncls="n-clear"; }
       // Feels-like: heat index on hot days, wind chill on cold days (only when it
       // diverges meaningfully from the air temp, so it's not noise on mild days).
       const amax=d.apparent_temperature_max?.[i], amin=d.apparent_temperature_min?.[i];
       let feels="";
-      if (isFinite(hh)&&hh>=80&&isFinite(amax)&&amax>=hh+2) feels='<span class="fc-d-feels hi" title="Heat index (feels-like high)">🥵 HI '+Math.round(amax)+'°</span>';
-      else if (isFinite(ll)&&ll<=40&&isFinite(amin)&&amin<=ll-2) feels='<span class="fc-d-feels wc" title="Wind chill (feels-like low)">🥶 WC '+Math.round(amin)+'°</span>';
-      tenday+='<div class="fc-d"><span class="fc-d-day">'+dl+'</span><span class="fc-d-i">'+(de[1]||"")+'</span><span class="fc-d-mid"><span class="fc-d-note '+ncls+'">'+escapeHtml(note)+'</span>'+feels+'</span><span class="fc-d-hl"><b>'+hh+'°</b> '+ll+'°</span></div>';
+      if (Number.isFinite(hh)&&hh>=80&&Number.isFinite(amax)&&amax>=hh+2) feels='<span class="fc-d-feels hi" title="Heat index (feels-like high)">🥵 HI '+Math.round(amax)+'°</span>';
+      else if (Number.isFinite(ll)&&ll<=40&&Number.isFinite(amin)&&amin<=ll-2) feels='<span class="fc-d-feels wc" title="Wind chill (feels-like low)">🥶 WC '+Math.round(amin)+'°</span>';
+      tenday+='<div class="fc-d"><span class="fc-d-day">'+dl+'</span><span class="fc-d-i">'+(de[1]||"")+'</span><span class="fc-d-mid"><span class="fc-d-note '+ncls+'">'+escapeHtml(note)+'</span>'+feels+'</span><span class="fc-d-hl"><b>'+(hh===null?"—":hh+"°")+'</b> '+(ll===null?"—":ll+"°")+'</span></div>';
   } }
   tenday+='</div>';
 
@@ -3946,9 +3949,9 @@ async function loadForecast() {
   const sunLine = d.sunrise?.[tIdx]&&d.sunset?.[tIdx] ? ' · ☀️ '+fmtSun(d.sunrise[tIdx])+' 🌙 '+fmtSun(d.sunset[tIdx]) : '';
   // Future radar = Windy embed (interactive, scrubbable days ahead). Live radar is built in-page below.
   listEl.innerHTML =
-    '<div class="fc-hero"><div class="fc-hero-temp">'+(isFinite(c.temperature_2m)?Math.round(c.temperature_2m):"—")+'°</div>'+
+    '<div class="fc-hero"><div class="fc-hero-temp">'+(Number.isFinite(c.temperature_2m)?Math.round(c.temperature_2m):"—")+'°</div>'+
       '<div class="fc-hero-meta"><div class="fc-hero-cond">'+entry[1]+' '+escapeHtml(entry[0])+'</div>'+
-      '<div class="fc-hero-sub">Feels '+(isFinite(c.apparent_temperature)?Math.round(c.apparent_temperature):"—")+'° · H '+hi+'° / L '+lo+'° · '+compassFromDegrees(c.wind_direction_10m)+' '+(isFinite(c.wind_speed_10m)?Math.round(c.wind_speed_10m):"—")+' mph · '+(isFinite(c.relative_humidity_2m)?c.relative_humidity_2m:"—")+'% RH'+sunLine+'</div>'+
+      '<div class="fc-hero-sub">Feels '+(Number.isFinite(c.apparent_temperature)?Math.round(c.apparent_temperature):"—")+'° · H '+hi+'° / L '+lo+'° · '+compassFromDegrees(c.wind_direction_10m)+' '+(Number.isFinite(c.wind_speed_10m)?Math.round(c.wind_speed_10m):"—")+' mph · '+(Number.isFinite(c.relative_humidity_2m)?c.relative_humidity_2m:"—")+'% RH'+sunLine+'</div>'+
       '<div class="fc-hero-loc">'+escapeHtml(WEATHER_LOCATION.name)+'</div></div></div>'+
     '<div id="fcAlerts"></div>'+
     '<div id="fcNowcast">'+renderNowcastBar(data)+'</div>'+
@@ -4015,8 +4018,8 @@ function renderWeather(data, lake) {
   const hi=d.temperature_2m_max&&Math.round(d.temperature_2m_max[todayIdx]);
   const lo=d.temperature_2m_min&&Math.round(d.temperature_2m_min[todayIdx]);
   const wind=Math.round(c.wind_speed_10m), hum=c.relative_humidity_2m;
-  const gusts=isFinite(c.wind_gusts_10m)?Math.round(c.wind_gusts_10m):null;
-  const windDirText = isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m)+" " : "";
+  const gusts=Number.isFinite(c.wind_gusts_10m)?Math.round(c.wind_gusts_10m):null;
+  const windDirText = Number.isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m)+" " : "";
   const gustText = gusts && gusts > wind+3 ? ' (G '+gusts+')' : '';
 
   // ── Past 24h precipitation total (inches, from hourly data) ──
@@ -4035,7 +4038,7 @@ function renderWeather(data, lake) {
   const trendArrow = lake?.trend==="rising"?"▲":lake?.trend==="falling"?"▼":"—";
   const dc = (lake && lake.dailyChange !== null && isFinite(lake.dailyChange)) ? lake.dailyChange : null;
   const TRUMAN_INFO_URL = "https://water.usace.army.mil/overview/nwk/locations/hast";
-  const lakeHtml = lake&&isFinite(lake.stage)
+  const lakeHtml = lake&&Number.isFinite(lake.stage)
     ? '<a class="w-lake" href="'+TRUMAN_INFO_URL+'" target="_blank" rel="noopener">🌊 Truman <strong>'+lake.stage.toFixed(1)+'ft</strong> '+trendArrow+(dc!==null?' <span style="opacity:0.75;font-weight:500">('+( dc>=0?'+':'')+dc.toFixed(2)+'ft/24h)</span>':'')+'</a>'
     : '<a class="w-lake" href="'+TRUMAN_INFO_URL+'" target="_blank" rel="noopener">🌊 Truman Lake →</a>';
 
@@ -4175,7 +4178,7 @@ function renderWeather(data, lake) {
       const dHi      = d.temperature_2m_max?.[dayI]!=null ? Math.round(d.temperature_2m_max[dayI])+'°' : '—';
       const dLo      = d.temperature_2m_min?.[dayI]!=null ? Math.round(d.temperature_2m_min[dayI])+'°' : '—';
       const dPrecip  = (d.precipitation_sum?.[dayI]||0) > 0.005 ? d.precipitation_sum[dayI].toFixed(2)+'"' : '0"';
-      const dUV      = isFinite(d.uv_index_max?.[dayI]) ? ' · UV '+Math.round(d.uv_index_max[dayI]) : '';
+      const dUV      = Number.isFinite(d.uv_index_max?.[dayI]) ? ' · UV '+Math.round(d.uv_index_max[dayI]) : '';
       const fmtSun   = iso => { try { return new Date(iso).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:WEATHER_LOCATION.tz}).replace(' AM','a').replace(' PM','p'); } catch { return ''; } };
       const sunLine  = d.sunrise?.[dayI]&&d.sunset?.[dayI] ? ' · ☀️ '+fmtSun(d.sunrise[dayI])+' 🌙 '+fmtSun(d.sunset[dayI]) : '';
 
@@ -4190,7 +4193,7 @@ function renderWeather(data, lake) {
           const hT     = h.temperature_2m?.[i]!=null ? Math.round(h.temperature_2m[i])+'°' : '—';
           const hPop   = h.precipitation_probability?.[i];
           const hWind  = h.wind_speed_10m?.[i]!=null ? Math.round(h.wind_speed_10m[i]) : '—';
-          const hDir   = isFinite(h.wind_direction_10m?.[i]) ? compassFromDegrees(h.wind_direction_10m[i]) : '';
+          const hDir   = Number.isFinite(h.wind_direction_10m?.[i]) ? compassFromDegrees(h.wind_direction_10m[i]) : '';
           const hPrec  = (h.precipitation?.[i]||0) > 0.005
             ? '<span class="w-detail-prec" style="color:#3b82f6;font-weight:700">'+h.precipitation[i].toFixed(2)+'"</span>'
             : '<span class="w-detail-prec"></span>';
@@ -4521,7 +4524,11 @@ async function fetchWaterTemp() {
         confidence: data.confidence || null,
         source: data.source || null
       };
-      if (isFinite(data.tempF)) {
+      // Require a REAL number. isFinite(null) === true, so a bare isFinite()
+      // here would write a null into the cache below as if it were a good
+      // scrape — poisoning the very fallback that exists to survive a bad
+      // fetch, for a full 7 days.
+      if (typeof data.tempF === "number" && Number.isFinite(data.tempF)) {
         // Cache locally too so it survives brief worker hiccups
         try { localStorage.setItem(WATERTEMP_CACHE_KEY, JSON.stringify({ temp: data.tempF, ts: Date.now(), source: "lakemonster" })); } catch {}
         return data.tempF;
@@ -4534,7 +4541,7 @@ async function fetchWaterTemp() {
     if (!raw) return null;
     const { temp, ts } = JSON.parse(raw);
     if (Date.now() - ts > 7 * 86400000) return null; // expire after 7 days
-    return isFinite(temp) ? temp : null;
+    return (typeof temp === "number" && Number.isFinite(temp)) ? temp : null;
   } catch { return null; }
 }
 
@@ -5293,9 +5300,11 @@ function generateFishingAdvice(lake, weather, waterTempF, mdcBulletin, southGran
   const month = now.getMonth(); // 0-11
   const hour = now.getHours();
   const c = weather?.current || {};
-  const airTempF = isFinite(c.temperature_2m) ? c.temperature_2m : 68;
-  const windMph  = isFinite(c.wind_speed_10m) ? c.wind_speed_10m : 5;
-  const windDir  = isFinite(c.wind_direction_10m) ? c.wind_direction_10m : null;
+  // Number.isFinite, not isFinite — a null from the API must fall through to
+  // the default, not sail past the guard and poison the math downstream.
+  const airTempF = Number.isFinite(c.temperature_2m) ? c.temperature_2m : 68;
+  const windMph  = Number.isFinite(c.wind_speed_10m) ? c.wind_speed_10m : 5;
+  const windDir  = Number.isFinite(c.wind_direction_10m) ? c.wind_direction_10m : null;
   const sustainedHours = windDir !== null ? computeSustainedWindHours(weather?.hourly, windDir) : 0;
   const windBankAdvice = shadBankAdvice(windDir, windMph, sustainedHours);
   const weatherCode = c.weather_code ?? 0;
@@ -5659,9 +5668,9 @@ function getMushroomTips(weather) {
   const month    = now.getMonth() + 1; // 1-12
   const day      = now.getDate();
   const c        = weather?.current || {};
-  const temp     = isFinite(c.temperature_2m) ? c.temperature_2m : null;
-  const rain     = isFinite(c.precipitation) ? c.precipitation : 0;
-  const recentMm = isFinite(c.rain) ? c.rain : 0;
+  const temp     = Number.isFinite(c.temperature_2m) ? c.temperature_2m : null;
+  const rain     = Number.isFinite(c.precipitation) ? c.precipitation : 0;
+  const recentMm = Number.isFinite(c.rain) ? c.rain : 0;
 
   let phase = "off-season", banner = "🍄", headline = "Off-Season", sub = "";
   let species = [], spots = [], tips = [], idTip = "", warnTip = "";
@@ -5747,9 +5756,9 @@ function getGardenTips(weather) {
   const month  = now.getMonth() + 1;
   const day    = now.getDate();
   const c      = weather?.current || {};
-  const temp   = isFinite(c.temperature_2m) ? c.temperature_2m : null;
-  const lowF   = isFinite(c.apparent_temperature) ? c.apparent_temperature : (temp !== null ? temp - 8 : null);
-  const dewF   = isFinite(c.dew_point_2m) ? c.dew_point_2m : null;
+  const temp   = Number.isFinite(c.temperature_2m) ? c.temperature_2m : null;
+  const lowF   = Number.isFinite(c.apparent_temperature) ? c.apparent_temperature : (temp !== null ? temp - 8 : null);
+  const dewF   = Number.isFinite(c.dew_point_2m) ? c.dew_point_2m : null;
 
   let banner = "🌱", headline = "Garden", sub = "";
   let plantNow = [], chores = [], warnings = [];
@@ -6071,7 +6080,7 @@ function getWeeklyPlanner(weather, dateObj) {
   const week = isoWeekNumber(d);
   const phase = PLANTING_PHASES.find(p => p.weeks.includes(week)) || PLANTING_PHASES[PLANTING_PHASES.length - 1];
   const c = weather && weather.current ? weather.current : {};
-  const tempNow = isFinite(c.temperature_2m) ? c.temperature_2m : null;
+  const tempNow = Number.isFinite(c.temperature_2m) ? c.temperature_2m : null;
   const month = d.getMonth() + 1;
   const weatherWarnings = [];
   if (tempNow !== null) {
@@ -8123,9 +8132,9 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, wa
   const BITE_EMOJI  = ["😴","🐢","🎣","🔥","💥"];
   const BITE_LABEL  = ["Dead Slow","Slow — Be Patient","Moderate — Worth Going","Good — Get Out There","On Fire!"];
   const c = weather?.current || {};
-  const temp = isFinite(c.temperature_2m) ? Math.round(c.temperature_2m)+"°F" : "—";
-  const windDirInline = isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m)+" " : "";
-  const wind = isFinite(c.wind_speed_10m) ? windDirInline+Math.round(c.wind_speed_10m)+" mph" : "—";
+  const temp = Number.isFinite(c.temperature_2m) ? Math.round(c.temperature_2m)+"°F" : "—";
+  const windDirInline = Number.isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m)+" " : "";
+  const wind = Number.isFinite(c.wind_speed_10m) ? windDirInline+Math.round(c.wind_speed_10m)+" mph" : "—";
   const trendArrow = lake?.trend==="rising"?"▲ Rising":lake?.trend==="falling"?"▼ Falling":"— Stable";
   const trendCls   = lake?.trend || "stable";
 
@@ -8136,7 +8145,7 @@ function renderFishingAdvisor(lake, weather, advice, weeklyRecs, lakeHistory, wa
     ? `<div class="fish-stat-trend ${dcCls}" style="font-size:10px;margin-top:1px">${dcText}</div>`
     : "";
 
-  const lakeStatHtml = lake && isFinite(lake.stage)
+  const lakeStatHtml = lake && Number.isFinite(lake.stage)
     ? `<div class="fish-lake-stat">
         <div class="fish-stat-val">${lake.stage.toFixed(1)} ft</div>
         <div class="fish-stat-lbl">${lake.isElevation?"Pool Elev.":"Lake Stage"}</div>
@@ -8314,8 +8323,8 @@ function fishPlanCacheKey(lake, weather) {
     d: lake?.dailyChange !== undefined && lake?.dailyChange !== null ? Math.round(lake.dailyChange * 4) / 4 : null,
     i: lake?.inflow   !== undefined && lake?.inflow   !== null ? Math.round((lake.inflow  || 0) / 1000) : null,
     o: lake?.outflow  !== undefined && lake?.outflow  !== null ? Math.round((lake.outflow || 0) / 1000) : null,
-    t: isFinite(c.temperature_2m) ? Math.round(c.temperature_2m / 5) * 5 : null,
-    w: isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m) : null,
+    t: Number.isFinite(c.temperature_2m) ? Math.round(c.temperature_2m / 5) * 5 : null,
+    w: Number.isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m) : null,
     m: new Date().getMonth() + 1
   };
   return "news.fishplan." + briefHash(JSON.stringify(snap));
@@ -8374,11 +8383,11 @@ async function fetchAndShowSmartPlan(lake, weather, panel, btn, force, lakeHisto
     const forecast = getForecastAtTime(target);
     const c = (isToday && !forecast) ? (weather?.current || {}) : {};
     const wx = forecast || {
-      temp:     isFinite(c.temperature_2m)        ? c.temperature_2m        : null,
-      feels:    isFinite(c.apparent_temperature)   ? c.apparent_temperature  : null,
-      humidity: isFinite(c.relative_humidity_2m)  ? c.relative_humidity_2m  : null,
-      windSpeed:isFinite(c.wind_speed_10m)         ? c.wind_speed_10m        : null,
-      windDir:  isFinite(c.wind_direction_10m)     ? c.wind_direction_10m    : null,
+      temp:     Number.isFinite(c.temperature_2m)        ? c.temperature_2m        : null,
+      feels:    Number.isFinite(c.apparent_temperature)   ? c.apparent_temperature  : null,
+      humidity: Number.isFinite(c.relative_humidity_2m)  ? c.relative_humidity_2m  : null,
+      windSpeed:Number.isFinite(c.wind_speed_10m)         ? c.wind_speed_10m        : null,
+      windDir:  Number.isFinite(c.wind_direction_10m)     ? c.wind_direction_10m    : null,
       code:     c.weather_code ?? null
     };
     const sustained = (weather?.hourly && isFinite(wx.windDir))
@@ -10413,5 +10422,6 @@ setInterval(()=>{ localStorage.removeItem("news.nws.alerts"); fetchNWSAlerts(); 
   }
 })();
 </script>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "69f09898f9b24b22995655e189dcbd34"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>

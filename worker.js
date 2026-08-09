@@ -3355,10 +3355,21 @@ async function handleCattlePrice(url, env, ctx) {
   const attempts = [];
 
   // Try with all top pages at once, then fall back to just the primary image.
+  // IMPORTANT: drop any variant with no usable URLs. If nothing on the page
+  // cleared the score>=50 bar, allTopUrls is EMPTY — and an empty imgBlocks
+  // array still makes a perfectly valid text-only API call. Claude then replies
+  // "I don't see any image", which is an HTTP 200, so claudeData gets set and we
+  // break out having never sent a picture. That marked Plan A "successful" and
+  // skipped the Plan B/C screenshot fallbacks entirely, surfacing as a
+  // "Could not parse Claude response as JSON" 502.
   const planAVariants = [
-    { urls: allTopUrls,  label: "anthropic-url-multi" },
+    { urls: allTopUrls,      label: "anthropic-url-multi" },
     { urls: [allTopUrls[0]], label: "anthropic-url" }
-  ];
+  ].filter(v => v.urls.filter(Boolean).length > 0);
+  if (!planAVariants.length) {
+    attempts.push("plan-a-skipped: no page image scored >= 50 (best was " +
+      (ranked.length ? ranked[0].s.toFixed(1) : "n/a") + ") — going straight to page screenshot");
+  }
   for (const variant of planAVariants) {
     try {
       const imgBlocks = variant.urls.map(u => ({ type: "image", source: { type: "url", url: u } }));
@@ -3380,16 +3391,26 @@ async function handleCattlePrice(url, env, ctx) {
   if (!claudeData) {
     let imgRes = null;
     let mediaType = "image/jpeg";
-    const strategies = [
-      "direct-bare", "direct",
-      "googlebot-bare", "googlebot",
-      "wsrv-bare", "wsrv",
-      "weserv-bare", "weserv",
-      "corsproxy-bare", "corsproxy",
-      "allorigins-bare", "allorigins",
-      "thumio-page",
-      "microlink-page"
-    ];
+    // The byte-fetch strategies all pull `imgUrl` — i.e. ranked[0]. That is only
+    // worth trying if ranked[0] actually looks like a report. When nothing clears
+    // the score bar, ranked[0] is whatever junk sorted highest (on 2026-08-06 it
+    // was a 167x131 logo crop scoring 24), and OCR'ing it would produce confident
+    // nonsense rather than an honest failure. In that case skip straight to the
+    // page-screenshot strategies, which render the JS and capture a lazy-loaded
+    // report the server HTML never contained.
+    const topScore = ranked.length ? ranked[0].s : 0;
+    const pageShots = ["thumio-page", "microlink-page"];
+    const strategies = topScore >= 50
+      ? [
+          "direct-bare", "direct",
+          "googlebot-bare", "googlebot",
+          "wsrv-bare", "wsrv",
+          "weserv-bare", "weserv",
+          "corsproxy-bare", "corsproxy",
+          "allorigins-bare", "allorigins",
+          ...pageShots
+        ]
+      : pageShots;
     for (const kind of strategies) {
       try {
         imgRes = await fetchImage(imgUrl, kind);

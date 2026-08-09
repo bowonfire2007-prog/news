@@ -1510,6 +1510,7 @@ export default {
     if (url.pathname === "/wx-forecast")            return handleTomorrowForecast(url, env, ctx);
     if (url.pathname === "/reps")                   return handleReps(env);
     if (url.pathname === "/reps-refresh")           return handleRepsRefresh(env);
+    if (url.pathname === "/site-stats")             return handleSiteStats(url, env);
     return handleRssProxy(url);
   },
 
@@ -1529,6 +1530,165 @@ export default {
     if (cron === "0 13 * * *") ctx.waitUntil(runJbtdsMonitor(env, ctx));
   }
 };
+
+// ─────────────── SITE TRAFFIC (Cloudflare Web Analytics / RUM) ───────────────
+// GET /site-stats?key=<STATS_KEY>&days=1
+//   Returns visitor counts + breakdowns from Cloudflare Web Analytics.
+//   &days=N       window size in days (default 1, max 30 — RUM retention)
+//   &introspect=1 lists the dimension/quantile field names the API actually
+//                 exposes, so a broken breakdown can be diagnosed without guessing.
+//
+// Secrets required (set with `wrangler secret put NAME`, never commit them):
+//   CF_ANALYTICS_TOKEN — Cloudflare API token, permission: Account Analytics: Read
+//   STATS_KEY          — any string you pick; gates this endpoint so traffic
+//                        numbers aren't public. UPLOAD_PIN is accepted as a fallback.
+// Optional overrides: CF_ACCOUNT_TAG, CF_SITE_TAG (both default to the values below).
+const CF_GRAPHQL_URL          = "https://api.cloudflare.com/client/v4/graphql";
+const CF_ACCOUNT_TAG_FALLBACK = "3826a504e1b9ef4b240565bea6621cb9";
+const CF_SITE_TAG_FALLBACK    = "69f09898f9b24b22995655e189dcbd34";
+
+async function cfGraphQL(token, query) {
+  let res;
+  try {
+    res = await fetch(CF_GRAPHQL_URL, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query })
+    });
+  } catch (e) {
+    return { ok: false, error: `network error: ${e.message}` };
+  }
+  let body;
+  try { body = await res.json(); }
+  catch { return { ok: false, error: `non-JSON response (HTTP ${res.status})` }; }
+  if (!res.ok) return { ok: false, error: `HTTP ${res.status}: ${JSON.stringify(body).slice(0, 300)}` };
+  if (Array.isArray(body.errors) && body.errors.length) {
+    return { ok: false, error: body.errors.map(e => e.message).join("; ").slice(0, 400) };
+  }
+  return { ok: true, data: body.data };
+}
+
+// Filter literal is inlined rather than passed as a GraphQL variable — the filter
+// input object's type name differs per dataset, and getting it wrong fails the whole
+// query. All interpolated values are our own constants or generated ISO dates.
+function rumFilterLiteral(siteTag, start, end) {
+  return `{ siteTag: ${JSON.stringify(siteTag)}, datetime_geq: ${JSON.stringify(start)}, datetime_lt: ${JSON.stringify(end)} }`;
+}
+
+async function handleSiteStats(url, env) {
+  const gate = env.STATS_KEY || env.UPLOAD_PIN;
+  if (!gate) return jsonResponse({ error: "STATS_KEY not set on the worker — run: wrangler secret put STATS_KEY" }, 503);
+  if (url.searchParams.get("key") !== gate) return jsonResponse({ error: "bad or missing key" }, 401);
+
+  const token = env.CF_ANALYTICS_TOKEN;
+  if (!token) return jsonResponse({ error: "CF_ANALYTICS_TOKEN not set on the worker — run: wrangler secret put CF_ANALYTICS_TOKEN" }, 503);
+
+  const accountTag = env.CF_ACCOUNT_TAG || CF_ACCOUNT_TAG_FALLBACK;
+  const siteTag    = env.CF_SITE_TAG    || CF_SITE_TAG_FALLBACK;
+
+  let days = parseInt(url.searchParams.get("days") || "1", 10);
+  if (!Number.isFinite(days) || days < 1) days = 1;
+  if (days > 30) days = 30;
+
+  const end   = new Date();
+  const start = new Date(end.getTime() - days * 24 * 3600 * 1000);
+  const startIso = start.toISOString();
+  const endIso   = end.toISOString();
+  const filter   = rumFilterLiteral(siteTag, startIso, endIso);
+
+  if (url.searchParams.get("introspect") === "1") {
+    const q = `query { pageload: __type(name:"AccountRumPageloadEventsAdaptiveGroupsDimensions"){ fields { name } }
+                       perf: __type(name:"AccountRumPerformanceEventsAdaptiveGroupsQuantiles"){ fields { name } } }`;
+    const r = await cfGraphQL(token, q);
+    return jsonResponse(r.ok
+      ? { introspect: {
+            pageload_dimensions: (r.data?.pageload?.fields || []).map(f => f.name),
+            performance_quantiles: (r.data?.perf?.fields || []).map(f => f.name)
+          } }
+      : { introspect_error: r.error }, r.ok ? 200 : 502);
+  }
+
+  // Each section is its own request so one unsupported field can't blank the report.
+  const breakdowns = [
+    { key: "countries",  dimension: "countryName" },
+    { key: "referrers",  dimension: "refererHost" },
+    { key: "devices",    dimension: "deviceType" },
+    { key: "browsers",   dimension: "userAgentBrowser" },
+    { key: "os",         dimension: "userAgentOS" },
+    { key: "pages",      dimension: "requestPath" }
+  ];
+
+  const totalsQuery = `query {
+  viewer { accounts(filter: { accountTag: ${JSON.stringify(accountTag)} }) {
+    rumPageloadEventsAdaptiveGroups(filter: ${filter}, limit: 1) { count sum { visits } }
+  } }
+}`;
+
+  const perfQuery = `query {
+  viewer { accounts(filter: { accountTag: ${JSON.stringify(accountTag)} }) {
+    rumPerformanceEventsAdaptiveGroups(filter: ${filter}, limit: 1) {
+      count
+      quantiles { pageLoadTimeP50 pageLoadTimeP75 firstContentfulPaintP50 largestContentfulPaintP50 }
+    }
+  } }
+}`;
+
+  const breakdownQuery = (dimension) => `query {
+  viewer { accounts(filter: { accountTag: ${JSON.stringify(accountTag)} }) {
+    rumPageloadEventsAdaptiveGroups(filter: ${filter}, limit: 10, orderBy: [sum_visits_DESC]) {
+      count sum { visits } dimensions { ${dimension} }
+    }
+  } }
+}`;
+
+  const [totalsRes, perfRes, ...breakdownRes] = await Promise.all([
+    cfGraphQL(token, totalsQuery),
+    cfGraphQL(token, perfQuery),
+    ...breakdowns.map(b => cfGraphQL(token, breakdownQuery(b.dimension)))
+  ]);
+
+  const out = {
+    window: { days, start: startIso, end: endIso },
+    site_tag: siteTag,
+    errors: {}
+  };
+
+  const totalsRow = totalsRes.ok ? totalsRes.data?.viewer?.accounts?.[0]?.rumPageloadEventsAdaptiveGroups?.[0] : null;
+  if (totalsRes.ok) {
+    out.visits     = totalsRow?.sum?.visits ?? 0;
+    out.page_views = totalsRow?.count ?? 0;
+  } else {
+    out.errors.totals = totalsRes.error;
+  }
+
+  const perfRow = perfRes.ok ? perfRes.data?.viewer?.accounts?.[0]?.rumPerformanceEventsAdaptiveGroups?.[0] : null;
+  if (perfRes.ok) {
+    const q = perfRow?.quantiles || {};
+    out.performance = {
+      samples: perfRow?.count ?? 0,
+      page_load_p50_ms: q.pageLoadTimeP50 ?? null,
+      page_load_p75_ms: q.pageLoadTimeP75 ?? null,
+      first_contentful_paint_p50_ms: q.firstContentfulPaintP50 ?? null,
+      largest_contentful_paint_p50_ms: q.largestContentfulPaintP50 ?? null
+    };
+  } else {
+    out.errors.performance = perfRes.error;
+  }
+
+  breakdowns.forEach((b, i) => {
+    const r = breakdownRes[i];
+    if (!r.ok) { out.errors[b.key] = r.error; return; }
+    const rows = r.data?.viewer?.accounts?.[0]?.rumPageloadEventsAdaptiveGroups || [];
+    out[b.key] = rows.map(row => ({
+      name: row.dimensions?.[b.dimension] ?? "(unknown)",
+      visits: row.sum?.visits ?? 0,
+      page_views: row.count ?? 0
+    }));
+  });
+
+  if (!Object.keys(out.errors).length) delete out.errors;
+  return jsonResponse(out);
+}
 
 // ─────────────── AI FISHING SMART PLAN ───────────────
 // Takes today's actual lake/weather conditions and asks Claude Sonnet to write a

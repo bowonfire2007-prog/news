@@ -17,7 +17,7 @@
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html { background-color:var(--bg); background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 500' preserveAspectRatio='xMidYMax slice'><path fill='%23a8b89a' fill-opacity='.38' d='M0 268c180-24 360-14 560 0s420 6 640-8 260 6 400 4v236H0z'/><path fill='%237a8b6f' fill-opacity='.5' d='M0 300c220-20 380 8 600 6s460-18 660-8 240 8 340 6v196H0z'/><g fill='%235e6e54' fill-opacity='.5'><polygon points='106,302 120,258 134,302'/><polygon points='134,302 152,250 170,302'/><polygon points='166,302 182,262 198,302'/><polygon points='456,302 472,256 488,302'/><polygon points='486,302 504,248 522,302'/><polygon points='518,302 532,262 546,302'/><polygon points='858,302 872,258 886,302'/><polygon points='886,302 904,248 922,302'/><polygon points='918,302 932,262 946,302'/><polygon points='1268,302 1284,256 1300,302'/><polygon points='1298,302 1316,248 1334,302'/><polygon points='1330,302 1344,262 1358,302'/></g><path fill='%239fb8b4' fill-opacity='.5' d='M0 366c240-14 480 8 760 4s500-18 840-8v138H0z'/><g stroke='%237a9b95' stroke-width='2' stroke-opacity='.35' fill='none' stroke-linecap='round'><path d='M120 392h70M320 410h96M620 430h70M980 414h80M1300 398h84M200 446h120M760 460h150M1180 452h120'/></g><g fill='%235e6e54' fill-opacity='.6' stroke='%235e6e54' stroke-opacity='.6' stroke-width='3' stroke-linecap='round'><path d='M86 500v-92'/><ellipse cx='86' cy='402' rx='5' ry='13'/><path d='M112 500v-72'/><ellipse cx='112' cy='424' rx='4.5' ry='11'/><path d='M1512 500v-96'/><ellipse cx='1512' cy='398' rx='5' ry='13'/><path d='M1486 500v-70'/><ellipse cx='1486' cy='426' rx='4.5' ry='11'/></g><path fill='%23472e1e' fill-opacity='.72' d='M946 406q50 22 100 0z'/><g stroke='%23472e1e' stroke-width='3' stroke-opacity='.72' fill='%23472e1e' fill-opacity='.72' stroke-linecap='round'><circle cx='986' cy='384' r='6'/><path d='M986 390l-3 16'/><path d='M984 400l34 -24'/></g><path d='M1018 376l5 30' stroke='%234a3924' stroke-width='1.2' stroke-opacity='.5' fill='none'/></svg>"); background-attachment:fixed; background-position:center bottom; background-repeat:no-repeat; background-size:100% auto; transition:background-color .25s ease; }
   html,body { color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.5; -webkit-font-smoothing:antialiased; transition:background-color .25s ease,color .25s ease; }
-  body { background:transparent; min-height:100vh; }
+  body { background:transparent; min-height:100vh; min-height:100dvh; }
   [data-theme="dark"] html { background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 500' preserveAspectRatio='xMidYMax slice'><path fill='%231f2a1c' fill-opacity='.5' d='M0 268c180-24 360-14 560 0s420 6 640-8 260 6 400 4v236H0z'/><path fill='%23121810' fill-opacity='.62' d='M0 300c220-20 380 8 600 6s460-18 660-8 240 8 340 6v196H0z'/><g fill='%2308100a' fill-opacity='.62'><polygon points='106,302 120,258 134,302'/><polygon points='134,302 152,250 170,302'/><polygon points='166,302 182,262 198,302'/><polygon points='456,302 472,256 488,302'/><polygon points='486,302 504,248 522,302'/><polygon points='518,302 532,262 546,302'/><polygon points='858,302 872,258 886,302'/><polygon points='886,302 904,248 922,302'/><polygon points='918,302 932,262 946,302'/><polygon points='1268,302 1284,256 1300,302'/><polygon points='1298,302 1316,248 1334,302'/><polygon points='1330,302 1344,262 1358,302'/></g><path fill='%2316302c' fill-opacity='.55' d='M0 366c240-14 480 8 760 4s500-18 840-8v138H0z'/><g stroke='%235a8b80' stroke-width='2' stroke-opacity='.3' fill='none' stroke-linecap='round'><path d='M120 392h70M320 410h96M620 430h70M980 414h80M1300 398h84M200 446h120M760 460h150M1180 452h120'/></g><g fill='%2308100a' fill-opacity='.7' stroke='%2308100a' stroke-opacity='.7' stroke-width='3' stroke-linecap='round'><path d='M86 500v-92'/><ellipse cx='86' cy='402' rx='5' ry='13'/><path d='M112 500v-72'/><ellipse cx='112' cy='424' rx='4.5' ry='11'/><path d='M1512 500v-96'/><ellipse cx='1512' cy='398' rx='5' ry='13'/><path d='M1486 500v-70'/><ellipse cx='1486' cy='426' rx='4.5' ry='11'/></g><path fill='%23000' fill-opacity='.7' d='M946 406q50 22 100 0z'/><g stroke='%23000' stroke-width='3' stroke-opacity='.7' fill='%23000' fill-opacity='.7' stroke-linecap='round'><circle cx='986' cy='384' r='6'/><path d='M986 390l-3 16'/><path d='M984 400l34 -24'/></g><path d='M1018 376l5 30' stroke='%23ffd97a' stroke-width='1.4' stroke-opacity='.5' fill='none'/></svg>"); }
   a { color:inherit; text-decoration:none; }
 
@@ -52,8 +52,20 @@
   .drawer-item-icon { font-size:18px; width:24px; text-align:center; flex-shrink:0; }
 
   /* ── HEADER (NYT-style masthead — bigger, bolder, more print-newspaper) ── */
-  header { position:sticky; top:0; z-index:10; background:color-mix(in srgb,var(--bg) 95%,transparent); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:3px double var(--text); padding:max(env(safe-area-inset-top),8px) 20px 0; transition:transform .25s cubic-bezier(.4,0,.2,1); will-change:transform; }
-  header.header-hidden { transform:translateY(-100%); }
+  header { position:relative; z-index:10; background:color-mix(in srgb,var(--bg) 95%,transparent); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:3px double var(--text); padding:max(env(safe-area-inset-top),8px) 20px 0; transition:transform .25s cubic-bezier(.4,0,.2,1); will-change:transform; }
+  /* Header no longer slides off-screen: it simply scrolls away like normal
+     content now that it is not sticky. Class kept so the scroll-to-top pill
+     logic in setupHeaderAutoHide() still has something to toggle on. */
+  header.header-hidden { }
+  /* Sticky section navigation (tabs stay reachable at any scroll position). */
+  .section-nav {
+    position:sticky; top:0; z-index:11;
+    padding:0 20px;
+    background:color-mix(in srgb,var(--bg) 94%,transparent);
+    -webkit-backdrop-filter:saturate(180%) blur(14px);
+    backdrop-filter:saturate(180%) blur(14px);
+    border-bottom:1px solid var(--border);
+  }
   /* Floating reveal pill — appears bottom-right when header is hidden so user can still reach it */
   .header-reveal { position:fixed; right:14px; bottom:max(env(safe-area-inset-bottom),18px); z-index:9; width:42px; height:42px; border-radius:50%; border:1px solid var(--border); background:color-mix(in srgb,var(--bg) 92%,transparent); -webkit-backdrop-filter:saturate(180%) blur(18px); backdrop-filter:saturate(180%) blur(18px); color:var(--text); display:none; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.18); transition:opacity .2s ease, transform .2s ease; }
   .header-reveal.visible { display:flex; }
@@ -80,7 +92,7 @@
 
   /* ── SEARCH ── */
   .search-wrap { max-width:var(--maxw); margin:0 auto; overflow:hidden; max-height:0; opacity:0; transition:max-height .2s ease,opacity .2s ease; }
-  .search-wrap.open { max-height:52px; opacity:1; }
+  .search-wrap.open { max-height:140px; opacity:1; }
   .search-inner { display:flex; gap:8px; padding-bottom:10px; }
   .search-input { flex:1; padding:7px 14px; border-radius:999px; border:1px solid var(--border); background:var(--card-hover); color:var(--text); font-size:14px; outline:none; font-family:inherit; }
   .search-input:focus { border-color:var(--accent); }
@@ -104,8 +116,8 @@
   .w-toggle.open .w-toggle-chevron { transform:rotate(180deg); }
   /* Collapse wrapper */
   .w-collapse { max-height:0; overflow:hidden; transition:max-height .28s ease; }
-  .w-collapse.open { max-height:160px; }
-  .w-collapse.open.has-detail { max-height:700px; }
+  .w-collapse.open { max-height:900px; }
+  .w-collapse.open.has-detail { max-height:2600px; }
   /* Hourly strip */
   .w-hourly-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:6px; }
   .w-hourly-wrap::-webkit-scrollbar { display:none; }
@@ -187,7 +199,7 @@
   /* ── Dual-column layout: news left, tracked-topic cards right (only on tabs with a tracker) ── */
   .main-cols { display:flex; gap:30px; align-items:flex-start; }
   .main-col-left { flex:1; min-width:0; }
-  .tracker-col { width:330px; flex-shrink:0; position:sticky; top:14px; max-height:calc(100vh - 28px); overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:16px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .tracker-col { width:330px; flex-shrink:0; position:sticky; top:14px; max-height:calc(100vh - 28px); max-height:calc(100dvh - 28px); overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:16px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
   .tracker-col::-webkit-scrollbar { width:7px; }
   .tracker-col::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
   #railModules { display:flex; flex-direction:column; gap:16px; }
@@ -264,7 +276,7 @@
     .main-cols { flex-direction:column; gap:18px; }
     .tracker-col { width:100%; position:static; order:-1; max-height:none; overflow:visible; }
   }
-  footer { background:color-mix(in srgb,var(--bg) 88%,transparent); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
+  footer { background:color-mix(in srgb,var(--bg) 88%,transparent); }
   .status { padding:40px 20px; text-align:center; color:var(--text-muted); font-size:14px; line-height:1.6; }
   .spinner { display:inline-block; width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; vertical-align:middle; margin-right:8px; }
   @keyframes spin { to { transform:rotate(360deg); } }
@@ -300,7 +312,7 @@
   .brief-btn.is-open { background:var(--accent); color:#fff; }
   .brief-btn .spark { font-size:10px; line-height:1; }
   .brief-panel { margin:0 0 14px; padding:0 16px; max-height:0; overflow:hidden; transition:max-height .35s ease, padding .2s ease; background:color-mix(in srgb,var(--accent) 4%,var(--card-hover)); border-left:3px solid var(--accent); border-radius:0 6px 6px 0; }
-  .brief-panel.open { max-height:2400px; padding:14px 16px; margin:0 0 18px; }
+  .brief-panel.open { max-height:6000px; padding:14px 16px; margin:0 0 18px; }
   .brief-header { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); margin-bottom:8px; }
   .brief-loading { display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:13px; padding:4px 0; }
   .brief-text { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:14.5px; line-height:1.65; color:var(--text); }
@@ -439,7 +451,7 @@
   .bill-history-btn { background:none; border:none; color:var(--text-soft); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:0.04em; text-transform:uppercase; padding:0; }
   .bill-history-btn:hover { color:var(--accent); }
   .bill-history-panel { max-height:0; overflow:hidden; transition:max-height .28s ease; }
-  .bill-history-panel.open { max-height:600px; }
+  .bill-history-panel.open { max-height:3000px; }
   .bill-history-item { font-size:12px; color:var(--text-muted); padding:7px 0; border-top:1px solid var(--border); display:grid; grid-template-columns:80px 1fr; gap:6px; line-height:1.4; }
   .bill-history-date { font-weight:700; color:var(--text-soft); font-variant-numeric:tabular-nums; }
   .bill-checked { font-size:10px; color:var(--text-soft); }
@@ -452,7 +464,7 @@
   .bill-dormant-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .bill-dormant-note { font-size:12px; color:var(--text-muted); font-style:italic; }
   .bill-details-panel { max-height:0; overflow:hidden; transition:max-height .28s ease; }
-  .bill-details-panel.open { max-height:900px; }
+  .bill-details-panel.open { max-height:4000px; }
   @media (max-width:520px) {
     .bill-card { padding:12px; }
     .bill-summary { font-size:13px; padding:8px 10px; }
@@ -506,8 +518,8 @@
     .w-day-icon { font-size:15px; }
     .w-day-temps { font-size:11px; }
     .w-detail-grid { grid-template-columns:repeat(auto-fill,minmax(52px,1fr)); gap:4px; }
-    .w-collapse.open { max-height:180px; }
-    .w-collapse.open.has-detail { max-height:750px; }
+    .w-collapse.open { max-height:900px; }
+    .w-collapse.open.has-detail { max-height:2600px; }
     /* Shrink dateline — hide the centre motto, keep date + edition */
     .dateline { padding:3px 0 4px; }
     .dateline-volume { display:none; }
@@ -602,7 +614,7 @@
   .fish-log-btn { background:transparent; border:1px solid var(--border); border-radius:999px; color:var(--text-soft); font-family:inherit; font-size:12px; padding:5px 14px; cursor:pointer; transition:all .15s; }
   .fish-log-btn:hover { background:var(--card-hover); color:var(--text); }
   .fish-log-panel { max-height:0; overflow:hidden; transition:max-height .3s ease; }
-  .fish-log-panel.open { max-height:1600px; }
+  .fish-log-panel.open { max-height:4000px; }
   .trip-log-form { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:16px; margin:10px 0; }
   .trip-log-form-title { font-weight:700; font-size:14px; margin-bottom:12px; }
   .trip-log-field-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; font-size:12px; color:var(--text-soft); }
@@ -630,7 +642,7 @@
   .fish-smart-btn .spark { font-size:11px; }
   .fish-smart-sub { font-size:11px; color:var(--text-soft); margin-top:6px; font-style:italic; }
   .fish-smart-panel { max-height:0; overflow:hidden; transition:max-height .25s ease, padding .2s ease; padding:0 16px; background:color-mix(in srgb,var(--accent) 5%,var(--card-hover)); border-left:3px solid var(--accent); border-radius:0 6px 6px 0; margin:0; }
-  .fish-smart-panel.open { max-height:1500px; padding:16px 18px; margin:10px 0 8px; }
+  .fish-smart-panel.open { max-height:4000px; padding:16px 18px; margin:10px 0 8px; }
   .fish-smart-header { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); margin-bottom:10px; }
   .fish-smart-loading { display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:13px; padding:4px 0; }
   .fish-smart-text { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:15px; line-height:1.65; color:var(--text); }
@@ -1009,7 +1021,7 @@
   .sa-ai-btn:hover, .sa-ai-btn.is-open { background:var(--accent); color:#fff; }
   .sa-ai-btn.is-loading { pointer-events:none; opacity:0.7; }
   .sa-ai-panel { max-height:0; overflow:hidden; transition:max-height .35s ease,padding .2s ease; padding:0 16px; background:color-mix(in srgb,var(--accent) 4%,var(--card-hover)); border-left:3px solid var(--accent); border-radius:0 6px 6px 0; }
-  .sa-ai-panel.open { max-height:600px; padding:14px 16px; margin-bottom:12px; }
+  .sa-ai-panel.open { max-height:3000px; padding:14px 16px; margin-bottom:12px; }
   .sa-ai-head { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent); margin-bottom:8px; }
   .sa-ai-text { font-family:"Iowan Old Style","Palatino","Georgia",serif; font-size:14px; line-height:1.65; color:var(--text); }
   .sa-ai-foot { font-size:10px; color:var(--text-soft); margin-top:10px; padding-top:8px; border-top:1px solid color-mix(in srgb,var(--accent) 15%,var(--border)); text-transform:uppercase; letter-spacing:.04em; }
@@ -1078,7 +1090,7 @@
   .src-chev { font-size:9px; line-height:1; }
   .sources-panel { max-height:0; overflow:hidden; transition:max-height .3s ease; margin:2px 0 6px; border-left:2px solid color-mix(in srgb,#6366f1 45%,var(--border)); }
   [data-theme="dark"] .sources-panel { border-left-color:color-mix(in srgb,#a5b4fc 45%,var(--border)); }
-  .sources-panel.open { max-height:640px; overflow-y:auto; }
+  .sources-panel.open { max-height:min(640px,70vh); overflow-y:auto; }
   .sources-panel-head { font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-soft); padding:9px 0 5px 12px; }
   .src-row { display:flex; align-items:baseline; gap:9px; padding:7px 12px; border-top:1px solid var(--border); }
   .src-row:hover { background:var(--card-hover); }
@@ -1188,7 +1200,7 @@
   @media (max-width:520px) { .farm-news { padding:0 14px; } }
 
   /* ══════════ POP — color, depth, energy ══════════ */
-  header { position:sticky; } /* ensure ::before anchors */
+  header { position:relative; } /* ensure ::before anchors (was sticky; nav is sticky instead) */
   header::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--accent),var(--mustard) 55%,var(--sage)); z-index:1; }
   /* Filled accent section label */
   .section-label { background:var(--accent); color:var(--bg); padding:3px 12px; border-radius:6px; letter-spacing:0.12em; box-shadow:var(--shadow); }
@@ -1707,6 +1719,111 @@
     .brief-btn, .bkmk-btn { padding:4px 7px; }
   }
 
+
+  /* ==================================================================
+     MOBILE CONSOLIDATION  (added Aug 2026)
+     These blocks are intentionally LAST in the stylesheet. The file had
+     competing @media (max-width:520px) and @media (max-width:760px) blocks
+     earlier on; because both match on a phone and have equal specificity,
+     the later 760px block was silently winning and the older "compact
+     mobile" tuning never applied. Everything below is ordered
+     760 -> 520 -> 420 so the narrower breakpoint always wins.
+     ================================================================== */
+
+  /* Pull-to-refresh indicator + armed state. */
+  .ptr-pill {
+    position:fixed; top:calc(env(safe-area-inset-top) + 10px); left:50%;
+    transform:translate(-50%,-140%);
+    z-index:120; display:flex; align-items:center; gap:8px;
+    padding:8px 16px; border-radius:999px;
+    border:1px solid var(--border);
+    background:color-mix(in srgb,var(--bg) 94%,transparent);
+    -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+    box-shadow:0 6px 20px rgba(0,0,0,.18);
+    font-size:12.5px; font-weight:700; color:var(--text);
+    opacity:0; pointer-events:none;
+    transition:transform .22s cubic-bezier(.4,0,.2,1), opacity .18s ease;
+  }
+  .ptr-pill.visible, .ptr-pill.armed { opacity:1; transform:translate(-50%,0); }
+  .ptr-pill.armed .spinner { animation:none; opacity:.5; }
+  .ptr-pill .spinner { margin-right:0; }
+
+  /* ---- Tablet and phone ---- */
+  @media (max-width:760px) {
+    /* Sticky section nav: align its gutter with main's. */
+    .section-nav { padding:0 14px; }
+    .section-nav .section-bar { margin-top:8px; }
+    .section-nav .quick-tabs { padding:8px 0 10px; }
+
+    /* Header is no longer sticky, so the expensive blur is wasted work. */
+    header { -webkit-backdrop-filter:none; backdrop-filter:none; }
+
+    /* iOS Safari zooms the page in whenever a focused input is under 16px
+       and never zooms back out. 16px everywhere on touch layouts. */
+    .search-input, .stock-input, .brief-followup-input, .fish-trip-input,
+    .weekly-modal input[type=password], .weekly-modal input[type=text],
+    .be-field input,
+    input:not([type=checkbox]):not([type=radio]), textarea, select {
+      font-size:16px;
+    }
+
+    /* Touch targets — 44px is the practical minimum. */
+    .icon-btn { width:42px; height:42px; }
+    .icon-btn svg { width:19px; height:19px; }
+    .search-clear { width:42px; height:42px; }
+    .stock-remove { width:40px; height:40px; font-size:20px; }
+    .qtab { padding:9px 14px; min-height:40px; display:inline-flex; align-items:center; }
+    .drawer-item { padding:15px 20px; }
+    .drawer-close { width:42px; height:42px; }
+    .bill-link, .bill-history-btn { padding:9px 0; display:inline-block; }
+    .brief-btn, .bkmk-btn { min-height:32px; }
+    .w-toggle { padding:11px 0; }
+  }
+
+  /* ---- Phone ---- */
+  @media (max-width:520px) {
+    .brand { font-size:clamp(22px,6.6vw,29px); }
+    /* Compact article cards — more stories per screen than the 760px sizing. */
+    article.item { padding:11px 12px; gap:10px; }
+    .title { font-size:15.5px; line-height:1.25; -webkit-line-clamp:3; }
+    .desc { font-size:12.5px; line-height:1.4; -webkit-line-clamp:2; }
+    .thumb { width:76px; height:76px; }
+    .item-wrap { margin-bottom:9px; }
+    /* Keep taps comfortable even at the compact size. */
+    .icon-btn { width:40px; height:40px; }
+    .qtab { padding:8px 13px; font-size:12px; min-height:38px; }
+    /* Wide content that would otherwise force the page sideways. */
+    .sa-earnings-tbl { display:block; overflow-x:auto; white-space:nowrap; }
+    .fc-d { grid-template-columns:52px 22px minmax(0,1fr) auto; gap:7px; font-size:12.5px; }
+  }
+
+  /* ---- Narrow phone ---- */
+  @media (max-width:420px) {
+    .brand { font-size:clamp(21px,6.4vw,26px); }
+    /* Was clamped to 124px, which truncated most section names. */
+    .section-menu-btn { max-width:46vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .thumb { width:70px; height:70px; }
+  }
+
+  /* background-attachment:fixed forces a full repaint on every scroll frame in
+     mobile Safari and Chrome. Static background on small screens. */
+  @media (max-width:900px) {
+    html { background-attachment:scroll; }
+  }
+
+  /* The global `-webkit-tap-highlight-color:transparent` on * removes all
+     built-in tap feedback, so taps felt dead. Put it back deliberately. */
+  @media (hover:none) {
+    button:active, .qtab:active, .icon-btn:active, .drawer-item:active,
+    .section-menu-btn:active, .brief-btn:active, .bkmk-btn:active,
+    .w-toggle:active, .retry-btn:active {
+      opacity:.62;
+      transform:scale(.97);
+    }
+    article.item:active { background:var(--card-hover); }
+    .drawer-item:active { transform:none; background:var(--card-hover); }
+  }
+
 </style>
 </head>
 <body>
@@ -1773,6 +1890,12 @@
   <div class="weather loading" id="weather"><span class="spinner"></span><span>Loading weather…</span></div>
   <div class="quote-bar" id="quoteBar"></div>
 
+</header>
+
+<!-- Section nav lives OUTSIDE <header> so it can stick to the viewport for the
+     whole page. Previously it was inside the (very tall) sticky masthead, which
+     meant the tabs scrolled away with it and were unreachable on a phone. -->
+<div class="section-nav" id="sectionNav">
   <div class="section-bar">
     <div class="section-left">
       <span class="section-label" id="sectionLabel">Top Stories</span>
@@ -1784,7 +1907,7 @@
     </button>
   </div>
   <div class="quick-tabs" id="quickTabs"></div>
-</header>
+</div>
 
 <main>
   <div class="main-cols" id="mainCols">
@@ -3004,8 +3127,34 @@ function renderQuickTabs() {
 }
 
 // ========== DRAWER ==========
-function openDrawer() { drawerEl.classList.add("open"); overlayEl.classList.add("open"); document.body.style.overflow = "hidden"; }
-function closeDrawer() { drawerEl.classList.remove("open"); overlayEl.classList.remove("open"); document.body.style.overflow = ""; }
+// Scroll lock. `overflow:hidden` on <body> does not reliably stop scrolling in
+// iOS Safari, and toggling it loses the scroll position. Pin the body instead
+// and restore the exact offset on close.
+let __scrollLockY = 0;
+function lockScroll() {
+  if (document.body.classList.contains("scroll-locked")) return;
+  __scrollLockY = window.scrollY || window.pageYOffset || 0;
+  document.body.classList.add("scroll-locked");
+  document.body.style.position = "fixed";
+  document.body.style.top   = (-__scrollLockY) + "px";
+  document.body.style.left  = "0";
+  document.body.style.right = "0";
+  document.body.style.width = "100%";
+}
+function unlockScroll() {
+  if (!document.body.classList.contains("scroll-locked")) return;
+  document.body.classList.remove("scroll-locked");
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
+  document.body.style.width = "";
+  window.scrollTo(0, __scrollLockY);
+}
+function isScrollLocked() { return document.body.classList.contains("scroll-locked"); }
+
+function openDrawer() { drawerEl.classList.add("open"); overlayEl.classList.add("open"); lockScroll(); }
+function closeDrawer() { drawerEl.classList.remove("open"); overlayEl.classList.remove("open"); unlockScroll(); }
 document.getElementById("menuBtn").addEventListener("click", openDrawer);
 document.getElementById("sectionMenuBtn").addEventListener("click", openDrawer);
 document.getElementById("drawerClose").addEventListener("click", closeDrawer);
@@ -10324,14 +10473,80 @@ document.getElementById("refreshBtn").addEventListener("click", () => {
   fetchNWSAlerts(); loadWeather(true); loadCategory(true);
 });
 
-// Pull-to-refresh
-let startY=0, pulling=false;
-document.addEventListener("touchstart", e=>{ if(window.scrollY===0){startY=e.touches[0].clientY;pulling=true;} },{passive:true});
-document.addEventListener("touchend", e=>{
-  if (!pulling) return;
-  if (e.changedTouches[0].clientY - startY > 80) { fetchNWSAlerts(); loadWeather(true); loadCategory(true); }
-  pulling=false;
-});
+// Pull-to-refresh.
+// Previously any 80px downward swipe starting at the top fired a full triple
+// reload, with no visual feedback, no horizontal-swipe rejection, and no check
+// for whether the drawer or a modal was open. It felt random. Now it requires a
+// deliberate, mostly-vertical pull that does not start inside a horizontally
+// scrollable strip, and it shows an indicator while it works.
+(function setupPullToRefresh(){
+  const THRESHOLD = 90;   // px of vertical pull required
+  const MAX_DRIFT = 55;   // px of horizontal drift tolerated
+  let startY = 0, startX = 0, pulling = false, busy = false;
+
+  const pill = document.createElement("div");
+  pill.className = "ptr-pill";
+  pill.innerHTML = '<span class="spinner"></span><span>Refreshing\u2026</span>';
+  document.addEventListener("DOMContentLoaded", () => document.body.appendChild(pill));
+  if (document.body) document.body.appendChild(pill);
+
+  function inHorizontalScroller(node){
+    for (let el = node; el && el !== document.body; el = el.parentElement) {
+      if (el.scrollWidth > el.clientWidth + 4) {
+        const ov = getComputedStyle(el).overflowX;
+        if (ov === "auto" || ov === "scroll") return true;
+      }
+    }
+    return false;
+  }
+
+  function blocked(){
+    return busy
+      || (typeof isScrollLocked === "function" && isScrollLocked())
+      || document.querySelector(".weekly-modal-backdrop")
+      || (drawerEl && drawerEl.classList.contains("open"));
+  }
+
+  document.addEventListener("touchstart", e => {
+    pulling = false;
+    if (blocked()) return;
+    if ((window.scrollY || 0) !== 0) return;
+    if (e.touches.length !== 1) return;
+    if (inHorizontalScroller(e.target)) return;
+    startY = e.touches[0].clientY;
+    startX = e.touches[0].clientX;
+    pulling = true;
+  }, { passive: true });
+
+  document.addEventListener("touchmove", e => {
+    if (!pulling) return;
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - startX) > MAX_DRIFT) pulling = false;      // it is a sideways swipe
+    else if ((window.scrollY || 0) > 4) pulling = false;                 // they started scrolling instead
+    else pill.classList.toggle("armed", (t.clientY - startY) > THRESHOLD);
+  }, { passive: true });
+
+  document.addEventListener("touchend", e => {
+    pill.classList.remove("armed");
+    if (!pulling) return;
+    pulling = false;
+    const t = e.changedTouches[0];
+    if ((t.clientY - startY) <= THRESHOLD) return;
+    if (Math.abs(t.clientX - startX) > MAX_DRIFT) return;
+    if ((window.scrollY || 0) !== 0) return;
+
+    busy = true;
+    pill.classList.add("visible");
+    Promise.allSettled([
+      Promise.resolve().then(fetchNWSAlerts),
+      Promise.resolve().then(() => loadWeather(true)),
+      Promise.resolve().then(() => loadCategory(true))
+    ]).finally(() => {
+      busy = false;
+      pill.classList.remove("visible");
+    });
+  }, { passive: true });
+})();
 
 // ── Markets ticker under the dateline (reuses fetchQuote + its proxy/cache layer) ──
 async function loadTicker() {
@@ -10406,7 +10621,7 @@ setInterval(()=>{ localStorage.removeItem("news.nws.alerts"); fetchNWSAlerts(); 
   function setHidden(yes){
     if (yes === hidden) return;
     hidden = yes;
-    headerEl.classList.toggle("header-hidden", yes);
+    headerEl.classList.toggle("header-hidden", yes); // no-op visually; kept for CSS hooks
     if (reveal) reveal.classList.toggle("visible", yes);
   }
   function onScroll(){

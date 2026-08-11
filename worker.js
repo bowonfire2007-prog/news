@@ -1628,7 +1628,7 @@ async function handleSiteStats(url, env) {
   viewer { accounts(filter: { accountTag: ${JSON.stringify(accountTag)} }) {
     rumPerformanceEventsAdaptiveGroups(filter: ${filter}, limit: 1) {
       count
-      quantiles { pageLoadTimeP50 pageLoadTimeP75 firstContentfulPaintP50 largestContentfulPaintP50 }
+      quantiles { pageLoadTimeP50 pageLoadTimeP75 firstContentfulPaintP50 pageRenderTimeP50 }
     }
   } }
 }`;
@@ -1669,7 +1669,7 @@ async function handleSiteStats(url, env) {
       page_load_p50_ms: q.pageLoadTimeP50 ?? null,
       page_load_p75_ms: q.pageLoadTimeP75 ?? null,
       first_contentful_paint_p50_ms: q.firstContentfulPaintP50 ?? null,
-      largest_contentful_paint_p50_ms: q.largestContentfulPaintP50 ?? null
+      page_render_p50_ms: q.pageRenderTimeP50 ?? null
     };
   } else {
     out.errors.performance = perfRes.error;

@@ -2673,7 +2673,14 @@ function railCardShell(def, bodyHtml) {
     '<div class="track-card-body">' + bodyHtml + '</div></div>';
 }
 
-function fmtNum(n, d) { return (typeof n === "number" && isFinite(n)) ? n.toLocaleString(undefined, { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }) : "—"; }
+// Real-number guard. Do NOT use bare isFinite() on values that can be null:
+// isFinite(null) === true, so a missing API reading sails through as 0 and gets
+// treated as data (this is what produced "Winter / Cold Water" in July).
+// Open-meteo returns null for gaps in its hourly/daily arrays, so anything read
+// out of those arrays must go through this.
+function isNum(x) { return typeof x === "number" && Number.isFinite(x); }
+
+function fmtNum(n, d) { return isNum(n) ? n.toLocaleString(undefined, { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }) : "—"; }
 
 // Live worker-data cards. Each: { title, icon, color, load()->data, render(data)->html }.
 const DATA_MODULES = {
@@ -3603,8 +3610,8 @@ function computeSmartForecast(data) {
     let peakTHI=-99, thiWhen=null, minApp=999, appWhen=null;
     for (let i=0;i<h.time.length;i++){ const t=new Date(h.time[i]).getTime(); if(t<now-3600000||t>now+48*3600000)continue;
       const T=h.temperature_2m[i], RH=h.relative_humidity_2m?.[i];
-      if(isFinite(T)&&isFinite(RH)){ const thi=T-(0.55-0.0055*RH)*(T-58); if(thi>peakTHI){peakTHI=thi;thiWhen=h.time[i];} }
-      const a=h.apparent_temperature?.[i]; if(isFinite(a)&&a<minApp){minApp=a;appWhen=h.time[i];}
+      if(isNum(T)&&isNum(RH)){ const thi=T-(0.55-0.0055*RH)*(T-58); if(thi>peakTHI){peakTHI=thi;thiWhen=h.time[i];} }
+      const a=h.apparent_temperature?.[i]; if(isNum(a)&&a<minApp){minApp=a;appWhen=h.time[i];}
     }
     if (peakTHI>=79) out.push({icon:"🐄",lvl:"bad",title:"Cattle heat stress",text:"THI peaks ~"+Math.round(peakTHI)+" "+fcWhen(thiWhen)+" — danger. Water, shade, don't work cattle midday."});
     else if (peakTHI>=75) out.push({icon:"🐄",lvl:"warn",title:"Cattle heat alert",text:"THI ~"+Math.round(peakTHI)+" "+fcWhen(thiWhen)+" — keep water & shade available."});
@@ -3614,7 +3621,7 @@ function computeSmartForecast(data) {
   }
   // 3) FROST / FREEZE (next 6 nights)
   if (d.time && d.temperature_2m_min) {
-    for (let i=tIdx;i<Math.min(tIdx+6,d.time.length);i++){ const mn=d.temperature_2m_min[i]; if(!isFinite(mn))continue;
+    for (let i=tIdx;i<Math.min(tIdx+6,d.time.length);i++){ const mn=d.temperature_2m_min[i]; if(!isNum(mn))continue;
       if(mn<=36){ out.push({icon: mn<=32?"❄️":"🌡️", lvl: mn<=32?"bad":"warn", title: mn<=32?"Freeze coming":"Frost coming", text:(mn<=32?"Freeze":"Frost")+" "+fcDayLabel(d.time[i])+" night (~"+Math.round(mn)+"°F) — protect tender plants."}); break; }
     }
   }
@@ -4106,7 +4113,7 @@ function renderWeather(data, lake) {
       '<span class="w-sep">·</span>'+
       '<span class="w-cond">'+escapeHtml(WEATHER_LOCATION.name)+'</span>'+
       '<span class="w-meta">'+
-        '<span>H '+(isFinite(hi)?hi:"—")+'° L '+(isFinite(lo)?lo:"—")+'°</span>'+
+        '<span>H '+(isNum(hi)?hi:"—")+'° L '+(isNum(lo)?lo:"—")+'°</span>'+
         '<span>Feels '+feels+'°</span>'+
         '<span>💨 '+windDirText+wind+' mph'+gustText+'</span>'+
         '<span>💧 '+hum+'%</span>'+
@@ -5091,11 +5098,11 @@ function getPressureForecast(weather) {
   }
   if (nowIdx < 0 || nowIdx + 6 >= times.length) return null;
   const nowP = pressures[nowIdx];
-  if (!isFinite(nowP)) return null;
+  if (!isNum(nowP)) return null;
   let minP = nowP, minIdx = nowIdx;
   const endIdx = Math.min(times.length - 1, nowIdx + 72);
   for (let i = nowIdx + 1; i <= endIdx; i++) {
-    if (isFinite(pressures[i]) && pressures[i] < minP) { minP = pressures[i]; minIdx = i; }
+    if (isNum(pressures[i]) && pressures[i] < minP) { minP = pressures[i]; minIdx = i; }
   }
   const drop = nowP - minP;
   const hoursOut = minIdx - nowIdx;

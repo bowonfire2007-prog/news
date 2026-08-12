@@ -131,7 +131,7 @@
   .w-hour-pop { font-size:10px; color:var(--text-soft); font-variant-numeric:tabular-nums; min-height:13px; }
   .w-hour-pop.wet { color:#3b82f6; font-weight:700; }
   [data-theme="dark"] .w-hour-pop.wet { color:#60a5fa; }
-  /* 10-day forecast row */
+  /* Multi-day forecast row */
   .w-forecast { overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; display:flex; align-items:stretch; gap:5px; padding-top:6px; padding-bottom:2px; }
   .w-forecast::-webkit-scrollbar { display:none; }
   .w-day { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 9px; border-radius:8px; background:var(--card-hover); min-width:56px; cursor:pointer; transition:background .12s, border-color .12s; border:1px solid transparent; }
@@ -693,6 +693,9 @@
   .cattle-fetch-success { background:color-mix(in srgb,#15803d 10%,var(--card-hover)); border:1px solid color-mix(in srgb,#15803d 30%,var(--border)); color:var(--text); }
   [data-theme="dark"] .cattle-fetch-success { background:color-mix(in srgb,#4ade80 12%,var(--card-hover)); border-color:color-mix(in srgb,#4ade80 35%,var(--border)); }
   .cattle-fetch-error { background:color-mix(in srgb,#b91c1c 8%,var(--card-hover)); border:1px solid color-mix(in srgb,#b91c1c 28%,var(--border)); color:var(--text); }
+  /* Source is dormant (barn stopped posting) — informational, not an error. */
+  .cattle-fetch-dormant { background:var(--card-hover); border:1px solid var(--border); color:var(--text-muted); }
+  .cattle-fetch-dormant em { color:var(--accent); font-style:normal; font-weight:700; }
   [data-theme="dark"] .cattle-fetch-error { background:color-mix(in srgb,#f87171 10%,var(--card-hover)); border-color:color-mix(in srgb,#f87171 30%,var(--border)); }
   /* 1-year price chart */
   .cattle-year-chart-wrap { margin-top:14px; padding:14px 10px 8px; border:1px solid var(--border); border-radius:8px; background:var(--card-hover); }
@@ -1262,6 +1265,12 @@
   .fc-d-note.n-cold { color:#0f8a99; } [data-theme="dark"] .fc-d-note.n-cold { color:#4cc4d6; }
   .fc-d-note.n-wind { color:var(--mustard); }
   .fc-d-note.n-clear { color:var(--text-soft); font-weight:500; }
+  /* Model-disagreement flag: Open-Meteo's high is far off the official NWS high. */
+  .fc-d-flag { font-size:11px; font-weight:800; padding:1px 6px; border-radius:6px; white-space:nowrap; cursor:help;
+               color:#a4560b; background:color-mix(in srgb,#d97706 16%,transparent); border:1px solid color-mix(in srgb,#d97706 32%,transparent); }
+  [data-theme="dark"] .fc-d-flag { color:#fbbf24; background:color-mix(in srgb,#fbbf24 13%,transparent); border-color:color-mix(in srgb,#fbbf24 28%,transparent); }
+  .fc-d.is-suspect .fc-d-hl b { color:#a4560b; }
+  [data-theme="dark"] .fc-d.is-suspect .fc-d-hl b { color:#fbbf24; }
   .fc-d-hl { text-align:right; font-variant-numeric:tabular-nums; color:var(--text-muted); } .fc-d-hl b { color:var(--text); }
   .fc-radar { display:inline-block; margin-top:10px; padding:8px 16px; border-radius:8px; background:var(--accent); color:var(--bg); font-weight:800; font-size:13px; box-shadow:var(--shadow); }
   .fc-radar-wrap { position:relative; margin-top:4px; border-radius:12px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); }
@@ -2290,6 +2299,12 @@ const FEED_TIMEOUT_MS      = 6000;   // reduced from 8s
 const STOCKS_CACHE_TTL_MS  = 60*1000;
 const WEATHER_CACHE_TTL_MS = 15*60*1000;
 const ALERTS_CACHE_TTL_MS  = 5*60*1000;
+// How many days the forecast strip covers, counting today. Capped at 7 because
+// that is as far as the official NWS forecast runs — past day 7 there is nothing
+// to cross-check the model against, and raw GFS out that far has been badly
+// wrong (Aug 2026: 113-116°F highs for Clinton on days 8-10). Used for both the
+// Open-Meteo request and the render bound, so a stale 10-day cache still draws 7.
+const FORECAST_DAYS = 7;
 const DEFAULT_TICKERS = [
   // ── Major market indices ──
   "SPY","QQQ","DIA","IWM",
@@ -3687,7 +3702,9 @@ async function loadWeather(force) {
     try { const p=JSON.parse(localStorage.getItem(cacheKey)||"null"); if(p&&Date.now()-p.ts<WEATHER_CACHE_TTL_MS) data=p.data; } catch {}
     try { const p=JSON.parse(localStorage.getItem(lakeCacheKey)||"null"); if(p&&Date.now()-p.ts<WEATHER_CACHE_TTL_MS) lake=p.data; } catch {}
   }
-  if (data && lake!==undefined) { renderWeather(data, lake); return; }
+  // NWS backs the temps in both strips, so it has to be in hand BEFORE anything
+  // renders — otherwise the model's numbers flash on screen and then get replaced.
+  if (data && lake!==undefined) { await ensureNwsDaily(); renderWeather(data, lake); return; }
   weatherEl.className="weather loading";
   weatherEl.innerHTML='<span class="spinner"></span><span>Loading weather…</span>';
   const url = "https://api.open-meteo.com/v1/forecast?latitude="+WEATHER_LOCATION.lat+"&longitude="+WEATHER_LOCATION.lon+
@@ -3695,9 +3712,13 @@ async function loadWeather(force) {
     "&hourly=temperature_2m,apparent_temperature,weather_code,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,relative_humidity_2m" +
     "&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,weather_code,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset" +
     "&minutely_15=precipitation,precipitation_probability" +
-    "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone="+encodeURIComponent(WEATHER_LOCATION.tz)+"&forecast_days=10&past_days=1&models=gfs_seamless";
+    "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone="+encodeURIComponent(WEATHER_LOCATION.tz)+"&forecast_days="+FORECAST_DAYS+"&past_days=1&models=gfs_seamless";
   try {
-    const [wRes, lakeData] = await Promise.all([fetchWithTimeout(url, FEED_TIMEOUT_MS), fetchTrumanLake()]);
+    const [wRes, lakeData] = await Promise.all([
+      fetchWithTimeout(url, FEED_TIMEOUT_MS),
+      fetchTrumanLake(),
+      ensureNwsDaily()          // in parallel: costs no extra wall time
+    ]);
     if (!wRes.ok) throw new Error("HTTP "+wRes.status);
     data = await wRes.json(); lake = lakeData;
     try { localStorage.setItem(cacheKey, JSON.stringify({ts:Date.now(),data})); } catch {}
@@ -3745,13 +3766,13 @@ function computeSmartForecast(data) {
   if (d.time && d.precipitation_sum) {
     const dry = i => (d.precipitation_sum[i] ?? 9) < 0.1 && (d.precipitation_probability_max?.[i] ?? 100) < 40;
     let bs=-1, bl=0, rs=-1, rl=0;
-    for (let i=tIdx;i<d.time.length;i++){ if(dry(i)){ if(rl===0)rs=i; rl++; if(rl>bl){bl=rl;bs=rs;} } else rl=0; }
+    for (let i=tIdx;i<d.time.length && i<tIdx+FORECAST_DAYS;i++){ if(dry(i)){ if(rl===0)rs=i; rl++; if(rl>bl){bl=rl;bs=rs;} } else rl=0; }
     if (bl>=3) {
       let s=0,n=0; for(let i=bs;i<bs+bl;i++){ if(Number.isFinite(d.wind_speed_10m_max?.[i])){s+=d.wind_speed_10m_max[i];n++;} }
       const wa=n?s/n:0, qual = wa>=9?"good drying (breezy)":wa>=5?"fair drying":"slow drying (light wind)";
       out.push({ icon:"🌾", lvl: bs===tIdx?"good":"info", title:"Hay window", text:"Best cut "+fcDayLabel(d.time[bs])+"–"+fcDayLabel(d.time[bs+bl-1])+" · "+bl+" dry days · "+qual+"." });
     } else {
-      out.push({ icon:"🌾", lvl:"warn", title:"Hay window", text:"No clean 3-day dry window in the 10-day (longest dry stretch: "+(bl||0)+" day"+(bl===1?"":"s")+")." });
+      out.push({ icon:"🌾", lvl:"warn", title:"Hay window", text:"No clean 3-day dry window in the "+FORECAST_DAYS+"-day (longest dry stretch: "+(bl||0)+" day"+(bl===1?"":"s")+")." });
     }
   }
   // 2) CATTLE HEAT / COLD STRESS (next 48h)
@@ -3829,6 +3850,94 @@ async function fetchNwsHourly() {
     return (await fr.json())?.properties?.periods || null;
   } catch { return null; }
 }
+// ── NWS DAILY: the authoritative numbers for the forecast strip ──
+// The high and low are the two figures anyone actually reads off this card, so
+// they come from the official NWS point forecast rather than raw GFS. Aug 2026:
+// Open-Meteo/GFS was printing 108-116°F highs for Clinton while NWS said 97-99°F,
+// and the card presented the model number as fact.
+//
+// Open-Meteo is still fetched and still drives everything NWS does not publish —
+// UV index, sunrise/sunset, precipitation totals, wind gusts and the heat-index
+// / wind-chill badge. This is a deliberate hybrid, not a half-finished swap.
+//
+// Convention note: NWS pairs a daytime HIGH with that same night's LOW ("Today
+// 98 / Tonight 80"), which is how nws.gov reads and how a forecast is normally
+// spoken. Open-Meteo's daily min was the low of the calendar day — this morning's
+// already-passed low. So the low column now looks one night later than it used to.
+let _nwsDaily = null;             // { "YYYY-MM-DD": { hi, lo, cond, pop } }
+const NWS_DAILY_CACHE_KEY = "news.nwsdaily.v1";
+const NWS_DAILY_TTL_MS    = 30 * 60 * 1000;
+
+// Fold the alternating day/night period list into one row per calendar date.
+function nwsPeriodsToDaily(periods) {
+  const out = {};
+  if (!Array.isArray(periods)) return out;
+  const num = v => (typeof v === "number" && Number.isFinite(v)) ? v : null;
+  for (const p of periods) {
+    if (!p || p.temperatureUnit !== "F") continue;   // never mix °C into a °F card
+    const key = String(p.startTime || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+    const t = num(p.temperature);
+    if (t === null) continue;
+    const row = out[key] || (out[key] = { hi:null, lo:null, cond:null, pop:null });
+    if (p.isDaytime === true) {
+      // First daytime period wins; later ones are the same day re-issued.
+      if (row.hi === null) { row.hi = t; row.cond = p.shortForecast || null; }
+    } else if (row.lo === null) {
+      row.lo = t;
+    }
+    const pop = num(p.probabilityOfPrecipitation && p.probabilityOfPrecipitation.value);
+    if (pop !== null) row.pop = row.pop === null ? pop : Math.max(row.pop, pop);
+  }
+  return out;
+}
+
+// Populate _nwsDaily, from cache when it's fresh. Returns the map (possibly
+// empty). Never throws — a dead NWS just means the strip falls back to GFS.
+async function ensureNwsDaily(force) {
+  if (!force && _nwsDaily) return _nwsDaily;
+  if (!force) {
+    try {
+      const p = JSON.parse(localStorage.getItem(NWS_DAILY_CACHE_KEY) || "null");
+      if (p && p.data && Date.now() - p.ts < NWS_DAILY_TTL_MS) { _nwsDaily = p.data; return _nwsDaily; }
+    } catch {}
+  }
+  try {
+    const periods = await fetchNwsForecast();
+    const daily = nwsPeriodsToDaily(periods);
+    if (Object.keys(daily).length) {
+      _nwsDaily = daily;
+      try { localStorage.setItem(NWS_DAILY_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: daily })); } catch {}
+    }
+  } catch (e) { console.warn("NWS daily:", e); }
+  return _nwsDaily || {};
+}
+
+// One row of the strip, with NWS preferred and Open-Meteo as the documented
+// fallback. `omHi`/`omLo` are the model numbers for the same date; they're used
+// to carry the heat-index / wind-chill OFFSET across to the NWS temperature,
+// since the apparent-temperature spread is more transferable between models
+// than the absolute value is.
+function forecastDayValues(dateStr, omHi, omLo, omPop, omApparentMax, omApparentMin) {
+  const n = (_nwsDaily && _nwsDaily[dateStr]) || null;
+  const has = v => typeof v === "number" && Number.isFinite(v);
+  const hi = n && has(n.hi) ? n.hi : (has(omHi) ? omHi : null);
+  const lo = n && has(n.lo) ? n.lo : (has(omLo) ? omLo : null);
+  const usedNws = !!(n && (has(n.hi) || has(n.lo)));
+  // Shift the feels-like by however far the NWS temp sits from the model temp.
+  const hiShift = (usedNws && has(hi) && has(omHi)) ? hi - omHi : 0;
+  const loShift = (usedNws && has(lo) && has(omLo)) ? lo - omLo : 0;
+  return {
+    hi: has(hi) ? Math.round(hi) : null,
+    lo: has(lo) ? Math.round(lo) : null,
+    pop: (n && has(n.pop)) ? n.pop : (has(omPop) ? omPop : null),
+    cond: (n && n.cond) ? n.cond : null,
+    apparentMax: has(omApparentMax) ? omApparentMax + hiShift : null,
+    apparentMin: has(omApparentMin) ? omApparentMin + loShift : null,
+    source: usedNws ? "nws" : "gfs"
+  };
+}
+
 function nwsEmoji(s, day) {
   s = (s||"").toLowerCase();
   if (/thunder/.test(s)) return "⛈️";
@@ -4055,11 +4164,14 @@ async function loadForecast() {
   let data = getCachedWeather();
   if (!data || !data.daily) { try { await loadWeather(); data = getCachedWeather(); } catch {} }
   if (!data || !data.daily) { listEl.innerHTML = '<div class="status" style="padding:24px">Forecast unavailable — check your connection.</div>'; return; }
+  await ensureNwsDaily();   // temps below are NWS-backed; have them before rendering
   const c=data.current||{}, d=data.daily||{}, h=data.hourly||{};
   const tIdx=findTodayIndex(d.time||[], WEATHER_LOCATION.tz);
   const entry=WEATHER_CODE_MAP[c.weather_code]||["—","🌡️"];
-  const hi=Number.isFinite(d.temperature_2m_max?.[tIdx])?Math.round(d.temperature_2m_max[tIdx]):"—";
-  const lo=Number.isFinite(d.temperature_2m_min?.[tIdx])?Math.round(d.temperature_2m_min[tIdx]):"—";
+  // Hero H/L must agree with the strip's first row, so it reads from the same place.
+  const heroFv = forecastDayValues(d.time?.[tIdx], d.temperature_2m_max?.[tIdx], d.temperature_2m_min?.[tIdx]);
+  const hi=heroFv.hi===null?"—":heroFv.hi;
+  const lo=heroFv.lo===null?"—":heroFv.lo;
   const insights = computeSmartForecast(data);
 
   let hourly='<div class="fc-hourly">';
@@ -4073,13 +4185,25 @@ async function loadForecast() {
   hourly+='</div>';
 
   let tenday='<div class="fc-tenday">';
-  if (d.time) { for (let i=tIdx;i<d.time.length;i++){ const de=WEATHER_CODE_MAP[d.weather_code?.[i]]||["",""];
+  // Bound by FORECAST_DAYS as well as array length: a cached payload from before
+  // the 10→7 change would otherwise still draw all ten rows.
+  if (d.time) { for (let i=tIdx;i<d.time.length && i<tIdx+FORECAST_DAYS;i++){ const de=WEATHER_CODE_MAP[d.weather_code?.[i]]||["",""];
       const dl=i===tIdx?"Today":new Date(d.time[i]+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",timeZone:WEATHER_LOCATION.tz});
       // Guard BEFORE rounding: Math.round(null) is 0, which would turn a missing
       // low into a "❄ Freeze 0°" badge in August. Keep nulls as null.
-      const hh=Number.isFinite(d.temperature_2m_max?.[i])?Math.round(d.temperature_2m_max[i]):null;
-      const ll=Number.isFinite(d.temperature_2m_min?.[i])?Math.round(d.temperature_2m_min[i]):null;
-      const pop=d.precipitation_probability_max?.[i], psum=d.precipitation_sum?.[i], gust=d.wind_gusts_10m_max?.[i];
+      // Temps, rain chance and conditions come from NWS where it covers the date;
+      // psum / gust stay on Open-Meteo because NWS's period feed has no equivalent.
+      const fv = forecastDayValues(
+        d.time[i],
+        d.temperature_2m_max?.[i], d.temperature_2m_min?.[i],
+        d.precipitation_probability_max?.[i],
+        d.apparent_temperature_max?.[i], d.apparent_temperature_min?.[i]
+      );
+      const hh=fv.hi, ll=fv.lo;
+      const pop=fv.pop, psum=d.precipitation_sum?.[i], gust=d.wind_gusts_10m_max?.[i];
+      // Prefer NWS's own words/icon for the sky; fall back to the model's WMO code.
+      const condLabel = fv.cond || de[0] || "";
+      const condIcon  = fv.cond ? nwsEmoji(fv.cond, true) : (de[1] || "");
       // Plain-English notice so the row is never blank — severe stuff first, else the sky.
       let note, ncls;
       if (Number.isFinite(ll)&&ll<=32){ note="❄ Freeze "+ll+"°"; ncls="n-cold"; }
@@ -4089,14 +4213,20 @@ async function loadForecast() {
       else if (Number.isFinite(hh)&&hh>=90){ note="🥵 Hot "+hh+"°"; ncls="n-hot"; }
       else if (Number.isFinite(gust)&&gust>=30){ note="💨 Gusts "+Math.round(gust)+" mph"; ncls="n-wind"; }
       else if (Number.isFinite(pop)&&pop>=25){ note="🌦 "+pop+"% rain"; ncls="n-rain"; }
-      else { note=de[0]||"Quiet"; ncls="n-clear"; }
+      else { note=condLabel||"Quiet"; ncls="n-clear"; }
       // Feels-like: heat index on hot days, wind chill on cold days (only when it
       // diverges meaningfully from the air temp, so it's not noise on mild days).
-      const amax=d.apparent_temperature_max?.[i], amin=d.apparent_temperature_min?.[i];
+      // amax/amin are already shifted onto the NWS temperature by forecastDayValues,
+      // so a 98° NWS high can't sit next to a 115° model heat index.
+      const amax=fv.apparentMax, amin=fv.apparentMin;
       let feels="";
       if (Number.isFinite(hh)&&hh>=80&&Number.isFinite(amax)&&amax>=hh+2) feels='<span class="fc-d-feels hi" title="Heat index (feels-like high)">🥵 HI '+Math.round(amax)+'°</span>';
       else if (Number.isFinite(ll)&&ll<=40&&Number.isFinite(amin)&&amin<=ll-2) feels='<span class="fc-d-feels wc" title="Wind chill (feels-like low)">🥶 WC '+Math.round(amin)+'°</span>';
-      tenday+='<div class="fc-d"><span class="fc-d-day">'+dl+'</span><span class="fc-d-i">'+(de[1]||"")+'</span><span class="fc-d-mid"><span class="fc-d-note '+ncls+'">'+escapeHtml(note)+'</span>'+feels+'</span><span class="fc-d-hl"><b>'+(hh===null?"—":hh+"°")+'</b> '+(ll===null?"—":ll+"°")+'</span></div>';
+      // Rows NWS doesn't cover are raw model output — say so rather than letting
+      // them pass as equal to the official numbers beside them.
+      const srcFlag = fv.source === "nws" ? ""
+        : '<span class="fc-d-flag" title="Beyond the NWS forecast horizon — this row is raw GFS model output and has not been checked against the official forecast.">model only</span>';
+      tenday+='<div class="fc-d" data-date="'+escapeHtml(d.time[i])+'" data-src="'+fv.source+'"><span class="fc-d-day">'+dl+'</span><span class="fc-d-i">'+condIcon+'</span><span class="fc-d-mid"><span class="fc-d-note '+ncls+'">'+escapeHtml(note)+'</span>'+feels+srcFlag+'</span><span class="fc-d-hl"><b>'+(hh===null?"—":hh+"°")+'</b> '+(ll===null?"—":ll+"°")+'</span></div>';
   } }
   tenday+='</div>';
 
@@ -4135,7 +4265,7 @@ async function loadForecast() {
     '<div id="fcPeriods" class="fc-periods"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading NWS day/night forecast…</div></div>'+
     '<div class="fc-sec">Next 24 Hours <span class="fc-src" id="fcHourlySrc">· model</span></div>'+
     '<div id="fcHourly">'+hourly+'</div>'+
-    '<div class="fc-sec">10-Day</div>'+tenday+
+    '<div class="fc-sec">'+FORECAST_DAYS+'-Day <span class="fc-src">'+(_nwsDaily&&Object.keys(_nwsDaily).length?'· official NWS':'· model (NWS unavailable)')+'</span></div>'+tenday+
     '<div class="farm-news" style="margin-top:18px;padding:0"><div class="farm-news-inner"><div class="farm-news-head"><span class="farm-news-title">🌩️ Local Weather News</span></div><div id="fcNewsList"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading…</div></div></div></div>';
 
   initForecastRadar();
@@ -4228,25 +4358,31 @@ function renderWeather(data, lake) {
     }
   }
 
-  // ── 10-day forecast ──
+  // ── Multi-day forecast (FORECAST_DAYS, capped at NWS's 7-day horizon) ──
   let forecastHtml = '';
   const totalDays = (d.time||[]).length;
-  for (let dispIdx=0; dispIdx<10 && (todayIdx+dispIdx)<totalDays; dispIdx++) {
+  for (let dispIdx=0; dispIdx<FORECAST_DAYS && (todayIdx+dispIdx)<totalDays; dispIdx++) {
     const i = todayIdx+dispIdx;
     const e = WEATHER_CODE_MAP[(d.weather_code||[])[i]] || ["","🌡️"];
-    const pop = (d.precipitation_probability_max||[])[i];
+    // Same NWS-first values as the main strip, so the two can never disagree.
+    const wv = forecastDayValues(
+      (d.time||[])[i],
+      (d.temperature_2m_max||[])[i], (d.temperature_2m_min||[])[i],
+      (d.precipitation_probability_max||[])[i]
+    );
+    const pop = wv.pop;
     const nameLabel = dispIdx===0 ? "Today" : dispIdx===1 ? "Tmrw"
       : new Date((d.time[i])+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",timeZone:WEATHER_LOCATION.tz});
-    const popHtml = isFinite(pop)&&pop>0
+    const popHtml = Number.isFinite(pop)&&pop>0
       ? '<span class="w-day-pop wet">💧'+pop+'%</span>'
       : '<span class="w-day-pop"></span>';
     forecastHtml +=
-      '<div class="w-day'+(dispIdx===0?' today':'')+(dispIdx>=5?' lowconf':'')+'" data-disp-idx="'+dispIdx+'">'+
+      '<div class="w-day'+(dispIdx===0?' today':'')+(wv.source!=="nws"?' lowconf':'')+'" data-disp-idx="'+dispIdx+'">'+
         '<span class="w-day-name">'+nameLabel+'</span>'+
-        '<span class="w-day-icon">'+e[1]+'</span>'+
+        '<span class="w-day-icon">'+(wv.cond ? nwsEmoji(wv.cond, true) : e[1])+'</span>'+
         '<div class="w-day-temps">'+
-          '<span class="w-day-hi">'+Math.round((d.temperature_2m_max||[])[i])+'°</span>'+
-          '<span class="w-day-lo">/'+Math.round((d.temperature_2m_min||[])[i])+'°</span>'+
+          '<span class="w-day-hi">'+(wv.hi===null?"—":wv.hi+"°")+'</span>'+
+          '<span class="w-day-lo">/'+(wv.lo===null?"—":wv.lo+"°")+'</span>'+
         '</div>'+
         popHtml+
       '</div>';
@@ -4275,8 +4411,8 @@ function renderWeather(data, lake) {
       ? '<div class="w-toggle" id="wHourlyToggle"><span>⏱ Hourly Forecast</span><span class="w-toggle-chevron">▾</span></div>'+
         '<div class="w-collapse" id="wHourlyCollapse"><div class="w-hourly-wrap"><div class="w-hourly">'+hourlyHtml+'</div></div></div>'
       : '')+
-    // 10-day section (collapsed by default)
-    '<div class="w-toggle" id="wForecastToggle"><span>📅 10-Day Forecast</span><span class="w-toggle-chevron">▾</span></div>'+
+    // Multi-day section (collapsed by default)
+    '<div class="w-toggle" id="wForecastToggle"><span>📅 '+FORECAST_DAYS+'-Day Forecast</span><span class="w-toggle-chevron">▾</span></div>'+
     '<div class="w-collapse" id="wForecastCollapse">'+
       '<div class="w-forecast">'+forecastHtml+
         '<div class="w-radar-wrap"><a class="w-radar" target="_blank" href="'+radarHref+'">📡 Radar →</a></div>'+
@@ -4491,7 +4627,9 @@ function getCachedWeather() {
 // ── WIND HELPERS ──
 // Convert wind direction in degrees (0=N, 90=E, 180=S, 270=W) into a 16-point compass label.
 function compassFromDegrees(deg) {
-  if (!isFinite(deg)) return "—";
+  // isFinite(null) === true, so a bare isFinite() here let a missing wind
+  // direction through as 0° and rendered a confident "N". Require a real number.
+  if (typeof deg !== "number" || !Number.isFinite(deg)) return "—";
   const dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
   return dirs[Math.floor(((deg % 360) / 22.5) + 0.5) % 16];
 }
@@ -4499,7 +4637,8 @@ function compassFromDegrees(deg) {
 // Walk back through hourly wind direction data and count how many consecutive hours
 // the wind has been within ±30° of the current direction. This is "sustained hours".
 function computeSustainedWindHours(hourly, currentDir) {
-  if (!hourly || !hourly.time || !hourly.wind_direction_10m || !isFinite(currentDir)) return 0;
+  if (!hourly || !hourly.time || !hourly.wind_direction_10m) return 0;
+  if (typeof currentDir !== "number" || !Number.isFinite(currentDir)) return 0;
   const times = hourly.time;
   const dirs  = hourly.wind_direction_10m;
   const now = Date.now();
@@ -4532,7 +4671,11 @@ function computeSustainedWindHours(hourly, currentDir) {
 // feet). Sparrowfoot is on the south shore — drive 5 minutes when wind is from the N.
 // Highway 18 bridge is the upper-Grand reference point; Bucksaw rip-rap is the lower end.
 function shadBankAdvice(windDir, windMph, sustainedHours) {
-  if (!isFinite(windDir) || !isFinite(windMph) || windMph < 5) return null;
+  // Bare isFinite() let a null windDir through as 0°, which reads as "wind from
+  // the N" and produced a confident "drive to Sparrowfoot" call built on nothing.
+  // No direction means no bank advice at all.
+  if (typeof windDir !== "number" || !Number.isFinite(windDir)) return null;
+  if (typeof windMph !== "number" || !Number.isFinite(windMph) || windMph < 5) return null;
   const fromDir = compassFromDegrees(windDir);
 
   let bankSide, homeNote;
@@ -7945,6 +8088,36 @@ function renderCattleMarketCard() {
   '</div>';
 }
 
+// ── CATTLE SOURCE HEALTH ──
+// Wheeler Livestock's market-report page stopped updating after the Aug 6, 2025
+// sale, so the OCR path now runs against a page with no current report on it and
+// the worker returns a 502 like "Could not parse Claude response as JSON". That
+// error is true but useless — it reads as a dashboard bug when the real story is
+// that the barn quit publishing. Translate the known signatures into plain English.
+const WHEELER_LAST_KNOWN_POST = "Aug 6, 2025";
+const CATTLE_DORMANT_MARK = "⁣"; // invisible marker: "this is a dormant source, not a fault"
+
+function explainCattleFetchFailure(data, status) {
+  const errText = String((data && data.error) || "");
+  const stale   = data && data.stale_sale_date;
+
+  if (stale) {
+    return CATTLE_DORMANT_MARK + "Wheeler hasn't posted a newer report yet — the most recent scan on "
+         + "their site is still the " + stale + " sale. Nothing new to log.";
+  }
+  // The worker got a page but Claude found no readable report on it, or there was
+  // no scan image at all. Both mean the source has nothing current to offer.
+  if (/could not parse claude response/i.test(errText) || /no images found/i.test(errText)) {
+    return CATTLE_DORMANT_MARK + "Wheeler's market-report page has no current scan to read — their "
+         + "last posted report is from " + WHEELER_LAST_KNOWN_POST + ". The barn stopped publishing, "
+         + "so there's nothing for the reader to pick up.";
+  }
+  return errText || ("HTTP " + status);
+}
+
+function isCattleSourceDormant(msg) { return String(msg || "").includes(CATTLE_DORMANT_MARK); }
+function stripDormantMark(msg)      { return String(msg || "").split(CATTLE_DORMANT_MARK).join(""); }
+
 async function fetchWheelerLatestImage() {
   const wheelerUrl = "https://www.wheelerlivestock.com/market-report-1";
   const proxyUrl = CF_WORKER + "?url=" + encodeURIComponent(wheelerUrl);
@@ -8007,7 +8180,7 @@ function wireCattleMarket() {
           const txt = await res.text();
           throw new Error("Worker isn't returning JSON — got: \"" + txt.slice(0,80).trim() + "\". The /cattleprice endpoint may not be deployed yet — push worker.js to Cloudflare and try again.");
         }
-        if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
+        if (!res.ok || data.error) throw new Error(explainCattleFetchFailure(data, res.status));
         // Track the AVERAGE $/cwt for the M&L 1 line nearest 500 lb (fall back to high if avg missing).
         const topPrice = isFinite(data.avg_cwt) && data.avg_cwt > 0 ? +data.avg_cwt
                        : (isFinite(data.high_cwt) && data.high_cwt > 0 ? +data.high_cwt : NaN);
@@ -8043,10 +8216,15 @@ function wireCattleMarket() {
           newResult.innerHTML = detail;
         }
       } catch (err) {
-        autoResult.className = "cattle-fetch-result cattle-fetch-error";
-        autoResult.innerHTML = '⚠ Auto-fetch failed: ' + escapeHtml(String(err.message || err)) +
-          '. <a class="barn-link" href="https://www.wheelerlivestock.com/market-report-1" target="_blank" rel="noopener">Open report ↗</a>' +
-          ' — or tap <em>📤 Upload Wheeler Image</em> to send the image directly.';
+        const msg     = String(err.message || err);
+        const dormant = isCattleSourceDormant(msg);
+        // A dormant source isn't a failure of this dashboard, so it doesn't get
+        // the red error treatment — it gets a plain explanation.
+        autoResult.className = "cattle-fetch-result " + (dormant ? "cattle-fetch-dormant" : "cattle-fetch-error");
+        autoResult.innerHTML = (dormant ? '📭 ' : '⚠ Auto-fetch failed: ')
+          + escapeHtml(stripDormantMark(msg))
+          + ' <a class="barn-link" href="https://www.wheelerlivestock.com/market-report-1" target="_blank" rel="noopener">Check their page ↗</a>'
+          + ' — or tap <em>📤 Upload Wheeler Image</em> to send a report image directly.';
         autoBtn.classList.remove("is-loading");
         autoBtn.innerHTML = origHtml;
       }
@@ -8546,7 +8724,7 @@ async function fetchAndShowSmartPlan(lake, weather, panel, btn, force, lakeHisto
       windDir:  Number.isFinite(c.wind_direction_10m)     ? c.wind_direction_10m    : null,
       code:     c.weather_code ?? null
     };
-    const sustained = (weather?.hourly && isFinite(wx.windDir))
+    const sustained = (weather?.hourly && Number.isFinite(wx.windDir))
       ? computeSustainedWindHours(weather.hourly, wx.windDir) : null;
 
     // Moon + solunar for target time
@@ -8570,14 +8748,14 @@ async function fetchAndShowSmartPlan(lake, weather, panel, btn, force, lakeHisto
       },
       waterTempF: waterTempF ?? null,
       weather: {
-        temp:      isFinite(wx.temp)     ? wx.temp     : null,
-        feels:     isFinite(wx.feels)    ? wx.feels    : null,
-        humidity:  isFinite(wx.humidity) ? wx.humidity : null,
+        temp:      Number.isFinite(wx.temp)     ? wx.temp     : null,
+        feels:     Number.isFinite(wx.feels)    ? wx.feels    : null,
+        humidity:  Number.isFinite(wx.humidity) ? wx.humidity : null,
         condition: (WEATHER_CODE_MAP[wx.code] || ["",""])[0]
       },
       wind: {
-        dir:            isFinite(wx.windDir)   ? compassFromDegrees(wx.windDir) : null,
-        speed:          isFinite(wx.windSpeed) ? wx.windSpeed                   : null,
+        dir:            Number.isFinite(wx.windDir)   ? compassFromDegrees(wx.windDir) : null,
+        speed:          Number.isFinite(wx.windSpeed) ? wx.windSpeed                   : null,
         sustainedHours: sustained
       },
       moon: {

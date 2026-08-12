@@ -1785,7 +1785,27 @@
     .drawer-item { padding:15px 20px; }
     .drawer-close { width:42px; height:42px; }
     .bill-link, .bill-history-btn { padding:9px 0; display:inline-block; }
-    .brief-btn, .bkmk-btn { min-height:32px; }
+    /* Hit-area expansion for the small inline controls on every article card.
+       A ::after overlay grows the tappable box WITHOUT changing the visual size
+       or the layout — pseudo-elements are not separate event targets, so
+       e.target still resolves to the button and the existing
+       closest(".bkmk-btn") / closest(".brief-btn") / closest(".sources-toggle")
+       checks in the article click handler keep working. */
+    .brief-btn, .bkmk-btn, .badge-sources.sources-toggle, .section-menu-btn {
+      position:relative;
+    }
+    .brief-btn::after, .bkmk-btn::after, .badge-sources.sources-toggle::after {
+      content:"";
+      position:absolute;
+      left:-2px; right:-2px;
+      top:-7px; bottom:-7px;
+    }
+    .brief-btn, .bkmk-btn { min-height:34px; }        /* ~48px tappable */
+    /* The sources badge is deliberately small; expand its hit box less so it
+       does not swallow taps meant for the headline directly below it. */
+    .badge-sources.sources-toggle::after { top:-9px; bottom:-9px; left:-4px; right:-4px; }
+    .badge-sources.sources-toggle { min-height:18px; } /* ~36px tappable */
+    .section-menu-btn { min-height:40px; }
     .w-toggle { padding:11px 0; }
   }
 

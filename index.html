@@ -5570,7 +5570,11 @@ function pickClosestBankSpot(subSeason, windDir, windMph, clarity, holiday) {
   for (const spot of spots) {
     let score = 0;
     // Wind fit
-    if (isFinite(windDir) && windMph >= 5) {
+    // isFinite(null) === true, so a bare isFinite() here let a missing windDir
+    // score as 0° ("wind from the N") and silently reshuffled which spot won.
+    // Same trap fixed in shadBankAdvice() — no direction means no wind bonus.
+    if (typeof windDir === "number" && Number.isFinite(windDir) &&
+        typeof windMph === "number" && Number.isFinite(windMph) && windMph >= 5) {
       const hits = spot.bestWindFrom.some(([lo, hi]) => (lo > hi) ? (windDir >= lo || windDir < hi) : (windDir >= lo && windDir < hi));
       if (spot.bestWindFrom.length === 1 && spot.bestWindFrom[0][0] === 0 && spot.bestWindFrom[0][1] === 360) {
         score += 0; // omnidirectional — no bonus, no penalty
@@ -6729,7 +6733,10 @@ function renderWeeklyMarketCard(records) {
 
   // Receipts — show vs week-ago and year-ago when the MDA report gives us those.
   let receiptsSub = "MO total head";
-  if (latest && isFinite(latest.week_ago_receipts) && latest.week_ago_receipts > 0 && isFinite(latest.total_receipts)) {
+  // isFinite(null) === true, so a null total_receipts would compute (0 − N) and
+  // render a confident "−100% wk". Require a real number for the numerator.
+  if (latest && isFinite(latest.week_ago_receipts) && latest.week_ago_receipts > 0 &&
+      typeof latest.total_receipts === "number" && Number.isFinite(latest.total_receipts)) {
     const d = latest.total_receipts - latest.week_ago_receipts;
     const pct = (d / latest.week_ago_receipts) * 100;
     const sign = d >= 0 ? "+" : "−";

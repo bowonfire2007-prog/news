@@ -19,20 +19,37 @@ id = "0f86e3f7503f41279b0af5e8f132cacd"
 #   "0 21 * * 5"  →  every Friday   at 21:00 UTC  =  3 pm CST / 4 pm CDT
 #                    Wheeler Livestock sells on Tuesdays; report is usually up by Friday.
 #
-#   "0 15 * * 1"  →  every Monday   at 15:00 UTC  =  9 am CST / 10 am CDT
+#   "0 18 * * 1"  →  every Monday   at 18:00 UTC  =  noon CST / 1 pm CDT
 #                    Missouri Dept of Agriculture posts the new weekly summary PDF Monday morning.
+#                    MOVED from 15:00 UTC (Aug 2026): the 15:00 slot was firing before
+#                    MDA had posted, so it could never see the current week. Observed
+#                    saves from that trigger were 34–154 days stale, marching backward
+#                    through the archive while every real week got uploaded by hand.
 #
 #   "0 18 * * 2"  →  every Tuesday  at 18:00 UTC  =  noon CST / 1 pm CDT
 #                    Backup pull — catches reports that drop late on holiday weeks
 #                    (Memorial Day, Labor Day, etc. when MDA is closed Monday).
 #                    Safe to run weekly: it's a no-op if Monday already grabbed it.
 #
+#   "0 13 * * *"  →  daily at 13:00 UTC = 7 am CST / 8 am CDT
+#                    Bills, trackers, briefs — and runMissouriIfStale, which
+#                    re-pulls the weekly report if the newest one in KV is >8 days
+#                    old. This is the real safety net: if the Mon/Tue triggers are
+#                    ever wrong again, this catches it within a day.
+#
+# IMPORTANT: these strings must match the === comparisons in worker.js
+# scheduled(). Change one without the other and that job silently stops running.
+#
+# After changing this block, run push.bat (wrangler deploy) and then confirm the
+# live schedule in the Cloudflare dashboard under Workers → rss-proxy →
+# Settings → Triggers. The deployed list is what actually runs, not this file.
+#
 [[kv_namespaces]]
 binding = "BILLS_KV"
 id = "77445f232f1e4bc6a3dd1cf86c888979"
 
 [triggers]
-crons = ["0 21 * * 5", "0 15 * * 1", "0 18 * * 2", "0 13 * * *", "0 1 * * *"]
+crons = ["0 21 * * 5", "0 18 * * 1", "0 18 * * 2", "0 13 * * *", "0 1 * * *"]
 
 # ── Secrets (set in Cloudflare dashboard or via wrangler secret put) ──────────
 # ANTHROPIC_API_KEY  — Claude API key for PDF parsing and cattle price OCR

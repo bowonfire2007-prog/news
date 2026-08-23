@@ -369,6 +369,53 @@ async function runMissouriScheduled(env, ctx) {
   }
 }
 
+// ── DAILY SELF-HEAL ─────────────────────────────────────────────────────────
+// Safety net for the weekly pull, wired into the daily 13:00 UTC cron.
+//
+// WHY THIS EXISTS: from Feb–Aug 2026 the weekly cron ran on schedule every week
+// and still never captured a current report. The 3-attempt budget in
+// runMissouriScheduled was being spent on 404s from the two guessed dated URLs
+// plus a then-stale "latest" alias, so the walk only ever reached old archive
+// PDFs — saves came in 34, 62, 90, 112, 133, 154 days behind and marching
+// backward, while every current week in KV had to be uploaded by hand.
+//
+// The point of hanging this off the DAILY cron is that the daily trigger is the
+// one we have direct evidence of firing reliably and on time. If the weekly
+// triggers are misconfigured, mis-scheduled, or silently fail again, this still
+// notices within a day and repairs it. It is deliberately cheap: on a normal day
+// it is a single KV read and nothing else.
+const MO_STALE_AFTER_DAYS = 8;   // reports are weekly; 8 days = we missed one
+
+async function runMissouriIfStale(env, ctx) {
+  const CLOG = "[mo-weekly self-heal] ";
+  try {
+    if (!env.ANTHROPIC_API_KEY || !env.WEEKLY_KV) {
+      console.error(CLOG + "aborted — missing " + (!env.ANTHROPIC_API_KEY ? "ANTHROPIC_API_KEY" : "WEEKLY_KV"));
+      return;
+    }
+    const indexRaw = await env.WEEKLY_KV.get("weekly:index");
+    const index = indexRaw ? JSON.parse(indexRaw) : [];
+    if (!index.length) {
+      console.warn(CLOG + "index empty — running full pull");
+      return runMissouriScheduled(env, ctx);
+    }
+    const newest = index[index.length - 1];
+    const newestMs = Date.parse(newest + "T00:00:00Z");
+    if (!Number.isFinite(newestMs)) {
+      console.warn(CLOG + "unparseable newest index entry " + JSON.stringify(newest) + " — running full pull");
+      return runMissouriScheduled(env, ctx);
+    }
+    const ageDays = (Date.now() - newestMs) / 86400000;
+    if (ageDays > MO_STALE_AFTER_DAYS) {
+      console.warn(CLOG + "newest report " + newest + " is " + ageDays.toFixed(1) + " days old (>" + MO_STALE_AFTER_DAYS + ") — pulling");
+      return runMissouriScheduled(env, ctx);
+    }
+    console.log(CLOG + "ok — newest " + newest + " is " + ageDays.toFixed(1) + " days old");
+  } catch (err) {
+    console.error(CLOG + "threw: " + (err && err.stack ? err.stack : String(err)));
+  }
+}
+
 // Manual-trigger HTTP endpoint. Hit GET /weeklyrefresh to force a fetch.
 // Returns JSON detailing what was tried + what got saved, so you can debug
 // without staring at Cloudflare's cron logs.
@@ -1281,167 +1328,6 @@ async function handleBriefsRefresh(url, env, ctx) {
   return jsonResponse(await runBriefsScheduled(env, ctx, force));
 }
 
-// ─────────────── JBTDS / INNOVAPREP MONITOR ──────────────────────────────────
-// Daily: searches Google News + SEC EDGAR for signals on JBTDS FRP, Chemring,
-// and InnovaPrep; asks Claude to extract only genuinely new items; caches in KV.
-// Endpoint: GET /jbtds-monitor          → returns cached payload
-//           GET /jbtds-monitor-refresh  → re-runs now (?force=1 ignores hash)
-const JBTDS_QUERIES = [
-  '"JBTDS" OR "Joint Biological Tactical Detection System" "full rate production" OR "FRP" Chemring contract DoD',
-  'Chemring Group "biological detection" OR "JBTDS" OR "US Sensors" results announcement',
-  'InnovaPrep Missouri DoD contract OR acquisition OR merger OR award',
-  '"JBTDS" OR "Joint Biological Tactical Detection" export OR "Foreign Military Sales" OR FMS'
-];
-
-async function fetchJbtdsHeadlines() {
-  const all = [];
-  // Google News RSS for each watch query
-  for (const q of JBTDS_QUERIES) {
-    try {
-      const items = await fetchTopicHeadlines({ query: q }, 6);
-      all.push(...items);
-    } catch(_) {}
-  }
-  // Direct SEC EDGAR full-text search for InnovaPrep filings (last 18 months)
-  try {
-    const cutoff = new Date(Date.now() - 18 * 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-    const today  = new Date().toISOString().slice(0, 10);
-    const eftsUrl = "https://efts.sec.gov/LATEST/search-index?q=%22InnovaPrep%22" +
-                    "&dateRange=custom&startdt=" + cutoff + "&enddt=" + today;
-    const r = await fetch(eftsUrl, {
-      headers: { "User-Agent": "MattDashboard/1.0 (personal; bowonfire2007@gmail.com)" }
-    });
-    if (r.ok) {
-      const js = await r.json();
-      for (const h of (js?.hits?.hits || []).slice(0, 5)) {
-        const s = h._source || {};
-        all.push({
-          title: "InnovaPrep SEC " + (s.form || "filing") + " — " + (s.file_date || ""),
-          src:   "SEC EDGAR",
-          url:   "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001753878&type=" +
-                 encodeURIComponent(s.form || "") + "&dateb=&owner=include&count=5",
-          date:  s.file_date || "",
-          desc:  "Form " + (s.form || "?") + " filed " + (s.file_date || "") + " by INNOVAPREP INC. (CIK 0001753878)"
-        });
-      }
-    }
-  } catch(_) {}
-  // Deduplicate by URL
-  const seen = new Set();
-  return all.filter(h => { if (!h.url || seen.has(h.url)) return false; seen.add(h.url); return true; });
-}
-
-async function runJbtdsMonitor(env, ctx, force = false) {
-  if (!env.BILLS_KV)        return { error: "BILLS_KV not bound" };
-  if (!env.ANTHROPIC_API_KEY) return { error: "ANTHROPIC_API_KEY not set" };
-  try {
-    const headlines = await fetchJbtdsHeadlines();
-    const fingerprint = headlines.map(h => h.title + h.url).join("|");
-    const newHash = await hashKey(fingerprint);
-    const prevHash   = await env.BILLS_KV.get("jbtds:hash");
-    const existingRaw = await env.BILLS_KV.get("jbtds:data");
-    if (!force && prevHash === newHash && existingRaw) {
-      return { changed: false, cached: true };
-    }
-
-    // Previously seen URLs — keep items out of Claude prompt that were already reported
-    const seenRaw  = await env.BILLS_KV.get("jbtds:seen_urls");
-    const seenUrls = seenRaw ? JSON.parse(seenRaw) : [];
-    const today    = new Date().toISOString().slice(0, 10);
-
-    const list = headlines.map((h, i) =>
-      "[" + i + "] " + h.title + " — " + (h.src || "source") + (h.date ? " (" + h.date + ")" : "") +
-      "\nURL: " + h.url + (h.desc ? "\nDesc: " + h.desc.slice(0, 160) : "")
-    ).join("\n\n");
-
-    const prompt =
-      "Today is " + today + ". You monitor a private dashboard tracking:\n" +
-      "1. JBTDS Full-Rate Production (FRP): has the FRP contract been awarded? Watch Chemring, DoD, SAM.gov signals.\n" +
-      "2. Chemring Group: financial results, RNS announcements mentioning JBTDS, US Sensors, or biological detection.\n" +
-      "3. InnovaPrep Inc. (Drexel MO): new SEC filings, acquisition/sale, leadership changes, new contracts, facility news.\n" +
-      "4. JBTDS export / Foreign Military Sales variants offered to allied nations.\n\n" +
-      "ALREADY-SEEN URLs — skip any item whose source_url exactly matches one of these:\n" +
-      (seenUrls.length ? seenUrls.slice(-80).join("\n") : "(none yet)") + "\n\n" +
-      "HEADLINES (filter to only genuinely relevant, new items):\n" + (list || "(none)") + "\n\n" +
-      "Return ONLY valid JSON, no markdown. If nothing new, return exactly: []\n" +
-      "[\n  {\n" +
-      '    "title": "short headline under 12 words",\n' +
-      '    "date": "YYYY-MM-DD or empty string",\n' +
-      '    "category": "FRP | Chemring | InnovaPrep | Export | Corporate",\n' +
-      '    "source_url": "verbatim URL from the headline list above",\n' +
-      '    "summary": "2-3 sentence paraphrase. No quotes over 15 words.",\n' +
-      '    "why_it_matters": "one sentence on implication for InnovaPrep or FRP award",\n' +
-      '    "signal": "award | sale | relocation | neutral",\n' +
-      '    "signal_strength": "low | medium | high"\n' +
-      "  }\n]\n\n" +
-      "Rules: source_url must be verbatim from the list. Do not invent URLs. Do not speculate. Skip seen URLs.";
-
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
-      },
-      body: JSON.stringify({
-        model: env_model_safe(),
-        max_tokens: 1400,
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
-    if (!res.ok) throw new Error("Claude " + res.status);
-    const aiData = await res.json();
-    let txt = (aiData.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim();
-    const a = txt.indexOf("["), z = txt.lastIndexOf("]");
-    let items = [];
-    if (a !== -1 && z !== -1) {
-      try { items = JSON.parse(txt.slice(a, z + 1)); } catch(_) {}
-    }
-    // Validate: source_url must exist in the fetched headlines list
-    const validUrls = new Set(headlines.map(h => h.url));
-    items = (Array.isArray(items) ? items : []).filter(it =>
-      it && typeof it.source_url === "string" && validUrls.has(it.source_url)
-    );
-
-    // Merge new items on top of historical items (keep last 30 across runs)
-    let historical = [];
-    if (existingRaw) {
-      try { historical = JSON.parse(existingRaw).items || []; } catch(_) {}
-    }
-    const allUrls = new Set(items.map(it => it.source_url));
-    const merged = [...items, ...historical.filter(it => !allUrls.has(it.source_url))].slice(0, 30);
-
-    // Update seen-URL log
-    const newSeen = [...new Set([...seenUrls, ...headlines.map(h => h.url)])].slice(-300);
-    const payload = {
-      items: merged,
-      updated: today,
-      checked_at: new Date().toISOString(),
-      new_this_run: items.length
-    };
-    const TTL = 2 * 365 * 24 * 3600;
-    await env.BILLS_KV.put("jbtds:data",      JSON.stringify(payload),  { expirationTtl: TTL });
-    await env.BILLS_KV.put("jbtds:seen_urls", JSON.stringify(newSeen),  { expirationTtl: TTL });
-    await env.BILLS_KV.put("jbtds:hash",      newHash);
-    return { changed: true, new_items: items.length, total: merged.length, checked_at: payload.checked_at };
-  } catch (err) {
-    return { error: err.message };
-  }
-}
-
-async function handleJbtdsMonitor(url, env) {
-  if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
-  const raw = await env.BILLS_KV.get("jbtds:data");
-  if (!raw) return jsonResponse({ items: [], updated: null, checked_at: null });
-  return jsonResponse(JSON.parse(raw));
-}
-
-async function handleJbtdsMonitorRefresh(url, env, ctx) {
-  const force = url.searchParams.get("force") === "1";
-  const result = await runJbtdsMonitor(env, ctx, force);
-  return jsonResponse(result);
-}
-
 export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
@@ -1505,8 +1391,6 @@ export default {
     if (url.pathname === "/trackers-refresh") return handleTrackersRefresh(url, env, ctx);
     if (url.pathname === "/tabbriefs")              return handleBriefs(url, env);
     if (url.pathname === "/tabbriefs-refresh")      return handleBriefsRefresh(url, env, ctx);
-    if (url.pathname === "/jbtds-monitor")          return handleJbtdsMonitor(url, env);
-    if (url.pathname === "/jbtds-monitor-refresh")  return handleJbtdsMonitorRefresh(url, env, ctx);
     if (url.pathname === "/wx-forecast")            return handleTomorrowForecast(url, env, ctx);
     if (url.pathname === "/reps")                   return handleReps(env);
     if (url.pathname === "/reps-refresh")           return handleRepsRefresh(env);
@@ -1517,17 +1401,27 @@ export default {
   // ── Cloudflare Cron Triggers ───────────────────────────────────────────────
   // Schedules (UTC — Missouri is CST = UTC-6, CDT = UTC-5):
   //   "0 21 * * 5"  →  Friday   3 pm CST / 4 pm CDT  — Wheeler auto-fetch
-  //   "0 15 * * 1"  →  Monday   9 am CST / 10 am CDT  — Missouri weekly report
+  //   "0 18 * * 1"  →  Monday   noon CST / 1 pm CDT  — Missouri weekly report
   //   "0 18 * * 2"  →  Tuesday  noon CST / 1 pm CDT  — backup pull (holiday weeks)
+  //   "0 13 * * *"  →  daily    7 am CST / 8 am CDT  — bills, trackers, briefs,
+  //                    plus the weekly-report self-heal check
+  //
+  // These strings must match wrangler.toml [triggers] EXACTLY — the comparisons
+  // below are ===, so a schedule changed in one place and not the other means
+  // the handler silently does nothing.
+  //
+  // MO weekly was moved off 15:00 UTC: MDA posts Monday morning Central, and a
+  // 15:00 UTC run was landing too early to see it. 18:00 UTC = 1 pm CDT gives
+  // MDA the full morning. runMissouriIfStale on the daily cron backstops both.
   async scheduled(event, env, ctx) {
     const cron = event.cron;
     if (cron === "0 21 * * 5") { ctx.waitUntil(runWheelerScheduled(env, ctx)); ctx.waitUntil(runKingsvilleScheduled(env, ctx)); }
-    if (cron === "0 15 * * 1") ctx.waitUntil(runMissouriScheduled(env, ctx));
+    if (cron === "0 18 * * 1") ctx.waitUntil(runMissouriScheduled(env, ctx));
     if (cron === "0 18 * * 2") ctx.waitUntil(runMissouriScheduled(env, ctx));
     if (cron === "0 13 * * *" || cron === "0 1 * * *") ctx.waitUntil(runBillsScheduled(env, ctx));
     if (cron === "0 13 * * *") ctx.waitUntil(runTrackersScheduled(env, ctx));
     if (cron === "0 13 * * *") ctx.waitUntil(runBriefsScheduled(env, ctx));
-    if (cron === "0 13 * * *") ctx.waitUntil(runJbtdsMonitor(env, ctx));
+    if (cron === "0 13 * * *") ctx.waitUntil(runMissouriIfStale(env, ctx));
   }
 };
 

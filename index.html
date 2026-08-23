@@ -2801,7 +2801,7 @@ async function renderWatchCards(slot) {
 //   type:"reference" → static reference card
 const TAB_RAIL = {
   cannabis: [ { type:"tracker", key:"cannabis" } ],
-  local:    [ { type:"brief", key:"local" }, { type:"brief", key:"mostate" }, { type:"watch" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" }, { type:"data", id:"repsCard" }, { type:"data", id:"jbtdsMonitor" } ], // re-add { type:"bills" } when the Jan 2027 session opens
+  local:    [ { type:"brief", key:"local" }, { type:"brief", key:"mostate" }, { type:"watch" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" }, { type:"data", id:"repsCard" } ], // re-add { type:"bills" } when the Jan 2027 session opens
   science:  [ { type:"tracker", key:"science" } ],
   tech:     [ { type:"brief", key:"tech" }, { type:"tracker", key:"quantum" }, { type:"tracker", key:"ai_agi" } ],
   world:    [ { type:"brief", key:"world" }, { type:"watch" } ],
@@ -2919,43 +2919,6 @@ const DATA_MODULES = {
         html += '<div class="tc-srcline">☀ ' + fmt(d.sunrise[0]) + '  ·  🌙 ' + fmt(d.sunset[0]) + '  ·  ' + escapeHtml(WEATHER_LOCATION.name) + '</div>';
       }
       return html;
-    }
-  },
-  jbtdsMonitor: {
-    title: "JBTDS / InnovaPrep Watch", icon: "🔬", color: "#5f6b8a",
-    load: () => railFetchJson("/jbtds-monitor"),
-    render: (data) => {
-      if (!data) return '<div class="rail-err">Monitor data unavailable.</div>';
-      const items = data.items || [];
-      const checked = data.checked_at
-        ? new Date(data.checked_at).toLocaleDateString("en-US", { month:"short", day:"numeric" })
-        : "";
-      if (!items.length) {
-        return '<div class="tc-note" style="color:var(--text-soft);padding:.5em 0">Nothing new found yet.' +
-          (checked ? ' Last checked ' + checked + '.' : '') + '</div>' +
-          '<div class="tc-srcline">Checks daily · Chemring RNS · SEC EDGAR · DoD news</div>';
-      }
-      const sigColor = { award:"#c49b3f", sale:"#e85d26", relocation:"#e85d26", neutral:"var(--text-soft)" };
-      const sigDot   = { high:"🔴", medium:"🟡", low:"⚪" };
-      const rows = items.slice(0, 8).map(it => {
-        const col = sigColor[it.signal] || "var(--text-soft)";
-        const dot = sigDot[it.signal_strength] || "⚪";
-        const dateStr = it.date
-          ? new Date(it.date + "T12:00:00").toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" })
-          : "";
-        return '<li class="tc-head" style="padding:.55em 0;border-bottom:1px solid var(--border)">' +
-          '<a href="' + encodeURI(it.source_url || "#") + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">' +
-          '<span style="font-size:.68em;color:var(--text-soft);text-transform:uppercase;letter-spacing:.03em">' +
-            escapeHtml(it.category || "") + (dateStr ? " · " + dateStr : "") + ' ' + dot +
-          '</span>' +
-          '<div style="font-weight:700;margin:.18em 0 .2em;line-height:1.3">' + escapeHtml(it.title) + '</div>' +
-          '<div class="tc-note" style="margin-bottom:.25em">' + escapeHtml(it.summary || "") + '</div>' +
-          '<div style="font-size:.75em;font-weight:600;color:' + col + '">' + escapeHtml(it.why_it_matters || "") + '</div>' +
-          '</a></li>';
-      }).join("");
-      return '<ul class="tc-heads" style="list-style:none;padding:0;margin:0">' + rows + '</ul>' +
-        '<div class="tc-srcline" style="margin-top:.5em">Checked ' + escapeHtml(checked) +
-        ' · Chemring · SEC EDGAR · DoD</div>';
     }
   },
   repsCard: {

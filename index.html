@@ -2745,7 +2745,6 @@ const WATCH_TOPICS = {
     { label:"South China Sea", icon:"🚢", color:"#2f6fd0", q:'"South China Sea" OR "Scarborough Shoal" OR "Second Thomas Shoal" OR "Spratly Islands"' }
   ],
   local: [
-    { label:"World Cup in KC", icon:"⚽", color:"#c49b3f", q:'"FIFA World Cup" "Kansas City" OR "Arrowhead Stadium"' },
     { label:"New MO Laws", icon:"⚖️", color:"#8a6d3a", q:'"signed into law" Missouri OR "Kehoe signs"' },
     // Clinton / Henry County delegation as of mid-2026: Alford = US House MO-4,
     // Hawley + Schmitt = US Senate, Crawford = MO Senate 28 (term-limited 2026),
@@ -2802,7 +2801,7 @@ async function renderWatchCards(slot) {
 //   type:"reference" → static reference card
 const TAB_RAIL = {
   cannabis: [ { type:"tracker", key:"cannabis" } ],
-  local:    [ { type:"data", id:"jbtdsMonitor" }, { type:"brief", key:"local" }, { type:"brief", key:"mostate" }, { type:"watch" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" }, { type:"data", id:"repsCard" } ], // re-add { type:"bills" } when the Jan 2027 session opens
+  local:    [ { type:"brief", key:"local" }, { type:"brief", key:"mostate" }, { type:"watch" }, { type:"tracker", key:"local" }, { type:"tracker", key:"cannabis_mo" }, { type:"data", id:"repsCard" }, { type:"data", id:"jbtdsMonitor" } ], // re-add { type:"bills" } when the Jan 2027 session opens
   science:  [ { type:"tracker", key:"science" } ],
   tech:     [ { type:"brief", key:"tech" }, { type:"tracker", key:"quantum" }, { type:"tracker", key:"ai_agi" } ],
   world:    [ { type:"brief", key:"world" }, { type:"watch" } ],

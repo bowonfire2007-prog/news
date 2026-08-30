@@ -839,26 +839,57 @@ const TRACKERS_CONFIG = [
 ];
 
 // Minimal Google News RSS item extractor → [{title, src, url, date}]
-function parseNewsItems(xml, max) {
+// Parse an RSS 2.0 (<item>) or Atom (<entry>) feed into a common item shape.
+// `baseUrl` is the feed's own URL and is only used to resolve relative <link>
+// values (DRAMeXchange publishes "/WeeklyResearch/Post/2/12815.html").
+//
+// Three things here exist because of specific silent failures:
+//  1. Atom support. The Verge is Atom-only; an <item>-only parser returns zero
+//     items for it, which is indistinguishable from "no news today".
+//  2. Relative-link resolution. An unresolvable link made the item get dropped
+//     entirely rather than logged.
+//  3. The " - Publisher" title split is now applied ONLY to news.google.com
+//     links. It used to run on every feed, so a real headline containing " - "
+//     ("Footage of Tibet floods isn't shown in China - and we know little")
+//     got silently truncated at the dash.
+function parseNewsItems(xml, max, baseUrl) {
   const items = [];
-  const blocks = xml.split(/<item>/i).slice(1);
+  if (!xml) return items;
+  const tag = /<item[\s>]/i.test(xml) ? "item" : (/<entry[\s>]/i.test(xml) ? "entry" : null);
+  if (!tag) return items;
+  const blocks = xml.split(new RegExp("<" + tag + "[\\s>]", "i")).slice(1);
   for (const b of blocks) {
     if (items.length >= max) break;
-    const body = b.split(/<\/item>/i)[0];
-    const grab = (tag) => {
-      const m = body.match(new RegExp("<" + tag + "[^>]*>([\\s\\S]*?)<\\/" + tag + ">", "i"));
+    const body = b.split(new RegExp("<\\/" + tag + "\\s*>", "i"))[0];
+    const grab = (t) => {
+      const m = body.match(new RegExp("<" + t + "[^>]*>([\\s\\S]*?)<\\/" + t + ">", "i"));
       if (!m) return "";
       // Unwrap CDATA (BBC/NPR/Ars use it) before stripping tags/entities.
       return htxt(m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1"));
     };
+    // Atom carries the URL in a href attribute rather than as element text.
+    const grabLink = () => {
+      let raw = grab("link");
+      if (!raw) {
+        const m = body.match(/<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["']/i)
+               || body.match(/<link[^>]*href=["']([^"']+)["']/i);
+        raw = m ? htxt(m[1]) : "";
+      }
+      if (!raw) return "";
+      if (/^https?:/i.test(raw)) return raw;
+      if (!baseUrl) return "";                    // relative and nothing to resolve against
+      try { return new URL(raw, baseUrl).toString(); } catch { return ""; }
+    };
     let title = grab("title");
-    const link = grab("link");
-    const date = grab("pubDate");
+    const link = grabLink();
+    const date = grab("pubDate") || grab("published") || grab("updated");
     let src = grab("source");
-    const desc = grab("description").replace(/\s+/g, " ").trim().slice(0, 240);
-    // Google News titles look like "Headline - Source"; split the source out.
-    if (!src && / - [^-]+$/.test(title)) { src = title.replace(/^.*\s-\s([^-]+)$/, "$1").trim(); }
-    title = title.replace(/\s-\s[^-]+$/, "").trim();
+    const desc = (grab("description") || grab("summary") || grab("content"))
+      .replace(/\s+/g, " ").trim().slice(0, 240);
+    if (/news\.google\.com/i.test(link)) {
+      if (!src && / - [^-]+$/.test(title)) src = title.replace(/^.*\s-\s([^-]+)$/, "$1").trim();
+      title = title.replace(/\s-\s[^-]+$/, "").trim();
+    }
     if (title && link) items.push({ title, src: src || "", url: link, date, desc });
   }
   return items;
@@ -897,7 +928,7 @@ async function fetchRSSItems(url, max) {
       const r = await fetchWithTimeout(url, { headers: BTS_UA, cf: { cacheTtl: 300 } }, 15000);
       if (r.ok) {
         const xml = await r.text();
-        return { items: parseNewsItems(xml, max), error: null };
+        return { items: parseNewsItems(xml, max, url), error: null };
       }
       lastErr = "HTTP " + r.status;
       if (r.status !== 503 && r.status !== 429) break; // not transient — don't retry
@@ -1152,59 +1183,94 @@ async function handleTrackersRefresh(url, env, ctx) {
 // ─────────────── TAB BRIEFS (AI "today's brief" per news tab) ───────────────
 // Cached daily digests for the firehose tabs. Same pattern as trackers: fetch
 // fresh headlines, ask Claude for a tight bigpicture + 3-4 bullets, cache in KV.
+// NO GOOGLE NEWS FEEDS HERE — deliberately. As of 2026-08-29, news.google.com
+// returns HTTP 503 with Google's "Sorry..." automated-traffic page to this
+// Worker's egress IP, while the same URL fetched from anywhere else returns a
+// full feed. Verified by proxying a Google News URL through the worker itself
+// (503 + Sorry page) against BBC through the same path (200, 33 items). The
+// code comment at fetchTopicHeadlines already noted 503s from 2026-07-25, so
+// this had been degrading for over a month.
+//
+// It failed silently because parseNewsItems("<html>Sorry...") returns [] and
+// fetchBriefHeadlines swallowed it, so a blocked feed and a quiet news day were
+// indistinguishable. Tech was 2-of-2 Google, so it went fully dark; every other
+// topic limped along on whatever direct feeds it happened to have.
+//
+// Every feed below was verified returning parseable items on 2026-08-29. If you
+// add one, check it actually parses — Atom-only feeds (The Verge) and feeds
+// with relative links (DRAMeXchange) both used to yield zero silently.
 const BRIEFS_CONFIG = [
   { key:"world", title:"World Brief", icon:"🌍", color:"#3b82f6", focus:"the most important international / world news right now",
     feeds:[
       "https://feeds.bbci.co.uk/news/world/rss.xml",
-      "https://news.google.com/rss/search?q=when:1d+site:apnews.com+world+OR+international+OR+europe+OR+asia+OR+africa&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=when:2d+site:reuters.com+world&hl=en-US&gl=US&ceid=US:en",
       "https://www.theguardian.com/world/rss",
-      "https://www.aljazeera.com/xml/rss/all.xml"
+      "https://www.aljazeera.com/xml/rss/all.xml",
+      "https://feeds.npr.org/1004/rss.xml",
+      "https://www.france24.com/en/rss"
     ] },
   { key:"usa", title:"U.S. Brief", icon:"🇺🇸", color:"#b8331a", focus:"the most important U.S. national news right now",
     feeds:[
-      "https://news.google.com/rss/search?q=when:1d+site:apnews.com&hl=en-US&gl=US&ceid=US:en",
       "https://feeds.npr.org/1001/rss.xml",
-      "https://news.google.com/rss/search?q=when:1d+site:reuters.com+politics+OR+economy&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=when:1d+site:nbcnews.com+OR+site:cbsnews.com&hl=en-US&gl=US&ceid=US:en"
+      "https://feeds.npr.org/1003/rss.xml",
+      "https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml",
+      "https://www.cbsnews.com/latest/rss/main",
+      "https://abcnews.go.com/abcnews/usheadlines"
     ] },
-  { key:"tech", title:"Tech Brief", icon:"💻", color:"#7c5cff", focus:"the most important technology news right now",
+  { key:"tech", title:"Tech Brief", icon:"💻", color:"#7c5cff", focus:"the most important technology news right now, with particular weight on PC hardware — new GPU and CPU announcements, launches, specs, benchmarks and reviews (NVIDIA, AMD, Intel, Arm, Apple silicon), and the memory market: DRAM, NAND, VRAM and system RAM pricing and supply. When a story involves what hardware costs or where prices are heading, say the actual numbers and the direction",
     feeds:[
-      "https://news.google.com/rss/search?q=when:2d+site:arstechnica.com&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=when:2d+site:theverge.com&hl=en-US&gl=US&ceid=US:en"
+      "https://arstechnica.com/feed/",
+      "https://www.theverge.com/rss/index.xml",
+      "https://www.tomshardware.com/feeds.xml",
+      "https://www.techpowerup.com/rss/news",
+      "https://www.techpowerup.com/rss/reviews",
+      "https://wccftech.com/feed/",
+      "https://www.phoronix.com/rss.php",
+      "https://www.dramexchange.com/rss.xml",
+      "https://techcrunch.com/feed/"
     ] },
   { key:"military", title:"Defense Brief", icon:"🎖️", color:"#5f6b3a", focus:"the most important defense / military news right now",
     feeds:[
-      "https://news.google.com/rss/search?q=when:2d+site:apnews.com+military+OR+pentagon+OR+army+OR+navy+OR+air+force&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=when:2d+site:reuters.com+military+OR+defense+OR+pentagon+OR+troops&hl=en-US&gl=US&ceid=US:en",
       "https://www.defensenews.com/arc/outboundfeeds/rss/?outputType=xml",
-      "https://breakingdefense.com/feed/"
+      "https://breakingdefense.com/feed/",
+      "https://www.militarytimes.com/arc/outboundfeeds/rss/?outputType=xml",
+      "https://news.usni.org/feed"
     ] },
-  { key:"local", title:"Local Brief", icon:"📍", color:"#3d9e4e", focus:"local news for Clinton Missouri, Henry County, Truman Lake, and west-central Missouri — always lead with the most local stories (statewide policy news belongs in the Missouri Brief, not here)",
+  { key:"local", title:"Local Brief", icon:"📍", color:"#3d9e4e", focus:"news for west-central Missouri — Clinton, Henry County, Truman Lake, Warsaw, Sedalia, Warrensburg and Whiteman AFB first, then the wider Kansas City / mid-Missouri region. Always lead with whatever is geographically closest to Clinton; statewide policy news belongs in the Missouri Brief, not here",
     feeds:[
-      "https://news.google.com/rss/search?q=%22Clinton+Missouri%22+OR+%22Henry+County%22+Missouri+OR+%22Truman+Lake%22&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=%22Benton+County%22+OR+%22St.+Clair+County%22+OR+%22Bates+County%22+Missouri+OR+%22Warsaw%2C+Missouri%22&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=Sedalia+OR+Warrensburg+OR+%22Whiteman+AFB%22+Missouri&hl=en-US&gl=US&ceid=US:en",
       "https://missouriindependent.com/feed/",
-      "https://www.kcur.org/news.rss"
+      "https://www.kcur.org/news.rss",
+      "https://fox4kc.com/feed/",
+      "https://www.kmbc.com/topstories-rss",
+      "https://www.komu.com/search/?f=rss&t=article&c=news"
     ] },
   { key:"mostate", title:"Missouri Brief", icon:"🏛️", color:"#8a6d3a", focus:"statewide Missouri news — state government and the legislature in Jefferson City, courts, economy, agriculture, and stories that affect the whole state, with special attention to anything touching rural west-central Missouri; ALWAYS call out bills the governor signs or vetoes and new laws about to take effect",
     feeds:[
       "https://missouriindependent.com/feed/",
       "https://themissouritimes.com/feed/",
-      "https://news.google.com/rss/search?q=site%3Amissourinet.com&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=Missouri+legislature+OR+%22Missouri+Senate%22+OR+%22Missouri+House%22+OR+Kehoe&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=when:1d+site:stltoday.com&hl=en-US&gl=US&ceid=US:en"
+      "https://www.missourinet.com/feed/",
+      "https://www.stltoday.com/search/?f=rss&t=article&c=news"
     ] }
 ];
 
 // Fetch several feeds, merge and de-dupe by title, newest-ish first.
+// Records a per-feed tally on `out.feedStats` so a feed that has quietly gone
+// to zero is visible in /tabbriefs-refresh output instead of just thinning the
+// pool. Two Google News feeds silently returning 0 is what blacked out the tech
+// brief for 18 days without a single error anywhere.
 async function fetchBriefHeadlines(feeds, max) {
+  const stats = [];
   const lists = await Promise.all((feeds || []).map(u =>
     fetchWithTimeout(u, { headers: BTS_UA, cf: { cacheTtl: 300 } }, 12000)
-      .then(r => r.ok ? r.text() : "")
-      .then(t => parseNewsItems(t, max || 10))
-      .catch(() => []) // a single dead/slow feed shouldn't blank out the whole brief
+      .then(async r => {
+        if (!r.ok) { stats.push({ feed: u, n: 0, err: "HTTP " + r.status }); return []; }
+        const items = parseNewsItems(await r.text(), max || 10, u);
+        stats.push({ feed: u, n: items.length, err: items.length ? null : "parsed 0 items" });
+        return items;
+      })
+      .catch(err => { // a single dead/slow feed shouldn't blank out the whole brief
+        stats.push({ feed: u, n: 0, err: (err && err.message) || String(err) });
+        return [];
+      })
   ));
   // Round-robin across feeds so one chatty feed doesn't crowd out the rest.
   const seen = new Set(), out = [];
@@ -1223,10 +1289,18 @@ async function fetchBriefHeadlines(feeds, max) {
       added = true;
     }
   }
+  out.feedStats = stats;
   return out;
 }
 
 async function generateBrief(cfg, headlines, anthropicKey, prev) {
+  // Refuse to write a brief with no input. Previously the prompt rendered
+  // "(none)" for the headline list and still handed the model YESTERDAY'S
+  // brief, so it dutifully advanced the story ("day 18 — regulator silence
+  // continues") off a dead feed. Eighteen days of confident, wholly synthetic
+  // copy. An empty pool is a pipeline failure, not a slow news day: throw, and
+  // let processOneBrief leave the last good card in place with its real date.
+  if (!headlines || !headlines.length) throw new Error("no headlines from any feed");
   const today = new Date().toISOString().slice(0, 10);
   const list = headlines.map((h, i) =>
     `[${i}] ${h.title} — ${h.src || "source"}${h.date ? " (" + h.date + ")" : ""}${h.desc ? "\n    " + h.desc : ""}`
@@ -1250,7 +1324,7 @@ Return ONLY JSON (no prose, no markdown):
   "bullets": [ { "text": "<=24 words: the development plus why it matters", "head_id": <integer index into the list> } ],
   "themes": [ "3-6 short lowercase phrases (2-4 words each) naming today's running stories, suitable for matching against headlines" ]
 }
-Give 3-5 bullets. Each head_id must be a valid index. Output valid JSON only.`;
+Give 3-5 bullets. head_id is REQUIRED on every bullet and must be one of the [n] numbers shown above — it is what links the bullet to its article, and a bullet without it renders as a dead end. Output valid JSON only.`;
 
   const res = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -1263,9 +1337,31 @@ Give 3-5 bullets. Each head_id must be a valid index. Output valid JSON only.`;
   const a = txt.indexOf("{"), z = txt.lastIndexOf("}");
   if (a === -1 || z === -1) throw new Error("no JSON in model output");
   const parsed = JSON.parse(txt.slice(a, z + 1));
+  // Resolve each bullet back to its source article. head_id is the intended
+  // path, but the model drops or mis-numbers it often enough that EVERY bullet
+  // on every topic was rendering with url:null and src:"" — i.e. no brief on
+  // the site linked anywhere. Fall back to matching the bullet text against
+  // headline titles on distinctive-word overlap before giving up.
+  const STOP = new Set(("the a an and or of to in on for with at by from as is are was were be been "
+    + "day it its his her their they this that these those after over into new more most now says say "
+    + "said will would could than then but not no other one two three first second").split(" "));
+  const words = s => new Set(String(s || "").toLowerCase().match(/[a-z0-9]{4,}/g) || []);
+  const matchHeadline = (text) => {
+    const bw = words(text);
+    if (!bw.size) return null;
+    let best = null, bestScore = 0;
+    headlines.forEach(h => {
+      const hw = words(h.title + " " + (h.desc || ""));
+      let score = 0;
+      bw.forEach(w => { if (!STOP.has(w) && hw.has(w)) score++; });
+      if (score > bestScore) { bestScore = score; best = h; }
+    });
+    return bestScore >= 2 ? best : null;   // 2+ shared distinctive words
+  };
   const bullets = Array.isArray(parsed.bullets)
     ? parsed.bullets.slice(0, 5).map(b => {
-        const h = headlines[b.head_id];
+        const idx = Number(b.head_id);
+        const h = (Number.isInteger(idx) && headlines[idx]) ? headlines[idx] : matchHeadline(b.text);
         return { text: String(b.text || "").slice(0, 220), url: h ? h.url : null, src: h ? h.src : "" };
       }).filter(b => b.text)
     : [];
@@ -1285,15 +1381,28 @@ async function processOneBrief(cfg, env, force, staggerMs = 0) {
   try {
     if (staggerMs) await sleep(staggerMs);
     const headlines = await fetchBriefHeadlines(cfg.feeds, 32);
+    const stats = headlines.feedStats || [];
+    const dead  = stats.filter(s => !s.n);
+    // Zero headlines means every feed for this topic failed. Bail BEFORE the
+    // hash check: an empty pool hashes to the same value every run, so the old
+    // code took the `changed:false` branch forever and the card's `updated`
+    // date froze — which is why this went 18 days without surfacing anywhere.
+    if (!headlines.length) {
+      return { key: cfg.key, error: "no headlines from any feed", deadFeeds: dead };
+    }
     const newHash = await hashKey(headlines.map(h => h.title).join("|"));
     const prevHash = await env.BILLS_KV.get("briefs:hash:" + cfg.key);
     const existing = await env.BILLS_KV.get("briefs:data:" + cfg.key);
-    if (!force && prevHash === newHash && existing) return { key: cfg.key, changed: false };
+    if (!force && prevHash === newHash && existing) {
+      return { key: cfg.key, changed: false, headlines: headlines.length, deadFeeds: dead };
+    }
     let prev = null; try { prev = existing ? JSON.parse(existing) : null; } catch {}
     const card = await generateBrief(cfg, headlines, env.ANTHROPIC_API_KEY, prev);
     await env.BILLS_KV.put("briefs:data:" + cfg.key, JSON.stringify(card), { expirationTtl: 2 * 365 * 24 * 3600 });
     await env.BILLS_KV.put("briefs:hash:" + cfg.key, newHash);
-    return { key: cfg.key, changed: true };
+    // Surfacing headline count + any dead feed lets the daily watchdog see a
+    // topic thinning out before it hits zero.
+    return { key: cfg.key, changed: true, headlines: headlines.length, deadFeeds: dead };
   } catch (err) {
     return { key: cfg.key, error: err.message };
   }

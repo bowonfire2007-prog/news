@@ -2325,28 +2325,36 @@ const ALERTS_CACHE_TTL_MS  = 5*60*1000;
 // wrong (Aug 2026: 113-116°F highs for Clinton on days 8-10). Used for both the
 // Open-Meteo request and the render bound, so a stale 10-day cache still draws 7.
 const FORECAST_DAYS = 7;
+// Ordered: market indicators first (what tells you what the whole tape is
+// doing), then individual equities by approximate market cap, then crypto.
+// Every symbol here is a Yahoo Finance symbol — that's what fetchQuoteYahoo()
+// hits, and it handles ^INDEX and =F futures forms that the Finnhub-backed
+// /stockquote endpoint does NOT. Don't "clean up" the ^ and =F symbols.
 const DEFAULT_TICKERS = [
-  // ── Major market indices ──
-  "SPY","QQQ","DIA","IWM",
-  // ── Volatility & bonds ──
-  "^VIX","TLT",
+  // ── Broad market ──
+  "SPY","QQQ","DIA","IWM","RSP",
+  // ── Volatility, rates & credit ──
+  "^VIX","^TNX","TLT","HYG",
+  // ── Dollar ──
+  "DX-Y.NYB",
   // ── Commodities & safe havens ──
   "GLD","CL=F","BZ=F",
   // ── Ag futures ──
   "ZC=F","ZS=F","GF=F","LE=F",
-  // ── Tech mega-caps ──
-  "AAPL","MSFT","NVDA","GOOGL","AMD","LRCX","MU","TSM","INTC",
-  // ── Other stocks ──
-  "TSLA","SPCX","WMT","LLY","MMM","GME","AMC",
+  // ── Equities, descending by approximate market cap ──
+  "NVDA","AAPL","GOOGL","MSFT","TSM","TSLA","LLY","MU","WMT","AMD",
+  "INTC","LRCX","MMM","SPCX","SOLV","GME","AMC",
   // ── Crypto ──
   "BTC-USD","XRP-USD"
 ];
-const WATCHLIST_VERSION = 8;
+const WATCHLIST_VERSION = 9;
 const TICKER_DISPLAY = {
   "BZ=F":"BRENT","CL=F":"WTI",
   "BTC-USD":"BITCOIN","XRP-USD":"XRP",
   "GF=F":"FEEDER CATTLE","LE=F":"LIVE CATTLE","ZC=F":"CORN","ZS=F":"SOYBEANS",
-  "^VIX":"VIX","GLD":"GOLD ETF","TLT":"20Y BONDS","IWM":"RUSSELL 2K"
+  "^VIX":"VIX","GLD":"GOLD ETF","TLT":"20Y BONDS","IWM":"RUSSELL 2K",
+  "^TNX":"10Y YIELD","HYG":"HIGH YIELD","RSP":"S&P EQUAL WT","DX-Y.NYB":"DOLLAR INDEX",
+  "SOLV":"SOLVENTUM"
 };
 
 // ── SOURCE TRUST WEIGHTS ──
@@ -4096,8 +4104,27 @@ async function initForecastRadar(){
     const map=L.map(el,{center:[WEATHER_LOCATION.lat,WEATHER_LOCATION.lon],zoom:8,minZoom:4,maxZoom:11});
     FC_RADAR_MAP=map;
     map.attributionControl.setPrefix(false);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/"+(dark?"dark_all":"light_all")+"/{z}/{x}/{y}{r}.png",
-      {attribution:"&copy; OSM &copy; CARTO &copy; RainViewer", maxZoom:11}).addTo(map);
+    // Basemap: Esri Canvas. Was CARTO's free CDN until Aug 2026, when they began
+    // requiring an API key WITHOUT starting to return errors — keyless requests
+    // still 200 with a valid PNG that has "API KEY REQUIRED" stamped across it,
+    // so Leaflet saw a successful tile load and nothing surfaced. Same silent-
+    // garbage failure shape as the water-temp bug. Esri needs no key.
+    // NOTE: Esri's tile path is {z}/{y}/{x} — y BEFORE x, unlike every other
+    // provider here. Swapping them yields tiles that load fine but show the
+    // wrong place, which is exactly the kind of bug that hides for months.
+    const esri=dark?"World_Dark_Gray":"World_Light_Gray";
+    const esriBase="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/";
+    // Labels ride in their own pane above the radar tiles so town names stay
+    // readable through precipitation, and survive the radar/satellite rebuild
+    // in buildLayers(). zIndex 350: over tilePane (200), under overlayPane (400)
+    // so the red location dot still sits on top.
+    map.createPane("radarLabels");
+    map.getPane("radarLabels").style.zIndex=350;
+    map.getPane("radarLabels").style.pointerEvents="none";
+    L.tileLayer(esriBase+esri+"_Base/MapServer/tile/{z}/{y}/{x}",
+      {attribution:"Tiles &copy; Esri &copy; RainViewer", maxZoom:11}).addTo(map);
+    L.tileLayer(esriBase+esri+"_Reference/MapServer/tile/{z}/{y}/{x}",
+      {pane:"radarLabels", maxZoom:11}).addTo(map);
     L.circleMarker([WEATHER_LOCATION.lat,WEATHER_LOCATION.lon],{radius:5,color:"#b8331a",weight:2,fillColor:"#b8331a",fillOpacity:.55}).addTo(map);
     const lbl=document.getElementById("fcRadarTime"), slider=document.getElementById("fcRadarSlider"), btn=document.getElementById("fcRadarPlay"), layerBtn=document.getElementById("fcRadarLayer");
     let mode="radar", frames=[], layers=[], idx=0;
@@ -4283,8 +4310,22 @@ function renderWeather(data, lake) {
   const entry=WEATHER_CODE_MAP[c.weather_code]||["—","🌡️"];
   const temp=Math.round(c.temperature_2m), feels=Math.round(c.apparent_temperature);
   const todayIdx = findTodayIndex(d.time, WEATHER_LOCATION.tz);
-  const hi=d.temperature_2m_max&&Math.round(d.temperature_2m_max[todayIdx]);
-  const lo=d.temperature_2m_min&&Math.round(d.temperature_2m_min[todayIdx]);
+  // Route today's H/L through forecastDayValues so this strip shows the same
+  // NWS numbers as the Forecast tab. It used to read Open-Meteo directly, which
+  // is why the top of the page could disagree with the 7-day strip below it —
+  // on 2026-08-29 the model said L 65° where NWS said L 73°, an 8° gap on the
+  // single most-looked-at number on the site. ensureNwsDaily() is awaited by
+  // every caller of renderWeather(), so _nwsDaily is populated by the time we
+  // get here; if NWS is ever down, forecastDayValues falls back to the model.
+  const _todayStr = (d.time && d.time[todayIdx]) || "";
+  const _todayFv = forecastDayValues(
+    _todayStr,
+    d.temperature_2m_max && d.temperature_2m_max[todayIdx],
+    d.temperature_2m_min && d.temperature_2m_min[todayIdx],
+    null, null, null
+  );
+  const hi=_todayFv.hi;
+  const lo=_todayFv.lo;
   const wind=Math.round(c.wind_speed_10m), hum=c.relative_humidity_2m;
   const gusts=Number.isFinite(c.wind_gusts_10m)?Math.round(c.wind_gusts_10m):null;
   const windDirText = Number.isFinite(c.wind_direction_10m) ? compassFromDegrees(c.wind_direction_10m)+" " : "";
@@ -9023,7 +9064,13 @@ function getWatchlist() {
   if (!list) list=DEFAULT_TICKERS.slice();
   const savedVersion=parseInt(localStorage.getItem("news.watchlist.version")||"1",10);
   if (savedVersion<WATCHLIST_VERSION) {
-    DEFAULT_TICKERS.forEach(t=>{ if(!list.includes(t)) list.push(t); });
+    // Re-apply the DEFAULT_TICKERS ORDER, not just the missing symbols. The old
+    // migration only appended what was absent, so a saved list kept its original
+    // order forever and any reordering of DEFAULT_TICKERS silently did nothing.
+    // Anything the user added themselves isn't in DEFAULT_TICKERS, so it's kept
+    // and moved to the end rather than dropped.
+    const custom = list.filter(t => !DEFAULT_TICKERS.includes(t));
+    list = DEFAULT_TICKERS.concat(custom);
     try { localStorage.setItem("news.watchlist",JSON.stringify(list)); localStorage.setItem("news.watchlist.version",String(WATCHLIST_VERSION)); } catch {}
   }
   return list;

@@ -2718,6 +2718,25 @@ async function loadBriefs() {
   } catch (_) { /* rail shows a quiet placeholder until briefs seed */ }
 }
 
+// Age of a brief card in whole days. The cards carry a UTC `updated` date;
+// anchoring at noon UTC keeps a Central-time reader from seeing "1 day old"
+// for a brief written this morning.
+function briefAgeDays(updated) {
+  if (!updated) return null;
+  const t = Date.parse(String(updated).slice(0, 10) + "T12:00:00Z");
+  if (!Number.isFinite(t)) return null;
+  return Math.max(0, Math.round((Date.now() - t) / 86400000));
+}
+
+// STALENESS GUARD (added 2026-08-30). The tech brief once sat on this rail for
+// 18 days wearing a "Live" badge while its feeds returned nothing — the card
+// was frozen, the model had been advancing an invented storyline off its own
+// previous output, and nothing on screen said so. A card is only "Live" if it
+// was written today or yesterday; past that it says how old it is, in the
+// header and again above the text, so a broken pipeline is visible on day two
+// instead of on day eighteen.
+const BRIEF_STALE_DAYS = 2;
+
 function briefCardHTML(key) {
   const b = BRIEF_DATA && BRIEF_DATA[key];
   const def = { title: ({ world:"World Brief", usa:"U.S. Brief", tech:"Tech Brief", military:"Defense Brief", local:"Local Brief", mostate:"Missouri Brief" })[key] || "Today’s Brief",
@@ -2731,11 +2750,21 @@ function briefCardHTML(key) {
     (x.src ? '<span class="tc-head-src">' + escapeHtml(x.src) + '</span>' : '') +
     '</li>'
   ).join("");
-  return railCardShell({ title:b.title || def.title, icon:b.icon || def.icon, color:b.color || def.color, live:true },
+  const age   = briefAgeDays(b.updated);
+  const stale = age !== null && age >= BRIEF_STALE_DAYS;
+  const staleBanner = stale
+    ? '<div class="tc-note" style="margin:0 0 9px;padding:7px 9px;border-left:3px solid #c2851a;' +
+      'background:rgba(194,133,26,0.10);border-radius:0 5px 5px 0;font-weight:600">' +
+      '&#9888; Not refreshed in ' + age + ' days &mdash; the feeds behind this brief have stopped ' +
+      'returning stories. Read everything below as of ' + escapeHtml(b.updated) + ', not today.</div>'
+    : '';
+  return railCardShell({ title:b.title || def.title, icon:b.icon || def.icon, color:b.color || def.color, live:!stale },
+    staleBanner +
     (b.bigpicture ? '<div class="tc-status">' + escapeHtml(b.bigpicture) + '</div>' : '') +
     (b.synthesis ? '<div class="tc-note" style="margin:8px 0 2px">' + escapeHtml(b.synthesis) + '</div>' : '') +
     (bullets ? '<ul class="tc-heads" style="border-top:none;padding-top:6px">' + bullets + '</ul>' : '') +
-    (b.updated ? '<div class="tc-srcline">Updated ' + escapeHtml(b.updated) + '</div>' : ''));
+    (b.updated ? '<div class="tc-srcline">Updated ' + escapeHtml(b.updated) +
+       (stale ? ' &middot; ' + age + ' days ago' : (age === 0 ? ' &middot; today' : '')) + '</div>' : ''));
 }
 
 // ── TOPIC WATCH ────────────────────────────────────────────────────────────
@@ -3081,11 +3110,20 @@ function renderRail() {
 function renderTrackers() { return renderRail(); }
 
 // Builds the status-card HTML for a tracker key (live data, falling back to TRACKER_DATA).
+// Trackers move much slower than briefs (quiet niches, plus minAgeDays pinning
+// deliberately holds a card for days), so they get a far looser threshold than
+// BRIEF_STALE_DAYS — but the same principle: after this long the badge stops
+// claiming the card is being tracked and starts saying how old it actually is.
+const TRACKER_STALE_DAYS = 10;
+
 function trackerCardHTML(key) {
   const source = LIVE_TRACKERS || {};
-  const cards = (source[key] && source[key].length) ? source[key] : TRACKER_DATA[key];
+  const isLive = !!(source[key] && source[key].length);
+  const cards = isLive ? source[key] : TRACKER_DATA[key];
   if (!cards || !cards.length) return "";
   return (cards || []).map(c => {
+    const trkAge   = isLive ? briefAgeDays(c.updated) : null;
+    const trkStale = trkAge !== null && trkAge >= TRACKER_STALE_DAYS;
     const steps = (c.steps || []).map(s =>
       '<li class="tc-step ' + (s.state || "todo") + '"><span class="tc-dot"></span>' +
       escapeHtml(s.label) +
@@ -3099,8 +3137,18 @@ function trackerCardHTML(key) {
     return '<div class="track-card" style="--tc:' + escapeHtml(c.color || "var(--sage)") + '">' +
       '<div class="track-card-head"><span class="tc-icon">' + (c.icon || "📌") + '</span>' +
       '<span class="tc-title">' + escapeHtml(c.title || "") + '</span>' +
-      '<span class="tc-live">Tracking</span></div>' +
+      '<span class="tc-live">' + (!isLive ? "Offline copy" : (trkStale ? trkAge + "d old" : "Tracking")) + '</span></div>' +
       '<div class="track-card-body">' +
+        (!isLive
+          ? '<div class="tc-note" style="margin:0 0 9px;padding:7px 9px;border-left:3px solid #8a8f98;' +
+            'background:rgba(138,143,152,0.10);border-radius:0 5px 5px 0">' +
+            'Couldn&rsquo;t reach the tracker service &mdash; showing the built-in copy, which does not update.</div>'
+          : (trkStale
+            ? '<div class="tc-note" style="margin:0 0 9px;padding:7px 9px;border-left:3px solid #c2851a;' +
+              'background:rgba(194,133,26,0.10);border-radius:0 5px 5px 0;font-weight:600">' +
+              '&#9888; No update in ' + trkAge + ' days &mdash; either the topic has gone quiet or its sources ' +
+              'have stopped returning stories.</div>'
+            : '')) +
         (c.status ? '<div class="tc-status">' + escapeHtml(c.status) + '</div>' : '') +
         (c.sub ? '<div class="tc-sub">' + escapeHtml(c.sub) + '</div>' : '') +
         (steps ? '<ul class="tc-steps">' + steps + '</ul>' : '') +

@@ -759,8 +759,12 @@ const TRACKERS_CONFIG = [
     // Google News RSS is unreachable or rate-limited, since that's a single
     // point of failure otherwise. keywords filter a general feed down to
     // on-topic items; null/omitted means take the feed as-is.
+    // Hardened 2026-08-30: was Google News + a single feed, so one bad day at
+    // either end left the card running on one source or none.
     feeds: [
-      { url: "https://www.marijuanamoment.net/feed/", keywords: ["reschedul", "dea", "schedule iii", "schedule 3", "federal"] }
+      { url: "https://www.marijuanamoment.net/feed/", keywords: ["reschedul", "dea", "schedule iii", "schedule 3", "federal"] },
+      { url: "https://mjbizdaily.com/feed/",          keywords: ["reschedul", "dea", "schedule iii", "schedule 3", "federal"] },
+      { url: "https://www.ganjapreneur.com/feed/",    keywords: ["reschedul", "dea", "schedule iii", "schedule 3", "federal"] }
     ]
   },
   {
@@ -772,7 +776,9 @@ const TRACKERS_CONFIG = [
     scaffold: "This card tracks ALL of Missouri's data-center / server-farm buildout AND the solar + battery-storage projects utilities are adding to power them — statewide, not just the marquee names. Draw from the widest set of headlines: new campus announcements, individual utility-scale solar/storage filings, PSC rulings, county zoning/rezoning fights, and moratoria. Use up to 4 step items for the most concrete current projects/decisions (e.g. AWS Project Green, Google New Florence campus, Ameren Callaway solar farm, Audrain/Ralls solar+battery, specific county solar votes). state: done = built/under construction or approved, current = active/just announced, todo = pending review.",
     feeds: [
       { url: "https://missouriindependent.com/feed/", keywords: ["data center", "solar", "battery storage", "ameren", "evergy", "psc", "rezoning", "hyperscale", "server farm"] },
-      { url: "https://www.datacenterdynamics.com/en/rss/", keywords: ["missouri", "ameren", "evergy"] }
+      { url: "https://www.datacenterdynamics.com/en/rss/", keywords: ["missouri", "ameren", "evergy"] },
+      { url: "https://www.utilitydive.com/feeds/news/", keywords: ["missouri", "ameren", "evergy"] },
+      { url: "https://www.missourinet.com/feed/", keywords: ["data center", "solar", "battery", "ameren", "evergy", "psc", "utility"] }
     ]
   },
   {
@@ -784,7 +790,9 @@ const TRACKERS_CONFIG = [
     scaffold: "This card tracks MISSOURI STATE cannabis law and legislation — NOT the federal reschedule. Missouri legalized adult-use cannabis via Amendment 3 (2022); the DHSS Division of Cannabis Regulation oversees licensing. Relevant themes: bills moving through the Missouri General Assembly affecting marijuana or intoxicating hemp / delta-8 (e.g. the 2026 Intoxicating Cannabinoid Control Act / HB 2641), DHSS rule changes, microbusiness license rounds, expungement, lab-testing and product-safety rules, and ballot measures. Use up to 4 step items for the most concrete current bills or rule changes. state: done = enacted/signed/in effect, current = active/moving/just filed, todo = pending/under review or future effective date. Base claims on the headlines or well-established facts; do not invent bill numbers or dates.",
     feeds: [
       { url: "https://www.marijuanamoment.net/feed/", keywords: ["missouri"] },
-      { url: "https://missouriindependent.com/feed/", keywords: ["marijuana", "cannabis", "hemp", "delta-8", "dhss", "cannabinoid"] }
+      { url: "https://missouriindependent.com/feed/", keywords: ["marijuana", "cannabis", "hemp", "delta-8", "dhss", "cannabinoid"] },
+      { url: "https://www.missourinet.com/feed/", keywords: ["marijuana", "cannabis", "hemp", "delta-8", "dhss", "cannabinoid"] },
+      { url: "https://mjbizdaily.com/feed/", keywords: ["missouri"] }
     ]
   },
   {
@@ -820,7 +828,10 @@ const TRACKERS_CONFIG = [
     query:      "quantum computing OR \"quantum processor\" OR \"quantum advantage\" OR \"quantum supremacy\" OR qubit OR \"quantum error correction\" OR \"fault-tolerant quantum\"",
     scaffold:   "Tracks the state of quantum computing. Relevant themes: hardware milestones (qubit counts, error rates, coherence times, logical qubits), quantum advantage / supremacy claims, major investments and lab announcements (Google, IBM, Microsoft, IonQ, Quantinuum, PsiQuantum, AWS), government programs (NIST, NSF, DOE, CHIPS Act quantum initiatives), and real-world applications (chemistry, cryptography, optimization). Use up to 5 step items for the most concrete current milestones or race updates — e.g. fault-tolerant logical qubit demos, chip announcements, or policy milestones. state: done = achieved / deployed, current = actively racing / latest announcement, todo = projected next target. Keep big milestones pinned even if only one headline surfaced; base claims on the headlines or well-established facts.",
     feeds: [
-      { url: "https://thequantuminsider.com/feed/" } // dedicated beat feed, no filter needed
+      { url: "https://thequantuminsider.com/feed/" }, // dedicated beat feed, no filter needed
+      { url: "https://phys.org/rss-feed/physics-news/quantum-physics-news/" },
+      { url: "https://spectrum.ieee.org/feeds/topic/computing.rss", keywords: ["quantum", "qubit"] },
+      { url: "https://www.hpcwire.com/feed/", keywords: ["quantum", "qubit"] }
     ]
   },
   {
@@ -833,7 +844,9 @@ const TRACKERS_CONFIG = [
     scaffold:   "Tracks the frontier of AI and AGI development. Relevant themes: major model releases and capability leaps (GPT, Claude, Gemini, Llama, Grok, etc.), safety research milestones and alignment breakthroughs, government regulation and policy (EU AI Act, US executive orders, congressional hearings, export controls on chips), expert warnings about risk and timelines, and major lab news (OpenAI, Anthropic, Google DeepMind, Meta AI, xAI, Mistral). Use up to 5 step items for the most relevant current developments — e.g. latest flagship model release, key regulatory vote, or a notable safety/risk event. state: done = released / enacted / published, current = latest news / actively debated, todo = announced / pending / next expected. Keep high-impact headlines pinned for context even across days; base claims on the headlines or well-established facts.",
     feeds: [
       { url: "https://arstechnica.com/ai/feed/" },
-      { url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml" }
+      { url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml" },
+      { url: "https://techcrunch.com/category/artificial-intelligence/feed/" },
+      { url: "https://www.technologyreview.com/feed/", keywords: ["ai", "model", "openai", "anthropic", "chip", "agi"] }
     ]
   }
 ];
@@ -852,6 +865,46 @@ const TRACKERS_CONFIG = [
 //     links. It used to run on every feed, so a real headline containing " - "
 //     ("Footage of Tibet floods isn't shown in China - and we know little")
 //     got silently truncated at the dash.
+// Human-readable source name for a headline. Direct RSS feeds (unlike Google
+// News) carry no <source> element, so before this every bullet on every brief
+// and tracker card rendered with a blank byline — you could not tell whether a
+// claim came from Ars Technica or from nowhere. Derive it from the article's
+// own domain: the map covers the feeds actually in use, and the fallback
+// title-cases whatever domain shows up next so a new feed is never blank.
+const SRC_LABELS = {
+  "bbc.co.uk":"BBC", "bbci.co.uk":"BBC", "theguardian.com":"The Guardian",
+  "aljazeera.com":"Al Jazeera", "npr.org":"NPR", "france24.com":"France 24",
+  "cbsnews.com":"CBS News", "abcnews.go.com":"ABC News", "apnews.com":"AP",
+  "reuters.com":"Reuters", "nytimes.com":"NY Times", "washingtonpost.com":"Washington Post",
+  "arstechnica.com":"Ars Technica", "theverge.com":"The Verge",
+  "tomshardware.com":"Tom's Hardware", "techpowerup.com":"TechPowerUp",
+  "wccftech.com":"Wccftech", "phoronix.com":"Phoronix",
+  "dramexchange.com":"DRAMeXchange", "techcrunch.com":"TechCrunch",
+  "defensenews.com":"Defense News", "breakingdefense.com":"Breaking Defense",
+  "militarytimes.com":"Military Times", "usni.org":"USNI News",
+  "missouriindependent.com":"Missouri Independent", "kcur.org":"KCUR",
+  "fox4kc.com":"FOX4 KC", "kmbc.com":"KMBC", "kshb.com":"KSHB 41",
+  "komu.com":"KOMU 8", "columbiamissourian.com":"Columbia Missourian",
+  "themissouritimes.com":"Missouri Times", "missourinet.com":"Missourinet",
+  "stltoday.com":"Post-Dispatch", "marijuanamoment.net":"Marijuana Moment",
+  "datacenterdynamics.com":"DCD", "genengnews.com":"GEN",
+  "outbreaknewstoday.com":"Outbreak News", "statnews.com":"STAT",
+  "thequantuminsider.com":"Quantum Insider"
+};
+function sourceLabel(url) {
+  let host = "";
+  try { host = new URL(url).hostname.toLowerCase().replace(/^www\./, ""); } catch { return ""; }
+  if (/news\.google\.com$/.test(host)) return "";   // handled by the title-suffix split
+  if (SRC_LABELS[host]) return SRC_LABELS[host];
+  const parts = host.split(".");
+  for (let i = 0; i < parts.length - 1; i++) {
+    const cand = parts.slice(i).join(".");
+    if (SRC_LABELS[cand]) return SRC_LABELS[cand];
+  }
+  const base = parts.length > 2 ? parts[parts.length - 2] : parts[0];
+  return base ? base.charAt(0).toUpperCase() + base.slice(1) : "";
+}
+
 function parseNewsItems(xml, max, baseUrl) {
   const items = [];
   if (!xml) return items;
@@ -890,7 +943,7 @@ function parseNewsItems(xml, max, baseUrl) {
       if (!src && / - [^-]+$/.test(title)) src = title.replace(/^.*\s-\s([^-]+)$/, "$1").trim();
       title = title.replace(/\s-\s[^-]+$/, "").trim();
     }
-    if (title && link) items.push({ title, src: src || "", url: link, date, desc });
+    if (title && link) items.push({ title, src: src || sourceLabel(link), url: link, date, desc });
   }
   return items;
 }
@@ -991,11 +1044,13 @@ async function fetchTopicHeadlines(cfg, max = 8) {
     // (e.g. science/quantum on a slow week) doesn't get its real "freshest
     // available" headlines filtered out, while still catching a feed like
     // cidrap.umn.edu/rss.xml that was serving multi-year-old items.
-    return { items: filterRecent(filterByKeywords(items, src.keywords), 120), error };
+    const kept = filterRecent(filterByKeywords(items, src.keywords), 120);
+    return { items: kept, error, url: src.url, raw: items.length };
   }));
 
   if (fetched.every(f => f.error)) {
-    throw new Error(fetched[0].error || "all sources failed");
+    throw new Error("all sources failed: " +
+      fetched.map(f => shortSource(f.url) + "=" + f.error).join(", "));
   }
 
   // Round-robin merge & de-dupe by title so one chatty source doesn't crowd
@@ -1016,10 +1071,43 @@ async function fetchTopicHeadlines(cfg, max = 8) {
       added = true;
     }
   }
+  // Per-source tally, mirroring fetchBriefHeadlines' feedStats. Google News is
+  // the primary source for every tracker and it 503s this Worker's egress IP
+  // intermittently (it silently blacked out the tech brief for 18 days). Before
+  // this, a tracker quietly running on one surviving fallback feed looked
+  // identical to a healthy one. `raw` is pre-keyword-filter, so "raw 40, kept 0"
+  // (feed alive, filter too narrow) reads differently from "raw 0" (feed dead).
+  out.sourceStats = fetched.map(f => ({
+    src: shortSource(f.url), kept: f.items.length, raw: f.raw, err: f.error || null
+  }));
+  out.newestAgeDays = newestAgeDays(out);
   return out;
 }
 
+// Short label for a source URL, for diagnostics only.
+function shortSource(u) {
+  if (/news\.google\.com/.test(u)) return "google-news";
+  try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u.slice(0, 40); }
+}
+
+// Age in days of the most recent item in a list. A tracker can pass every
+// health check and still be built entirely out of 3-month-old items (the
+// 120-day filterRecent window is deliberately generous for quiet niches), so
+// this is what tells you the difference between "quiet topic" and "stalled".
+function newestAgeDays(items) {
+  let newest = null;
+  for (const it of items || []) {
+    const t = it.date ? Date.parse(it.date) : NaN;
+    if (!Number.isNaN(t) && (newest === null || t > newest)) newest = t;
+  }
+  return newest === null ? null : Math.round((Date.now() - newest) / 86400000);
+}
+
 async function generateTrackerCard(cfg, headlines, anthropicKey) {
+  // Never write a card off an empty pool. generateBrief learned this the
+  // expensive way: handed no headlines and a scaffold, the model will happily
+  // produce a confident, entirely invented status card.
+  if (!headlines || !headlines.length) throw new Error("no headlines from any source");
   const today = new Date().toISOString().slice(0, 10);
   const list = headlines.map((h, i) =>
     `[${i}] ${h.title} — ${h.src || "source"}${h.date ? " (" + h.date + ")" : ""}`).join("\n");
@@ -1114,13 +1202,18 @@ async function processOneTracker(cfg, env, force, staggerMs = 0) {
     }
 
     const headlines = await fetchTopicHeadlines(cfg, 8);
+    const stats = headlines.sourceStats || [];
+    const dead  = stats.filter(x => x.err || !x.kept);
 
     // A genuinely empty result (every source reachable but nothing recent to
     // report — normal for a quiet niche topic) should not blank out or
     // regenerate an existing card; just leave it as-is and let it get picked
-    // up again on a later run once there's something to say.
-    if (headlines.length === 0 && existingRaw) {
-      return { key: cfg.key, changed: false, note: "no recent headlines from any source" };
+    // up again on a later run once there's something to say. With no existing
+    // card there is nothing to preserve either — but generating one from zero
+    // headlines means inventing it, so that path now reports an error instead.
+    if (headlines.length === 0) {
+      return { key: cfg.key, changed: false, error: existingRaw ? null : "no headlines and no cached card",
+               note: "no recent headlines from any source", deadSources: dead };
     }
 
     const fingerprint = headlines.map(h => h.title).join("|");
@@ -1129,14 +1222,17 @@ async function processOneTracker(cfg, env, force, staggerMs = 0) {
 
     // No new headlines and not forced → keep what we have (saves an API call).
     if (!force && prevHash === newHash && existingRaw) {
-      return { key: cfg.key, changed: false };
+      return { key: cfg.key, changed: false, sources: stats.length - dead.length,
+               deadSources: dead, newestAgeDays: headlines.newestAgeDays };
     }
 
     const card = await generateTrackerCard(cfg, headlines, env.ANTHROPIC_API_KEY);
     await env.BILLS_KV.put("trackers:data:" + cfg.key, JSON.stringify(card),
       { expirationTtl: 2 * 365 * 24 * 3600 });
     await env.BILLS_KV.put("trackers:hash:" + cfg.key, newHash);
-    return { key: cfg.key, changed: true, status: card.status };
+    return { key: cfg.key, changed: true, status: card.status, headlines: headlines.length,
+             sources: stats.length - dead.length, deadSources: dead,
+             newestAgeDays: headlines.newestAgeDays };
   } catch (err) {
     return { key: cfg.key, error: err.message };
   }
@@ -1240,7 +1336,10 @@ const BRIEFS_CONFIG = [
       "https://missouriindependent.com/feed/",
       "https://www.kcur.org/news.rss",
       "https://fox4kc.com/feed/",
-      "https://www.kmbc.com/topstories-rss",
+      // KMBC replaced 2026-08-30: it answers HTTP 451 to this Worker's egress IP
+      // (fine from a browser, blocked here) and had been contributing zero.
+      "https://www.kshb.com/news.rss",
+      "https://www.columbiamissourian.com/search/?f=rss&t=article&c=news&l=50&s=start_time&sd=desc",
       "https://www.komu.com/search/?f=rss&t=article&c=news"
     ] },
   { key:"mostate", title:"Missouri Brief", icon:"🏛️", color:"#8a6d3a", focus:"statewide Missouri news — state government and the legislature in Jefferson City, courts, economy, agriculture, and stories that affect the whole state, with special attention to anything touching rural west-central Missouri; ALWAYS call out bills the governor signs or vetoes and new laws about to take effect",
@@ -1408,6 +1507,29 @@ async function processOneBrief(cfg, env, force, staggerMs = 0) {
   }
 }
 
+// Second-chance run. The briefs cron fires once a day; if every feed for a
+// topic happens to be down in that one minute, processOneBrief correctly
+// declines to invent a card — and the tab then shows yesterday's until the
+// next morning. This runs on the existing 01:00 UTC cron and regenerates ONLY
+// topics whose stored card is already 2+ days old, i.e. the ones that actually
+// failed. On a normal night every card is 1 day old and this does nothing and
+// costs nothing (no Claude call, no KV write).
+async function runBriefsRepair(env, ctx) {
+  if (!env.BILLS_KV || !env.ANTHROPIC_API_KEY) return { error: "not configured" };
+  const today = Date.parse(new Date().toISOString().slice(0, 10) + "T12:00:00Z");
+  const needed = [];
+  for (const cfg of BRIEFS_CONFIG) {
+    let updated = null;
+    try { updated = JSON.parse(await env.BILLS_KV.get("briefs:data:" + cfg.key) || "null")?.updated; } catch {}
+    const ageDays = updated ? Math.round((today - Date.parse(updated + "T12:00:00Z")) / 86400000) : 99;
+    if (ageDays >= 2) needed.push(cfg);
+  }
+  if (!needed.length) return { repaired: [], note: "all briefs current" };
+  const settled = await Promise.allSettled(needed.map((cfg, i) => processOneBrief(cfg, env, false, i * 400)));
+  return { repaired: settled.map((r, i) =>
+    r.status === "fulfilled" ? r.value : { key: needed[i].key, error: String(r.reason) }), ran_at: new Date().toISOString() };
+}
+
 async function runBriefsScheduled(env, ctx, force = false) {
   if (!env.BILLS_KV) return { error: "BILLS_KV not bound" };
   if (!env.ANTHROPIC_API_KEY) return { error: "ANTHROPIC_API_KEY not set" };
@@ -1500,6 +1622,7 @@ export default {
     if (url.pathname === "/trackers-refresh") return handleTrackersRefresh(url, env, ctx);
     if (url.pathname === "/tabbriefs")              return handleBriefs(url, env);
     if (url.pathname === "/tabbriefs-refresh")      return handleBriefsRefresh(url, env, ctx);
+    if (url.pathname === "/tabbriefs-repair")       return jsonResponse(await runBriefsRepair(env, ctx));
     if (url.pathname === "/wx-forecast")            return handleTomorrowForecast(url, env, ctx);
     if (url.pathname === "/reps")                   return handleReps(env);
     if (url.pathname === "/reps-refresh")           return handleRepsRefresh(env);
@@ -1531,6 +1654,7 @@ export default {
     if (cron === "0 13 * * *") ctx.waitUntil(runTrackersScheduled(env, ctx));
     if (cron === "0 13 * * *") ctx.waitUntil(runBriefsScheduled(env, ctx));
     if (cron === "0 13 * * *") ctx.waitUntil(runMissouriIfStale(env, ctx));
+    if (cron === "0 1 * * *")  ctx.waitUntil(runBriefsRepair(env, ctx));
   }
 };
 

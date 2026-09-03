@@ -305,12 +305,59 @@ Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY 
   }
 }
 
-async function runMissouriScheduled(env, ctx) {
+// ── CRON HEARTBEAT + LAST-RUN LEDGER ────────────────────────────────────────
+// Added Sep 2026 after the 2026-08-31 report failed to auto-populate despite
+// FOUR scheduled chances (Mon 18:00, Tue 13:00 self-heal, Tue 18:00, Wed 13:00
+// self-heal) while a manual /weeklyrefresh saved it on the first attempt in
+// seconds. Externally the code was provably fine — what could NOT be answered
+// from outside was "did Cloudflare actually invoke scheduled(), and with what
+// cron string?". These two KV records make that answerable from one URL:
+//
+//   GET /cron-status
+//
+// which shows (a) every scheduled() invocation with its cron string and which
+// jobs it dispatched — an unrecognized string (stale trigger list deployed in
+// Cloudflare) shows up as jobs: [] with recognized: false, which is exactly
+// the silent failure mode the wrangler.toml comment warns about — and (b) the
+// weekly pipeline's last run outcome, plus current staleness.
+const CRON_EVENTS_KEY = "cron:events";
+const CRON_KNOWN = ["0 21 * * 5", "0 18 * * 1", "0 18 * * 2", "0 13 * * *", "0 1 * * *"];
+
+async function recordCronEvent(env, cron, jobs) {
+  try {
+    if (!env.WEEKLY_KV) return;
+    const raw = await env.WEEKLY_KV.get(CRON_EVENTS_KEY);
+    const events = raw ? JSON.parse(raw) : [];
+    events.push({ at: new Date().toISOString(), cron, jobs, recognized: CRON_KNOWN.includes(cron) });
+    while (events.length > 40) events.shift();
+    await env.WEEKLY_KV.put(CRON_EVENTS_KEY, JSON.stringify(events), { expirationTtl: 90 * 24 * 3600 });
+  } catch (err) {
+    console.warn("[cron-heartbeat] write failed: " + String(err));
+  }
+}
+
+// One small record of the weekly pull's most recent terminal outcome — written
+// at every exit of runMissouriScheduled and by /weeklyrefresh, so /cron-status
+// can say "last attempt was <when>, via <cron|self-heal|manual>, and it
+// <saved X | was up to date | found nothing | errored>".
+async function moRecordLastRun(env, summary) {
+  try {
+    if (!env.WEEKLY_KV) return;
+    await env.WEEKLY_KV.put("weekly:last_run",
+      JSON.stringify({ at: new Date().toISOString(), ...summary }),
+      { expirationTtl: 90 * 24 * 3600 });
+  } catch (err) {
+    console.warn("[mo-weekly] last_run write failed: " + String(err));
+  }
+}
+
+async function runMissouriScheduled(env, ctx, via = "cron") {
   const CLOG = "[mo-weekly cron] ";
   const tRun = Date.now();
   try {
     if (!env.ANTHROPIC_API_KEY || !env.WEEKLY_KV) {
       console.error(CLOG + "aborted — missing " + (!env.ANTHROPIC_API_KEY ? "ANTHROPIC_API_KEY" : "WEEKLY_KV"));
+      await moRecordLastRun(env, { via, outcome: "aborted-missing-config" });
       return;
     }
 
@@ -324,6 +371,7 @@ async function runMissouriScheduled(env, ctx) {
     const wantDate = mostRecentMondayISO();
     if (knownDates.has(wantDate)) {
       console.log(CLOG + "up to date — already hold " + wantDate + ", nothing to fetch");
+      await moRecordLastRun(env, { via, outcome: "up-to-date", want: wantDate });
       return;
     }
 
@@ -352,6 +400,7 @@ async function runMissouriScheduled(env, ctx) {
       // it as success would stop the walk before reaching the current report.
       if (savedDate === wantDate) {
         console.log(CLOG + "done — saved " + savedDate + " from " + pdfUrl + " in " + (Date.now() - tRun) + "ms");
+        await moRecordLastRun(env, { via, outcome: "saved", saved: savedDate, url: pdfUrl });
         return;
       }
       if (savedDate && !knownDates.has(savedDate)) {
@@ -364,8 +413,10 @@ async function runMissouriScheduled(env, ctx) {
     // Reaching here means MDA genuinely has not posted wantDate yet. That is a
     // normal Monday-morning outcome; the Tuesday backup cron will retry.
     console.warn(CLOG + "NO NEW REPORT SAVED — wanted " + wantDate + ", " + urls.length + " candidate(s), " + attempted + " attempted, " + (Date.now() - tRun) + "ms");
+    await moRecordLastRun(env, { via, outcome: "no-new-report", want: wantDate, candidates: urls.length, attempted });
   } catch (err) {
     console.error(CLOG + "threw after " + (Date.now() - tRun) + "ms: " + (err && err.stack ? err.stack : String(err)));
+    await moRecordLastRun(env, { via, outcome: "error", error: String(err).slice(0, 300) });
   }
 }
 
@@ -397,18 +448,18 @@ async function runMissouriIfStale(env, ctx) {
     const index = indexRaw ? JSON.parse(indexRaw) : [];
     if (!index.length) {
       console.warn(CLOG + "index empty — running full pull");
-      return runMissouriScheduled(env, ctx);
+      return runMissouriScheduled(env, ctx, "self-heal");
     }
     const newest = index[index.length - 1];
     const newestMs = Date.parse(newest + "T00:00:00Z");
     if (!Number.isFinite(newestMs)) {
       console.warn(CLOG + "unparseable newest index entry " + JSON.stringify(newest) + " — running full pull");
-      return runMissouriScheduled(env, ctx);
+      return runMissouriScheduled(env, ctx, "self-heal");
     }
     const ageDays = (Date.now() - newestMs) / 86400000;
     if (ageDays > MO_STALE_AFTER_DAYS) {
       console.warn(CLOG + "newest report " + newest + " is " + ageDays.toFixed(1) + " days old (>" + MO_STALE_AFTER_DAYS + ") — pulling");
-      return runMissouriScheduled(env, ctx);
+      return runMissouriScheduled(env, ctx, "self-heal");
     }
     console.log(CLOG + "ok — newest " + newest + " is " + ageDays.toFixed(1) + " days old");
   } catch (err) {
@@ -481,6 +532,11 @@ async function handleWeeklyRefresh(request, env, ctx) {
       tried.push({ url: pdfUrl, urlDate, action: "fetch-or-parse-failed" });
     }
   }
+  await moRecordLastRun(env, {
+    via: "manual",
+    outcome: saved ? "saved" : "no-new-report",
+    want: wantDate, saved, candidates: urls.length, attempted
+  });
   return jsonResponse({
     saved,
     want_date: wantDate,
@@ -491,6 +547,38 @@ async function handleWeeklyRefresh(request, env, ctx) {
     already_known_dates: index.length,
     attempts: tried
   }, 200);
+}
+
+// ── /cron-status — one-URL answer to "why didn't the weekly report pull?" ───
+// Read-only. Shows every recent scheduled() invocation (newest first), the
+// weekly pipeline's last terminal outcome, and how stale the newest report is.
+// How to read it next Monday evening:
+//   • No event with cron "0 18 * * 1" today  → Cloudflare never fired the
+//     trigger. Fix: run push.bat (wrangler deploy re-syncs [triggers]), then
+//     verify the list in the dashboard under Workers → rss-proxy → Settings.
+//   • Event present but recognized: false    → the DEPLOYED trigger list uses
+//     a string scheduled() doesn't match (e.g. old "0 15 * * 1"). Same fix.
+//   • Event present, jobs include mo-weekly, but weekly_last_run says
+//     "no-new-report"                        → worker ran fine; MDA hadn't
+//     posted yet. The Tue/daily self-heal will retry; nothing to fix.
+//   • weekly_last_run outcome "error" or "aborted-missing-config" → the quoted
+//     error is the problem.
+async function handleCronStatus(env) {
+  const out = { now: new Date().toISOString(), expected_crons: CRON_KNOWN };
+  try {
+    out.recent_cron_events = JSON.parse(await env.WEEKLY_KV.get(CRON_EVENTS_KEY) || "[]").reverse();
+  } catch (err) { out.recent_cron_events_error = String(err); }
+  try {
+    out.weekly_last_run = JSON.parse(await env.WEEKLY_KV.get("weekly:last_run") || "null");
+  } catch (err) { out.weekly_last_run_error = String(err); }
+  try {
+    const index = JSON.parse(await env.WEEKLY_KV.get("weekly:index") || "[]");
+    const newest = index.length ? index[index.length - 1] : null;
+    out.weekly_newest = newest;
+    out.weekly_age_days = newest != null ? +(((Date.now() - Date.parse(newest + "T00:00:00Z")) / 86400000).toFixed(1)) : null;
+    out.weekly_want = mostRecentMondayISO();
+  } catch (err) { out.weekly_index_error = String(err); }
+  return jsonResponse(out, 200);
 }
 
 
@@ -1601,6 +1689,11 @@ export default {
       // Returns JSON listing every URL the worker tried + what date got saved.
       return handleWeeklyRefresh(request, env, ctx);
     }
+    if (url.pathname === "/cron-status") {
+      // Read-only diagnostics: did the crons fire, and what did the weekly
+      // pull do last? See the comment on handleCronStatus for how to read it.
+      return handleCronStatus(env);
+    }
     if (url.pathname === "/watertemp") {
       return handleWaterTemp(url, ctx);
     }
@@ -1647,14 +1740,25 @@ export default {
   // MDA the full morning. runMissouriIfStale on the daily cron backstops both.
   async scheduled(event, env, ctx) {
     const cron = event.cron;
-    if (cron === "0 21 * * 5") { ctx.waitUntil(runWheelerScheduled(env, ctx)); ctx.waitUntil(runKingsvilleScheduled(env, ctx)); }
-    if (cron === "0 18 * * 1") ctx.waitUntil(runMissouriScheduled(env, ctx));
-    if (cron === "0 18 * * 2") ctx.waitUntil(runMissouriScheduled(env, ctx));
-    if (cron === "0 13 * * *" || cron === "0 1 * * *") ctx.waitUntil(runBillsScheduled(env, ctx));
-    if (cron === "0 13 * * *") ctx.waitUntil(runTrackersScheduled(env, ctx));
-    if (cron === "0 13 * * *") ctx.waitUntil(runBriefsScheduled(env, ctx));
-    if (cron === "0 13 * * *") ctx.waitUntil(runMissouriIfStale(env, ctx));
-    if (cron === "0 1 * * *")  ctx.waitUntil(runBriefsRepair(env, ctx));
+    // `run` dispatches a job AND records its name, so the heartbeat below can
+    // show exactly what each invocation did. An event whose string matches
+    // nothing records jobs: [] — the "deployed triggers don't match this code"
+    // failure made visible instead of silent.
+    const jobs = [];
+    const run = (name, promise) => { jobs.push(name); ctx.waitUntil(promise); };
+    if (cron === "0 21 * * 5") { run("wheeler", runWheelerScheduled(env, ctx)); run("kingsville", runKingsvilleScheduled(env, ctx)); }
+    if (cron === "0 18 * * 1") run("mo-weekly", runMissouriScheduled(env, ctx));
+    if (cron === "0 18 * * 2") run("mo-weekly", runMissouriScheduled(env, ctx));
+    if (cron === "0 13 * * *" || cron === "0 1 * * *") run("bills", runBillsScheduled(env, ctx));
+    if (cron === "0 13 * * *") run("trackers", runTrackersScheduled(env, ctx));
+    if (cron === "0 13 * * *") run("briefs", runBriefsScheduled(env, ctx));
+    // Self-heal now rides BOTH daily crons. The 01:00 UTC trigger is the one
+    // with direct evidence of firing reliably (briefs-repair output is always
+    // current), so even if 13:00/18:00 go missing again, a stale weekly report
+    // gets repaired within a day. On a fresh week it costs one KV read.
+    if (cron === "0 13 * * *" || cron === "0 1 * * *") run("mo-weekly-selfheal", runMissouriIfStale(env, ctx));
+    if (cron === "0 1 * * *")  run("briefs-repair", runBriefsRepair(env, ctx));
+    ctx.waitUntil(recordCronEvent(env, cron, jobs));
   }
 };
 

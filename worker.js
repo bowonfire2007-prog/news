@@ -676,17 +676,38 @@ async function scrapeLegiscanBill(billNumber, year) {
     ? "https://www.senate.mo.gov/BillTracking/Bills/Billinformation?year=" + year + "&billid=" + moM[1]
     : url;
 
-  const changeFingerprint = (status_text || "") + "|" + (last_action_date || "") + "|" + (last_action || "");
+  // ── Plausibility gates (added Sep 2026, watchdog finding) ──────────────────
+  // If LegiScan changes their page layout, every regex above misses and all
+  // fields come back null — which would flow downstream as a "change" with an
+  // empty fingerprint and generate a confident-sounding summary of nothing.
+  // Refuse to return a record that parsed nothing usable: the caller's
+  // per-bill try/catch turns this throw into a visible error instead.
+  if (!title && !status_text && !last_action && !sponsor) {
+    throw new Error("LegiScan parse produced no usable fields for " + billNumber +
+      " — page layout may have changed (fetched " + html.length + " bytes)");
+  }
+  // Drop history rows whose date is implausible for the session year — those
+  // are mis-parse artifacts (e.g. a copyright date caught by the regex), not
+  // legislative actions.
+  const plausibleHistory = history.filter(h => {
+    const y = +h.date.slice(0, 4);
+    return y >= year - 1 && y <= year + 1;
+  });
+  const h0 = plausibleHistory[0] || null;
+  const gated_last_action_date = (h0 && h0.date)   || (actionM ? actionM[1] : null);
+  const gated_last_action      = (h0 && h0.action) || (actionM ? actionM[2].trim() : null);
+
+  const changeFingerprint = (status_text || "") + "|" + (gated_last_action_date || "") + "|" + (gated_last_action || "");
   return {
     legiscan_url: url, mo_senate_url,
     bill_number: String(billNumber || "").toUpperCase().replace(/\s+/g, " ").trim(),
     title: title || null,
     sponsor: sponsor || null,
     status_text: status_text || null,
-    status_date: last_action_date || null,
-    last_action: last_action || null,
-    last_action_date: last_action_date || null,
-    actions: history,
+    status_date: gated_last_action_date || null,
+    last_action: gated_last_action || null,
+    last_action_date: gated_last_action_date || null,
+    actions: plausibleHistory,
     changeFingerprint
   };
 }
@@ -1608,7 +1629,8 @@ async function runBriefsRepair(env, ctx) {
   const needed = [];
   for (const cfg of BRIEFS_CONFIG) {
     let updated = null;
-    try { updated = JSON.parse(await env.BILLS_KV.get("briefs:data:" + cfg.key) || "null")?.updated; } catch {}
+    try { updated = JSON.parse(await env.BILLS_KV.get("briefs:data:" + cfg.key) || "null")?.updated; }
+    catch (err) { console.warn("[briefs] updated-date read failed for " + cfg.key + ": " + String(err)); }
     const ageDays = updated ? Math.round((today - Date.parse(updated + "T12:00:00Z")) / 86400000) : 99;
     if (ageDays >= 2) needed.push(cfg);
   }
@@ -2460,7 +2482,20 @@ const STATIC_REPS = {
 };
 
 async function handleReps(env) {
-  return jsonResponse({ ...STATIC_REPS, cached: false });
+  // STATIC_REPS.fetched_at is a manual "last verified" stamp — there is no
+  // upstream API to auto-refresh from, so a cron can't fix staleness here;
+  // only a human re-checking the list can. What the server CAN do is compute
+  // the age and say so, so the page and the daily watchdog see staleness
+  // without doing date math. Reminder: MO-4 (Alford) is on the Nov 2026
+  // ballot — re-verify and bump fetched_at after that election.
+  const ageDays = Math.round((Date.now() - Date.parse(STATIC_REPS.fetched_at + "T00:00:00Z")) / 86400000);
+  return jsonResponse({
+    ...STATIC_REPS,
+    cached: false,
+    age_days: ageDays,
+    stale: ageDays > 120,
+    stale_note: ageDays > 120 ? "Rep list last verified " + STATIC_REPS.fetched_at + " — re-check officeholders and bump STATIC_REPS.fetched_at" : null
+  });
 }
 
 async function handleRepsRefresh(env) {
@@ -3847,9 +3882,28 @@ async function handleCattlePrice(url, env, ctx) {
 
     let imgBytes;
     try {
-      const ct = imgRes.headers.get("Content-Type") || "";
-      if (ct.includes("png")) mediaType = "image/png";
       imgBytes = await imgRes.arrayBuffer();
+      // Trust the BYTES, not the Content-Type header. Wheeler's Wix CDN serves
+      // GIF scans from URLs and headers that claim JPEG, and the Claude API
+      // rejects a base64 image whose declared media_type doesn't match its
+      // actual bytes ("image/jpeg media type, but the image appears to be a
+      // image/gif" — the recurring /cattleprice 502 of summer 2026). Magic
+      // bytes are unambiguous, so sniff them and declare what we actually hold;
+      // the API accepts image/gif fine as long as we SAY image/gif.
+      const head = new Uint8Array(imgBytes.slice(0, 12));
+      if (head[0] === 0x47 && head[1] === 0x49 && head[2] === 0x46) {
+        mediaType = "image/gif";                                   // "GIF"
+      } else if (head[0] === 0x89 && head[1] === 0x50 && head[2] === 0x4E && head[3] === 0x47) {
+        mediaType = "image/png";                                   // ".PNG"
+      } else if (head[0] === 0xFF && head[1] === 0xD8) {
+        mediaType = "image/jpeg";                                  // JPEG SOI
+      } else if (head[8] === 0x57 && head[9] === 0x45 && head[10] === 0x42 && head[11] === 0x50) {
+        mediaType = "image/webp";                                  // RIFF…"WEBP"
+      } else {
+        // Unrecognized bytes — fall back to the header, minus any parameters.
+        const ct = (imgRes.headers.get("Content-Type") || "").toLowerCase();
+        if (ct.startsWith("image/")) mediaType = ct.split(";")[0].trim();
+      }
     } catch (err) {
       return jsonResponse({ error: "Wheeler image read failed: " + err.message, image_url: imgUrl, fetched_via: fetchedVia }, 502);
     }

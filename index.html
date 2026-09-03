@@ -5090,14 +5090,38 @@ function getSubSeason(month, waterTempF) {
   // check here made a failed water-temp fetch look like 0°F and forced "cold"
   // (Winter / Cold Water) in the middle of July. Require a real number.
   if (typeof waterTempF === "number" && Number.isFinite(waterTempF)) {
-    if (waterTempF < 50) return "cold";
-    if (waterTempF < 58) return "pre-spawn";
-    if (waterTempF < 62) return "pre-spawn-warm";
-    if (waterTempF < 68) return "spawn";
-    if (waterTempF < 73) return "post-spawn";
-    if (waterTempF < 78) return "blue-lockdown";
-    if (waterTempF < 82) return "pre-summer";
-    return "summer";
+    let label;
+    if      (waterTempF < 50) label = "cold";
+    else if (waterTempF < 58) label = "pre-spawn";
+    else if (waterTempF < 62) label = "pre-spawn-warm";
+    else if (waterTempF < 68) label = "spawn";
+    else if (waterTempF < 73) label = "post-spawn";
+    else if (waterTempF < 78) label = "blue-lockdown";
+    else if (waterTempF < 82) label = "pre-summer";
+    else                      label = "summer";
+
+    // ── Cooling-season tiebreak (added Sep 2026) ────────────────────────────
+    // The ladder above is temperature-only, so it can't tell a WARMING 79°F in
+    // June from a COOLING 79°F in September — it used to hand out spring
+    // labels ("pre-summer", "post-spawn") all autumn as the lake cooled back
+    // down through the same boundaries. From August on, remap warming-side
+    // names to what those temperatures mean on the cooling side of the year.
+    // The TEMPERATURE stays authoritative — only the name changes — and a
+    // wildly implausible reading (e.g. 85°F in December) is deliberately left
+    // alone so a broken water-temp parse stays visible instead of being
+    // relabeled into something that looks sane.
+    const m1t = month + 1; // month is 0-indexed from Date.getMonth(); 1–12 here
+    if ((m1t === 8 || m1t === 9) && label === "pre-summer") {
+      label = "summer";               // 78–82°F cooling in Aug–Sep is still summer
+    }
+    if ((m1t === 10 || m1t === 11) &&
+        ["pre-spawn", "pre-spawn-warm", "spawn", "post-spawn", "blue-lockdown", "pre-summer"].includes(label)) {
+      label = "fall";                 // 50–82°F in Oct–Nov is the fall transition
+    }
+    if (m1t === 12 && waterTempF < 62 && label !== "cold") {
+      label = "cold";                 // 50–62°F in Dec is cold water, not pre-spawn
+    }
+    return label;
   }
   // Calendar fallback tuned for Henry County, MO.
   // `month` is 0-indexed from Date.getMonth(): 0=Jan … 11=Dec.
@@ -5429,7 +5453,9 @@ function getRecentRainfallInches(weather, hours) {
     const t = new Date(times[i]).getTime();
     if (!isFinite(t) || t < cutoff || t > nowMs) continue;
     const p = precip[i];
-    if (isFinite(p)) totalMm += p; // open-meteo precip values are mm
+    // typeof check first: isFinite(null) is true, so a missing hour would have
+    // been silently counted as 0 mm. Skipping it entirely is the honest move.
+    if (typeof p === "number" && Number.isFinite(p)) totalMm += p; // open-meteo precip values are mm
   }
   return totalMm / 25.4;
 }

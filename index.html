@@ -5111,8 +5111,13 @@ function getSubSeason(month, waterTempF) {
     // alone so a broken water-temp parse stays visible instead of being
     // relabeled into something that looks sane.
     const m1t = month + 1; // month is 0-indexed from Date.getMonth(); 1–12 here
-    if ((m1t === 8 || m1t === 9) && label === "pre-summer") {
-      label = "summer";               // 78–82°F cooling in Aug–Sep is still summer
+    if ((m1t === 8 || m1t === 9) && (label === "pre-summer" || label === "blue-lockdown")) {
+      // 73–82°F cooling in Aug–Sep is late summer. "blue-lockdown" matters
+      // here: blue cats spawn late May–July, but the temperature-only ladder
+      // was re-triggering the lockdown label (and its "females are in spawning
+      // cavities, trophy window shut" advice) every September as the water
+      // cooled back through 73–78°F — confidently wrong by two months.
+      label = "summer";
     }
     if ((m1t === 10 || m1t === 11) &&
         ["pre-spawn", "pre-spawn-warm", "spawn", "post-spawn", "blue-lockdown", "pre-summer"].includes(label)) {
@@ -7719,6 +7724,19 @@ function nextFixedDates(monthDayList, fromDate) {
   return best;
 }
 
+// USDA/NASS never releases on a weekend, but the approximate day-of-month
+// math above happily lands on one (WASDE "Sat Sep 12", Hogs & Pigs "Sun Sep
+// 27"). Snap Saturday back to Friday and Sunday forward to Monday so the
+// card never shows an impossible release date. Dates are still approximate —
+// the linked release pages are authoritative.
+function snapToWeekday(d) {
+  if (!d) return d;
+  const dow = d.getDay(); // 0=Sun … 6=Sat
+  if (dow === 6) return new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
+  if (dow === 0) return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+  return d;
+}
+
 function fmtReportDate(d) {
   if (!d) return "—";
   return d.toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric", year:"numeric" });
@@ -7732,12 +7750,12 @@ function daysFromToday(d) {
 }
 
 function renderUsdaReportsCard() {
-  const cof    = nextNthWeekday(5, 3);                  // 3rd Friday — Cattle on Feed
-  const cold   = nextDayOfMonth(22);                    // ~22nd — Cold Storage
-  const slaug  = nextDayOfMonth(25);                    // ~25th — Livestock Slaughter monthly
-  const wasde  = nextDayOfMonth(12);                    // ~10th–12th — WASDE (corn/feed)
-  const inv    = nextFixedDates([[1,31],[7,23]]);       // Quarterly Cattle Inventory (NASS)
-  const hp     = nextFixedDates([[3,29],[6,27],[9,27],[12,22]]); // Quarterly Hogs & Pigs
+  const cof    = nextNthWeekday(5, 3);                                  // 3rd Friday — Cattle on Feed (always a Friday)
+  const cold   = snapToWeekday(nextDayOfMonth(22));                     // ~22nd — Cold Storage
+  const slaug  = snapToWeekday(nextDayOfMonth(25));                     // ~25th — Livestock Slaughter monthly
+  const wasde  = snapToWeekday(nextDayOfMonth(12));                     // ~10th–12th — WASDE (corn/feed)
+  const inv    = snapToWeekday(nextFixedDates([[1,31],[7,23]]));        // Quarterly Cattle Inventory (NASS)
+  const hp     = snapToWeekday(nextFixedDates([[3,29],[6,27],[9,27],[12,22]])); // Quarterly Hogs & Pigs
   const reports = [
     { ico:"🐄", name:"Cattle on Feed",      d:cof,   note:"BIGGEST monthly mover for cattle prices. Released 2pm CT.",            url:"https://usda.library.cornell.edu/concern/publications/m326m174z" },
     { ico:"📦", name:"Cold Storage",        d:cold,  note:"Beef in freezer storage — supply pipeline signal.",                    url:"https://usda.library.cornell.edu/concern/publications/pg15bd892" },
@@ -10556,41 +10574,16 @@ function renderNews(items, simple) {
   listEl.appendChild(buildArticle(items[0], true));
   const rest = items.slice(1);
 
-  // Desktop two-column front page: a "What else is happening" rail of the next-top
-  // headlines beside the main full-card stream. Skipped on the Saved view (it expands
-  // briefs by index), on narrow screens, and on short lists.
-  // On tabs that show a right-hand rail, keep the news feed as a single stream so
-  // the page stays two columns (news + rail) instead of three.
-  const hasRail = railModulesFor(activeCat).length > 0;
-  const wide = window.matchMedia("(min-width:900px)").matches;
-  if (!simple && wide && !hasRail && rest.length > 8) {
-    const railCount = Math.min(6, Math.max(4, Math.round(rest.length * 0.15)));
-    const railItems = rest.slice(0, railCount);
-    const mainItems = rest.slice(railCount);
-
-    const grid = document.createElement("div");
-    grid.className = "front-grid";
-
-    const mainCol = document.createElement("div");
-    mainCol.className = "front-main";
-    mainItems.forEach(it => mainCol.appendChild(buildArticle(it, false)));
-
-    const rail = document.createElement("aside");
-    rail.className = "front-rail";
-    const rh = document.createElement("div");
-    rh.className = "rail-head";
-    rh.textContent = "What else is happening";
-    rail.appendChild(rh);
-    railItems.forEach(it => rail.appendChild(buildRailItem(it)));
-
-    grid.appendChild(mainCol);
-    grid.appendChild(rail);
-    listEl.appendChild(grid);
-  } else {
-    const frag = document.createDocumentFragment();
-    rest.forEach(it => frag.appendChild(buildArticle(it, false)));
-    listEl.appendChild(frag);
-  }
+  // REMOVED (Sep 2026, Matt's call): the desktop "What else is happening"
+  // front-rail that used to render here on tabs with no tracker/brief rail
+  // (Philippines, SCS, Ukraine, Iran, Business). It pulled the next 4–6
+  // headlines out of this same list into a side column — duplicated content
+  // that just took up space without adding an AI brief or tracker. All news
+  // tabs now render as a single full-card stream. buildRailItem() and the
+  // .front-grid / .front-rail CSS are left in place in case it comes back.
+  const frag = document.createDocumentFragment();
+  rest.forEach(it => frag.appendChild(buildArticle(it, false)));
+  listEl.appendChild(frag);
 }
 
 // ========== SKELETON ==========

@@ -1638,6 +1638,7 @@ HEADLINES:
 ${list || "(none)"}${prevBlock}
 
 Write like a smart wire editor: concrete and specific, no filler, no hedging boilerplate. Prioritize what is genuinely important over what is merely new. When a story continues from yesterday, say what changed (e.g. "day 3 — talks stalled").
+GROUNDING RULE: every fact, number, name and quote must appear in the headlines/summaries above. If today's headlines don't mention a story from yesterday's brief, do not advance or speculate about it — drop it. Never invent a development to fill a slot; fewer bullets is fine.
 
 Return ONLY JSON (no prose, no markdown):
 {
@@ -1685,7 +1686,12 @@ Give 3-5 bullets. head_id is REQUIRED on every bullet and must be one of the [n]
         const idx = Number(b.head_id);
         const h = (Number.isInteger(idx) && headlines[idx]) ? headlines[idx] : matchHeadline(b.text);
         return { text: String(b.text || "").slice(0, 220), url: h ? h.url : null, src: h ? h.src : "" };
-      }).filter(b => b.text)
+      })
+      // A bullet that resolves to no headline (bad head_id AND no word overlap)
+      // is the model's own claim, not the feeds'. Drop it rather than render
+      // an unsourced line — unless that would leave the card empty.
+      .filter(b => b.text)
+      .filter((b, _, arr) => b.url || !arr.some(o => o.url))
     : [];
   const themes = Array.isArray(parsed.themes)
     ? parsed.themes.slice(0, 8).map(t => String(t || "").trim().slice(0, 60)).filter(Boolean)

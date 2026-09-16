@@ -129,6 +129,14 @@ async function live() {
     } catch (e) { warn(p + ": " + e.message); }
   }
 
+  // Google News → Bing translation (worker rewrites news.google.com search feeds)
+  try {
+    const gn = "https://news.google.com/rss/search?q=%22Truman+Lake%22&hl=en-US&gl=US&ceid=US:en";
+    const r = await get("/?url=" + encodeURIComponent(gn), { headers: { Origin: "https://bowonfire2007-prog.github.io" } });
+    const n = (r.text.match(/<item>/g) || []).length;
+    (r.status === 200 && n > 0 ? ok : warn)("Google News feed via worker → HTTP " + r.status + ", " + n + " items" + (n ? "" : " (translator not deployed, or Bing empty)"));
+  } catch (e) { warn("google→bing probe: " + e.message); }
+
   // Cron heartbeat
   if (ADMIN_KEY) {
     try {

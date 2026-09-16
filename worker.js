@@ -2994,6 +2994,145 @@ ${lines.join("\n")}`;
 }
 
 // ─────────────── RSS PROXY ───────────────
+// ─────────────── GOOGLE NEWS → BING NEWS TRANSLATION (added 2026-09-16) ─────
+// news.google.com/rss blocks datacenter IPs: this Worker gets a "Sorry..."
+// 503 page for every request, and so does rss2json, so ~100 Google News
+// search feeds in index.html were dead. Rather than rewrite all of them,
+// handleRssProxy hands any Google News SEARCH url to this translator, which
+// runs the equivalent search(es) on Bing News RSS and returns a normal RSS
+// 2.0 document the page already knows how to parse.
+//
+// Google query syntax → Bing: quotes and site: pass through; when:Nd becomes
+// a server-side age filter; OR is not supported by Bing, so the query is
+// expanded to up to GN_MAX_QUERIES separate Bing searches (Google precedence:
+// OR binds tighter than the implicit AND, and parentheses group) whose
+// results are merged, de-duplicated and sorted newest-first.
+const GN_MAX_QUERIES = 4;
+const GN_MAX_ITEMS   = 20;
+
+function gnTokenize(q) {
+  const out = []; let i = 0;
+  while (i < q.length) {
+    const c = q[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === "(" || c === ")") { out.push(c); i++; continue; }
+    if (c === '"') { const j = q.indexOf('"', i + 1); const end = j === -1 ? q.length : j; out.push(q.slice(i, end + 1)); i = end + 1; continue; }
+    let j = i; while (j < q.length && !/[\s()]/.test(q[j])) j++;
+    out.push(q.slice(i, j)); i = j;
+  }
+  return out;
+}
+// Parses to DNF: an array of alternatives, each an array of atoms (strings).
+// expr := orterm+   (implicit AND)     orterm := term ("OR" term)*
+// term := "(" expr ")" | atom
+function gnParse(tokens) {
+  let pos = 0;
+  const peek = () => tokens[pos];
+  function term() {
+    const t = tokens[pos];
+    if (t === "(") { pos++; const e = expr(); if (peek() === ")") pos++; return e; }
+    pos++; return [[t]];
+  }
+  function orterm() {
+    let alts = term();
+    while ((peek() || "").toUpperCase() === "OR" && pos + 1 < tokens.length) { pos++; alts = alts.concat(term()); }
+    return alts;
+  }
+  function expr() {
+    let dnf = [[]];
+    while (pos < tokens.length && peek() !== ")") {
+      const alts = orterm();
+      // Enumerate so the FIRST or-group varies fastest: for
+      // ("Kansas City" OR Sedalia OR Warrensburg) (weather OR storm) the
+      // capped query list then covers every town with "weather" instead of
+      // Kansas City with every synonym.
+      const next = [];
+      for (const a of alts) for (const d of dnf) next.push(d.concat(a));
+      dnf = next;
+      if (dnf.length > 64) dnf = dnf.slice(0, 64);   // runaway guard
+    }
+    return dnf;
+  }
+  return expr();
+}
+function gnToBingQueries(q) {
+  let maxAgeDays = null;
+  const cleaned = q.replace(/\bwhen:(\d+)d\b/gi, (_, n) => { maxAgeDays = Math.max(2, parseInt(n, 10) || 0); return ""; })
+                   .replace(/\s+/g, " ").trim();
+  let dnf = gnParse(gnTokenize(cleaned)).map(alt => alt.filter(Boolean));
+  dnf = dnf.filter(a => a.length);
+  if (!dnf.length) return { queries: [], maxAgeDays };
+  // Keep the query count bounded. Alternatives are ordered the way the
+  // author wrote them, so the first ones are the ones they cared most about.
+  const queries = [], seen = new Set();
+  for (const alt of dnf) {
+    const s = alt.join(" ");
+    if (!seen.has(s)) { seen.add(s); queries.push(s); }
+    if (queries.length >= GN_MAX_QUERIES) break;
+  }
+  return { queries, maxAgeDays };
+}
+function gnBingUrl(q) {
+  return "https://www.bing.com/news/search?q=" + encodeURIComponent(q).replace(/%20/g, "+") + "&qft=sortbydate%3d%221%22&format=rss";
+}
+function gnUnescape(s) {
+  return String(s || "").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&");
+}
+function gnEscape(s) {
+  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function gnUnwrapBingLink(link) {
+  try { const u = new URL(link); if (/bing\.com$/i.test(u.hostname) && u.searchParams.get("url")) return u.searchParams.get("url"); } catch {}
+  return link;
+}
+function gnParseBingItems(xml) {
+  const items = [];
+  const re = /<item>([\s\S]*?)<\/item>/g; let m;
+  while ((m = re.exec(xml)) !== null) {
+    const b = m[1];
+    const g = (tag) => { const mm = b.match(new RegExp("<" + tag + "(?:\\s[^>]*)?>([\\s\\S]*?)</" + tag + ">", "i")); return mm ? gnUnescape(mm[1]).trim() : ""; };
+    const title = g("title"), link = gnUnwrapBingLink(g("link"));
+    if (!title || !link) continue;
+    const pub = g("pubDate"); const ts = pub ? Date.parse(pub) : NaN;
+    items.push({ title, link, desc: g("description"), src: g("News:Source") || g("source"), pub, ts: Number.isFinite(ts) ? ts : 0,
+                 img: (b.match(/<News:Image>([^<]+)<\/News:Image>/i) || [])[1] || "" });
+  }
+  return items;
+}
+async function handleGoogleNewsViaBing(target) {
+  const q = target.searchParams.get("q") || "";
+  const { queries, maxAgeDays } = gnToBingQueries(q);
+  if (!queries.length) return new Response("Empty query", { status: 400, headers: CORS_HEADERS });
+  const settled = await Promise.allSettled(queries.map(async (bq) => {
+    const r = await fetchWithTimeout(gnBingUrl(bq), {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; RSSReader/1.0)", "Accept": "application/rss+xml, application/xml, text/xml, */*" },
+      cf: { cacheTtl: 300, cacheEverything: true }
+    }, 12000);
+    if (!r.ok) throw new Error("Bing HTTP " + r.status);
+    return gnParseBingItems(await r.text());
+  }));
+  const seen = new Set(); let items = [];
+  for (const s of settled) if (s.status === "fulfilled") for (const it of s.value) {
+    const k = it.title.toLowerCase().replace(/\W+/g, " ").trim().slice(0, 80);
+    if (seen.has(k)) continue; seen.add(k); items.push(it);
+  }
+  if (maxAgeDays) { const cutoff = Date.now() - maxAgeDays * 86400000; items = items.filter(it => !it.ts || it.ts >= cutoff); }
+  items.sort((a, b) => b.ts - a.ts);
+  items = items.slice(0, GN_MAX_ITEMS);
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>' +
+    "<title>" + gnEscape(q) + " (via Bing News)</title><link>" + gnEscape(target.toString()) + "</link>" +
+    "<description>Google News query answered by Bing News RSS. Searches: " + gnEscape(queries.join(" | ")) + "</description>" +
+    items.map(it => "<item><title>" + gnEscape(it.title) + "</title><link>" + gnEscape(it.link) + "</link>" +
+      (it.pub ? "<pubDate>" + gnEscape(it.pub) + "</pubDate>" : "") +
+      (it.desc ? "<description>" + gnEscape(it.desc) + "</description>" : "") +
+      (it.src ? "<source>" + gnEscape(it.src) + "</source>" : "") +
+      (it.img ? '<enclosure url="' + gnEscape(it.img) + '" type="image/jpeg"/>' : "") +
+      "</item>").join("") +
+    "</channel></rss>";
+  return new Response(xml, { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/rss+xml; charset=utf-8", "Cache-Control": "public, max-age=300", "X-Bing-Queries": String(queries.length) } });
+}
+
 async function handleRssProxy(url) {
   const target = url.searchParams.get("url");
   if (!target || (!target.startsWith("http://") && !target.startsWith("https://"))) {
@@ -3002,6 +3141,13 @@ async function handleRssProxy(url) {
       headers: CORS_HEADERS
     });
   }
+  // Google News search feeds can't be fetched from here (see translator above).
+  try {
+    const t = new URL(target);
+    if (/(^|\.)news\.google\.com$/i.test(t.hostname) && t.pathname.startsWith("/rss/search")) {
+      return await handleGoogleNewsViaBing(t);
+    }
+  } catch {}
   try {
     const res = await fetch(target, {
       headers: {

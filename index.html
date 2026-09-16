@@ -2049,7 +2049,7 @@ const CATEGORIES = [
     { source:"Reuters Military", url:"https://news.google.com/rss/search?q=when:2d+site:reuters.com+military+OR+defense+OR+pentagon+OR+troops&hl=en-US&gl=US&ceid=US:en" },
     // ── Policy & analysis ──
     { source:"Foreign Policy Mil", url:"https://news.google.com/rss/search?q=when:3d+site:foreignpolicy.com+military+OR+defense+OR+troops+OR+war&hl=en-US&gl=US&ceid=US:en" },
-    { source:"RAND Defense", url:"https://news.google.com/rss/search?q=when:7d+site:rand.org+military+OR+defense+OR+nuclear&hl=en-US&gl=US&ceid=US:en" },
+    { source:"RAND Defense", url:"https://www.rand.org/news/press.xml" },
   ]},
   { id:"local", label:"Local (MO)", maxAgeHours:504, feeds:[
     // ─── ULTRALOCAL — Clinton, Henry County, Truman Lake area ───
@@ -2214,9 +2214,9 @@ const CATEGORIES = [
   ]},
   { id:"outdoor", label:"MO Outdoor", isOutdoor:true, maxAgeHours:168, feeds:[
     // ─── OFFICIAL — MDC (no public RSS; Google News site: query is reliable) ───
-    { source:"MDC News", url:"https://news.google.com/rss/search?q=site%3Amdc.mo.gov&hl=en-US&gl=US&ceid=US:en" },
-    { source:"MDC Hunting", url:"https://news.google.com/rss/search?q=site%3Amdc.mo.gov+hunting+OR+deer+OR+turkey+OR+waterfowl&hl=en-US&gl=US&ceid=US:en" },
-    { source:"MDC Fishing", url:"https://news.google.com/rss/search?q=site%3Amdc.mo.gov+fishing+OR+trout+OR+crappie+OR+bass&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MDC News", url:"https://news.google.com/rss/search?q=%22Missouri+Department+of+Conservation%22&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MDC Hunting", url:"https://news.google.com/rss/search?q=%22Missouri+Department+of+Conservation%22+hunting+OR+deer+OR+turkey+OR+waterfowl&hl=en-US&gl=US&ceid=US:en" },
+    { source:"MDC Fishing", url:"https://news.google.com/rss/search?q=%22Missouri+Department+of+Conservation%22+fishing+OR+trout+OR+crappie+OR+bass&hl=en-US&gl=US&ceid=US:en" },
     // ─── OFFICIAL — USACE Kansas City District (DIRECT .mil RSS feeds) ───
     { source:"USACE Truman Lake", url:"https://www.nwk.usace.army.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=426&isdashboardselected=0&max=20&Category=15767" },
     { source:"USACE District Lakes", url:"https://www.nwk.usace.army.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=426&isdashboardselected=0&max=20&Category=9864" },
@@ -2232,7 +2232,7 @@ const CATEGORIES = [
     { source:"MO Conservation Areas", url:"https://news.google.com/rss/search?q=%22Missouri+Department+of+Conservation%22+OR+%22conservation+area%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"MO Public Lands", url:"https://news.google.com/rss/search?q=%22Mark+Twain+National+Forest%22+OR+%22Ozark+National%22+Missouri&hl=en-US&gl=US&ceid=US:en" },
     { source:"CWD Missouri", url:"https://news.google.com/rss/search?q=Missouri+%22chronic+wasting+disease%22+OR+CWD+deer&hl=en-US&gl=US&ceid=US:en" },
-    { source:"Game & Fish MO", url:"https://news.google.com/rss/search?q=site%3Agameandfishmag.com+Missouri&hl=en-US&gl=US&ceid=US:en" },
+    { source:"Game & Fish MO", url:"https://news.google.com/rss/search?q=%22Game+%26+Fish%22+Missouri+fishing+OR+hunting&hl=en-US&gl=US&ceid=US:en" },
     // ─── LAKE OF THE OZARKS — Ameren / Bagnell, NOT USACE ───
     { source:"Lake of the Ozarks Fishing", url:"https://news.google.com/rss/search?q=%22Lake+of+the+Ozarks%22+fishing+OR+boating&hl=en-US&gl=US&ceid=US:en" },
     { source:"Bagnell Dam / Ameren", url:"https://news.google.com/rss/search?q=%22Bagnell+Dam%22+OR+%22Ameren+Missouri%22+%22Lake+of+the+Ozarks%22+release+OR+level+OR+spillway&hl=en-US&gl=US&ceid=US:en" },
@@ -2299,7 +2299,9 @@ function buildStockNewsFeeds(watchlist) {
 }
 
 // Proxies tried in parallel — first response wins
-// cfworker is Matt's own Cloudflare Worker (fast, no rate limits)
+// cfworker is Matt's own Cloudflare Worker (fast, no rate limits). It is also
+// the ONLY proxy used for news.google.com search urls (it rewrites them to
+// Bing News RSS server-side — Google blocks datacenter IPs).
 const CF_WORKER = "https://rss-proxy.bowonfire2007.workers.dev/";
 const PROXIES = [
   { name:"cfworker",   url:u=>CF_WORKER+"?url="+encodeURIComponent(u), parse:"xml" },
@@ -4698,10 +4700,17 @@ async function fetchFeed(feed) {
   if (cached) {
     try { const p=JSON.parse(cached); if(Date.now()-p.ts<CACHE_TTL_MS) return p.items; } catch {}
   }
-  // Race all proxies — resolve on first success, ignore failures
+  // Race all proxies — resolve on first success, ignore failures.
+  // Google News search urls are the exception: news.google.com blocks every
+  // datacenter proxy, so the worker translates them to Bing News (see
+  // worker.js handleGoogleNewsViaBing). Sending them to rss2json too only
+  // returned days-old cache and burned its rate limit for the feeds that
+  // actually need it.
+  const proxies = /^https:\/\/news\.google\.com\/rss\/search/.test(feed.url)
+    ? PROXIES.filter(p => p.name === "cfworker") : PROXIES;
   const items = await new Promise(resolve => {
     let settled = false, failed = 0;
-    PROXIES.forEach(proxy => {
+    proxies.forEach(proxy => {
       fetchViaProxy(proxy, feed)
         .then(result => {
           if (!settled && result.length) {
@@ -4710,13 +4719,13 @@ async function fetchFeed(feed) {
             resolve(result);
           } else if (!settled) {
             failed++;
-            if (failed === PROXIES.length) resolve([]);
+            if (failed === proxies.length) resolve([]);
           }
         })
         .catch(() => {
           if (!settled) {
             failed++;
-            if (failed === PROXIES.length) resolve([]);
+            if (failed === proxies.length) resolve([]);
           }
         });
     });

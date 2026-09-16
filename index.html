@@ -2963,7 +2963,7 @@ const DATA_MODULES = {
     load: () => railFetchJson("/reps"),
     render: (data) => {
       if (!data || !data.groups || !data.groups.length) {
-        return '<div class="rail-err">No data yet — hit <a href="' + CF_WORKER + 'reps-refresh" target="_blank" rel="noopener" style="color:var(--accent)">/reps-refresh</a> once to seed.</div>';
+        return '<div class="rail-err">No data yet — hit <a href="' + CF_WORKER + 'reps-refresh?key=YOURKEY" target="_blank" rel="noopener" style="color:var(--accent)">/reps-refresh?key=…</a> once to seed (admin key required).</div>';
       }
       const LEVEL_ORDER = ["country","administrativeArea1","administrativeArea2","locality","regional","special","other"];
       const LEVEL_EMOJI = { country:"🇺🇸", administrativeArea1:"🏛️", administrativeArea2:"🏡", locality:"🏙️", regional:"📍", special:"📋" };

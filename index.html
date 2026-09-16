@@ -2774,22 +2774,55 @@ function briefCardHTML(key) {
 // To tag a new topic, add one line to its tab:
 //   { label:"Card title", icon:"🗂️", q:'google news search query' }
 // q uses Google News search syntax: quotes for exact phrases, OR between terms.
+// WATCH TOPICS — one pinned "latest coverage" card per entry.
+// 2026-09-16: switched from Google News search RSS to Bing News RSS. Google
+// News blocks datacenter IPs — the Cloudflare Worker gets a "Sorry..." 503 and
+// rss2json can only serve a query it already has cached (a fresh one fails
+// after ~8 s) — so these cards were empty almost every visit. Bing News RSS
+// answers the worker in ~0.4 s and takes qft=sortbydate for newest-first, but
+// it has no OR operator: give each entry a `terms` list, one Bing search per
+// term, merged and de-duplicated. A legacy `q` (Google OR-query) still works
+// if you ever need it, just don't expect it to load.
 const WATCH_TOPICS = {
   usa: [
-    { label:"Epstein Case", icon:"🗂️", q:'"Jeffrey Epstein" OR "Epstein files" OR "Ghislaine Maxwell"' }
+    { label:"Epstein Case", icon:"🗂️", terms:['"Jeffrey Epstein"', '"Ghislaine Maxwell"', '"Epstein files"'] }
   ],
   world: [
-    { label:"South China Sea", icon:"🚢", color:"#2f6fd0", q:'"South China Sea" OR "Scarborough Shoal" OR "Second Thomas Shoal" OR "Spratly Islands"' }
+    { label:"South China Sea", icon:"🚢", color:"#2f6fd0", terms:['"South China Sea"', '"Scarborough Shoal"', '"Second Thomas Shoal"'] }
   ],
   local: [
-    { label:"New MO Laws", icon:"⚖️", color:"#8a6d3a", q:'"signed into law" Missouri OR "Kehoe signs"' },
+    { label:"New MO Laws", icon:"⚖️", color:"#8a6d3a", terms:['"signed into law" Missouri', '"Kehoe signs"', 'Missouri "new law"'] },
     // Clinton / Henry County delegation as of mid-2026: Alford = US House MO-4,
     // Hawley + Schmitt = US Senate, Crawford = MO Senate 28 (term-limited 2026),
     // Reedy = MO House 57. Update names after elections.
-    { label:"Reps in the News", icon:"🗳️", color:"#5f6b8a", q:'"Mark Alford" OR "Josh Hawley" OR "Eric Schmitt" OR "Mike Kehoe" OR "Jim Kalberloh" OR "Sandy Crawford" OR "Carla Moberly" OR "Aaron Brown" OR "Jim Hampton"' },
-    { label:"Official Statements", icon:"📢", color:"#5f6b8a", q:'("Mark Alford" OR "Josh Hawley" OR "Eric Schmitt" OR "Mike Kehoe" OR "Sandy Crawford") (statement OR "press release" OR announces OR introduced OR "voted" OR "signed" OR "bill" OR "legislation")' }
+    { label:"Reps in the News", icon:"🗳️", color:"#5f6b8a", terms:['"Mark Alford"', '"Josh Hawley"', '"Eric Schmitt"', '"Mike Kehoe"', '"Jim Kalberloh"', '"Sandy Crawford"', '"Carla Moberly"', '"Aaron Brown" Missouri', '"Jim Hampton" Missouri'] },
+    { label:"Official Statements", icon:"📢", color:"#5f6b8a", terms:['"Mark Alford" statement', '"Josh Hawley" bill', '"Eric Schmitt" bill', '"Mike Kehoe" signs', '"Sandy Crawford" Missouri'] }
   ]
 };
+
+function watchFeedUrls(t) {
+  if (Array.isArray(t.terms) && t.terms.length) {
+    return t.terms.map(term => "https://www.bing.com/news/search?q=" +
+      encodeURIComponent(term).replace(/%20/g, "+") + "&qft=sortbydate%3d%221%22&format=rss");
+  }
+  // Google's RSS endpoint 503s on %20-encoded queries via the proxy — use +
+  // for spaces like every other feed URL on the site.
+  return ["https://news.google.com/rss/search?q=" + encodeURIComponent(t.q || "").replace(/%20/g, "+") + "&hl=en-US&gl=US&ceid=US:en"];
+}
+
+// Bing wraps every link in a tracking redirect (bing.com/news/apiclick.aspx?
+// ...&url=<real url>). Unwrap it so the reader lands on the article, and so
+// the byline can show the real publisher's domain.
+function unwrapBingLink(link) {
+  try {
+    const u = new URL(link);
+    if (/bing\.com$/i.test(u.hostname) && u.searchParams.get("url")) return u.searchParams.get("url");
+  } catch {}
+  return link;
+}
+function domainLabel(link) {
+  try { return new URL(link).hostname.replace(/^www\./, ""); } catch { return ""; }
+}
 
 async function renderWatchCards(slot) {
   const topics = WATCH_TOPICS[activeCat] || [];
@@ -2797,11 +2830,13 @@ async function renderWatchCards(slot) {
   const shell = (t, body) => railCardShell({ title:t.label, icon:t.icon || "🏷️", color:t.color || "#8a6da3" }, body);
   slot.innerHTML = topics.map(t => shell(t, '<div class="rail-loading"><span class="spinner"></span>Loading…</div>')).join("");
   const one = async (t) => {
-    // Google's RSS endpoint 503s on %20-encoded queries via the proxy — use +
-    // for spaces like every other feed URL on the site.
-    const url = "https://news.google.com/rss/search?q=" + encodeURIComponent(t.q).replace(/%20/g, "+") + "&hl=en-US&gl=US&ceid=US:en";
     try {
-      const items = (await fetchFeed({ source:t.label, url })).slice()
+      const urls = watchFeedUrls(t);
+      const lists = await Promise.all(urls.map(url => fetchFeed({ source:t.label, url }).catch(() => [])));
+      const seen = new Set();
+      const items = lists.flat()
+        .map(it => ({ ...it, link: unwrapBingLink(it.link) }))
+        .filter(it => { const k = (it.title || "").toLowerCase().replace(/\W+/g, " ").trim().slice(0, 80); if (!k || seen.has(k)) return false; seen.add(k); return true; })
         .sort((a, b) => (b.pubDate || 0) - (a.pubDate || 0)).slice(0, 4);
       if (!items.length) throw new Error("empty");
       const seenKey = "watch.seen." + t.label;
@@ -2809,9 +2844,11 @@ async function renderWatchCards(slot) {
       try { localStorage.setItem(seenKey, String(Math.max(lastSeen, items[0].pubDate || 0))); } catch {}
       const rows = items.map(it => {
         // Google News titles end in " - Source"; split it out for the byline.
+        // Bing titles don't, so fall back to the article's domain.
         let title = it.title, src = "";
         const m = title.match(/^(.*)\s-\s([^-]+)$/);
         if (m) { title = m[1].trim(); src = m[2].trim(); }
+        if (!src) src = domainLabel(it.link);
         return '<li class="tc-head"><a href="' + encodeURI(it.link) + '" target="_blank" rel="noopener">' +
           ((it.pubDate || 0) > lastSeen && lastSeen > 0 ? '<span style="color:var(--accent);font-weight:800">● </span>' : '') +
           escapeHtml(title) + '</a>' +

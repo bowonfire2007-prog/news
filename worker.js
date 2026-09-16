@@ -4472,7 +4472,7 @@ async function handleUsdaCattle(env, ctx, barn, pdfUrl) {
 //
 // One-time setup (run these in your terminal):
 //   wrangler kv namespace create WEEKLY_KV          ← creates the namespace, prints the id
-//   wrangler secret put UPLOAD_PIN                  ← set any PIN you want (e.g. "cattle25")
+//   wrangler secret put UPLOAD_PIN                  ← set any PIN you want (required)
 //   Then paste the id into wrangler.toml and run: wrangler deploy
 
 async function handleWeeklyUpload(request, env, ctx) {
@@ -4484,8 +4484,10 @@ async function handleWeeklyUpload(request, env, ctx) {
   try { body = await request.json(); }
   catch { return jsonResponse({ error: "Invalid JSON body" }, 400); }
 
-  // PIN gate so only you can push data
-  const expectedPin = env.UPLOAD_PIN || "cattle25";
+  // PIN gate so only you can push data. No default: a fallback PIN committed
+  // to a public repo is not a gate. If the secret is missing, refuse.
+  const expectedPin = env.UPLOAD_PIN;
+  if (!expectedPin) return jsonResponse({ error: "UPLOAD_PIN secret is not set on the worker — run: wrangler secret put UPLOAD_PIN" }, 503);
   if (!body.upload_pin || body.upload_pin !== expectedPin) {
     return jsonResponse({ error: "Invalid upload PIN" }, 403);
   }

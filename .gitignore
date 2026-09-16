@@ -21,3 +21,10 @@ pop-layout.html
 feed-layout-ideas.html
 nav-layout-ideas.html
 mockup-ideas.html
+
+# Old safety backups moved here on 2026-09-16 — git history has every version anyway
+_archive/
+worker.backup-*.js
+wrangler.backup-*.toml
+# Stale mount leftovers (deleted-while-open files) — junk
+.fuse_hidden*

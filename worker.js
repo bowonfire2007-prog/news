@@ -51,6 +51,21 @@ const ALLOWED_ORIGINS = [
   "https://bowonfire2007-prog.github.io",   // GitHub Pages (the live site)
   "null"                                     // file:// when testing index.html locally
 ];
+const ADMIN_PATHS = new Set([
+  "/weeklyrefresh", "/cron-status", "/bills-refresh", "/trackers-refresh",
+  "/tabbriefs-refresh", "/tabbriefs-repair", "/reps-refresh"
+]);
+// Everything the page calls that costs quota or writes KV. Plain KV reads
+// (/trackers, /tabbriefs, /local-bills, /reps, /weeklydata, /cattlehistory,
+// /lake-history) stay open — they're cheap and harmless.
+const BROWSER_PATHS = new Set([
+  "/brief", "/followup", "/fishplan", "/stockbrief", "/cattlemanual", "/cattleprice",
+  "/cattlerecord", "/lake-reading", "/wx-forecast",
+  "/stockquote", "/stockcandles", "/stocknews", "/stockforecast"
+]);
+// Subset that calls Claude — these also count against the daily budget.
+// /cattleprice only counts when ?fresh=1 forces a re-run (see router).
+const SPEND_PATHS = new Set(["/brief", "/followup", "/fishplan", "/stockbrief", "/cattlemanual", "/cattleprice"]);
 const SPEND_LIMIT_PER_IP_PER_DAY = 60;     // one person clicking briefs all day
 const SPEND_LIMIT_GLOBAL_PER_DAY = 400;    // hard ceiling on Claude calls from the page
 
@@ -1774,6 +1789,21 @@ export default {
       return new Response(null, { headers: CORS_HEADERS });
     }
     const url = new URL(request.url);
+    // ── Admin-only: manual refresh / repair / diagnostics. Need ?key=ADMIN_KEY ──
+    if (ADMIN_PATHS.has(url.pathname)) {
+      const denied = requireAdminKey(request, env);
+      if (denied) return denied;
+    }
+    // ── Page-only: spends API quota or writes data. Origin must be the site. ──
+    if (BROWSER_PATHS.has(url.pathname) || url.searchParams.has("url")) {
+      const denied = guardBrowserCall(request, env);
+      if (denied) return denied;
+    }
+    // ── Claude-backed: count against the daily budget. ──
+    if (SPEND_PATHS.has(url.pathname) && !(url.pathname === "/cattleprice" && url.searchParams.get("fresh") !== "1")) {
+      const over = await guardSpend(request, env, url.pathname);
+      if (over) return over;
+    }
     if (url.pathname === "/brief") {
       return handleBrief(request, env, ctx);
     }

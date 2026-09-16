@@ -22,6 +22,105 @@ const CORS_HEADERS = {
   "Access-Control-Max-Age": "86400"
 };
 
+// ─────────────── ACCESS GUARDS (added 2026-09-16 audit) ──────────────────────
+// The worker URL is public (it's in index.html on GitHub), so every endpoint
+// that spends money (Claude, Finnhub, Tomorrow.io) or writes data used to be
+// callable by anyone. Three layers, cheapest first:
+//
+//   requireAdminKey(request, env)
+//     For refresh / repair / diagnostic URLs you hit by hand. Pass the key as
+//     ?key=... or an X-Admin-Key header. Key = ADMIN_KEY secret, falling back
+//     to UPLOAD_PIN so nothing needs to be set up today.
+//       wrangler secret put ADMIN_KEY      (optional — UPLOAD_PIN works too)
+//
+//   guardBrowserCall(request, env)
+//     For endpoints the page itself calls. The browser sends an Origin header
+//     on every cross-origin fetch; it must be one of ALLOWED_ORIGINS (or the
+//     admin key must be present). Scripts and scanners that just hit the URL
+//     get a 403. This is a bot filter, not a wall — the daily budget below is
+//     the actual cost cap.
+//
+//   guardSpend(request, env, tag)
+//     For Claude-backed endpoints only. Per-IP and global daily counters in
+//     BILLS_KV. Over budget → 429 with a plain message (the page shows it).
+//     Counters live under "ratelimit:<day>:..." and expire after 2 days.
+//
+// Cron jobs call the run*Scheduled() functions directly, never over HTTP, so
+// none of this touches the scheduled pipeline.
+const ALLOWED_ORIGINS = [
+  "https://bowonfire2007-prog.github.io",   // GitHub Pages (the live site)
+  "null"                                     // file:// when testing index.html locally
+];
+const SPEND_LIMIT_PER_IP_PER_DAY = 60;     // one person clicking briefs all day
+const SPEND_LIMIT_GLOBAL_PER_DAY = 400;    // hard ceiling on Claude calls from the page
+
+function isLocalOrigin(o) {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(o);
+}
+function originAllowed(o) {
+  return !!o && (ALLOWED_ORIGINS.includes(o) || isLocalOrigin(o));
+}
+function originFromReferer(ref) {
+  try { return new URL(ref).origin; } catch { return null; }
+}
+
+function adminKeyOk(request, env) {
+  const expected = env.ADMIN_KEY || env.UPLOAD_PIN;
+  if (!expected) return false;
+  const url = new URL(request.url);
+  const given = url.searchParams.get("key") || request.headers.get("X-Admin-Key") || "";
+  return given.length > 0 && given === expected;
+}
+
+// Returns null when allowed, or a Response to send back.
+function requireAdminKey(request, env) {
+  if (!(env.ADMIN_KEY || env.UPLOAD_PIN)) {
+    return jsonResponse({ error: "No ADMIN_KEY or UPLOAD_PIN secret set on the worker — run: wrangler secret put ADMIN_KEY" }, 503);
+  }
+  if (adminKeyOk(request, env)) return null;
+  return jsonResponse({ error: "This endpoint needs the admin key: add ?key=YOURKEY (or an X-Admin-Key header)" }, 403);
+}
+
+// Returns null when allowed, or a Response to send back.
+function guardBrowserCall(request, env) {
+  if (adminKeyOk(request, env)) return null;
+  const origin = request.headers.get("Origin");
+  if (origin) return originAllowed(origin) ? null : jsonResponse({ error: "Origin not allowed" }, 403);
+  const ref = originFromReferer(request.headers.get("Referer") || "");
+  if (ref && originAllowed(ref)) return null;
+  return jsonResponse({ error: "This endpoint is for Matt's Daily Read page only" }, 403);
+}
+
+// Returns null when within budget, or a 429 Response. Counts the call.
+async function guardSpend(request, env, tag) {
+  if (adminKeyOk(request, env)) return null;
+  if (!env.BILLS_KV) return null;                       // can't count → don't block
+  const day = new Date().toISOString().slice(0, 10);
+  const ip  = request.headers.get("CF-Connecting-IP") || "unknown";
+  const ipKey = "ratelimit:" + day + ":ip:" + (await hashKey(ip)).slice(0, 16);
+  const allKey = "ratelimit:" + day + ":all";
+  let ipN = 0, allN = 0;
+  try {
+    const [a, b] = await Promise.all([env.BILLS_KV.get(ipKey), env.BILLS_KV.get(allKey)]);
+    ipN = parseInt(a || "0", 10) || 0;
+    allN = parseInt(b || "0", 10) || 0;
+  } catch (err) { console.warn("[guard] KV read failed: " + String(err)); return null; }
+  if (allN >= SPEND_LIMIT_GLOBAL_PER_DAY) {
+    return jsonResponse({ error: "Daily AI budget for the site is used up — try again tomorrow" }, 429);
+  }
+  if (ipN >= SPEND_LIMIT_PER_IP_PER_DAY) {
+    return jsonResponse({ error: "You've hit today's AI limit (" + SPEND_LIMIT_PER_IP_PER_DAY + " requests) — try again tomorrow" }, 429);
+  }
+  const ttl = { expirationTtl: 2 * 24 * 3600 };
+  try {
+    await Promise.all([
+      env.BILLS_KV.put(ipKey, String(ipN + 1), ttl),
+      env.BILLS_KV.put(allKey, String(allN + 1), ttl)
+    ]);
+  } catch (err) { console.warn("[guard] KV write failed (" + tag + "): " + String(err)); }
+  return null;
+}
+
 // ─────────────── CRON RUNNERS ─────────────────────────────────────────────────
 // Called from the scheduled() handler above.  Both are fire-and-forget — errors
 // are swallowed so a bad week doesn't crash the cron entirely.

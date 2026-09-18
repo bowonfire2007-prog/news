@@ -687,6 +687,10 @@ async function handleCronStatus(env) {
     out.weekly_last_run = JSON.parse(await env.WEEKLY_KV.get("weekly:last_run") || "null");
   } catch (err) { out.weekly_last_run_error = String(err); }
   try {
+    // Outcome of the last wx-history + history-cards run (cron, refresh URL, or self-heal).
+    out.history_last_run = JSON.parse(await env.WEEKLY_KV.get("history:last_run") || "null");
+  } catch (err) { out.history_last_run_error = String(err); }
+  try {
     const index = JSON.parse(await env.WEEKLY_KV.get("weekly:index") || "[]");
     const newest = index.length ? index[index.length - 1] : null;
     out.weekly_newest = newest;
@@ -2032,9 +2036,11 @@ async function handleWxHistory(url, env, ctx) {
   if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
   let wx = null;
   try { wx = JSON.parse(await env.BILLS_KV.get("wxhist:data") || "null"); } catch {}
-  if (!wx) {
+  if (!wx || wx.date !== centralDateStr()) {
+    // Missing or yesterday's: rebuild now (no Claude involved, ~3 s). If the
+    // rebuild fails, serve the stale copy — the page labels it "as of <date>".
     await runWxHistoryScheduled(env, ctx, false);
-    try { wx = JSON.parse(await env.BILLS_KV.get("wxhist:data") || "null"); } catch {}
+    try { wx = JSON.parse(await env.BILLS_KV.get("wxhist:data") || "null") || wx; } catch {}
   }
   return jsonResponse({ wx, fetched_at: new Date().toISOString() });
 }
@@ -2163,13 +2169,45 @@ async function runHistoryScheduled(env, ctx, force = false) {
   return { results, ran_at: new Date().toISOString() };
 }
 
+// wx-history then history cards, with the outcome written to KV so
+// /cron-status can show what actually happened (the heartbeat only records
+// that a job was dispatched). `via` says who triggered it.
+async function runHistoryPipeline(env, ctx, via, force = false) {
+  const started = new Date().toISOString();
+  const out = { via, started, force };
+  try { out.wx = await runWxHistoryScheduled(env, ctx, force); } catch (err) { out.wx = { error: err.message }; }
+  try { out.history = await runHistoryScheduled(env, ctx, force); } catch (err) { out.history = { error: err.message }; }
+  out.finished = new Date().toISOString();
+  try { if (env.WEEKLY_KV) await env.WEEKLY_KV.put("history:last_run", JSON.stringify(out), { expirationTtl: 30 * 24 * 3600 }); } catch {}
+  return out;
+}
+
+// Self-heal from the page: if today's cards aren't there when someone loads
+// the site, kick the pipeline in the background — once. A short-lived KV lock
+// keeps ten simultaneous tab loads from making ten sets of Claude calls. The
+// cron remains the normal path; this is the backstop for a missed run.
+async function ensureHistoryToday(env, ctx) {
+  if (!env.BILLS_KV || !ctx) return;
+  const today = centralDateStr();
+  let missing = false;
+  for (const cfg of HISTORY_TABS) {
+    try { const c = JSON.parse(await env.BILLS_KV.get("history:data:" + cfg.key) || "null"); if (!c || c.updated !== today) { missing = true; break; } } catch { missing = true; break; }
+  }
+  if (!missing) return;
+  const lockKey = "history:lock:" + today;
+  if (await env.BILLS_KV.get(lockKey)) return;
+  await env.BILLS_KV.put(lockKey, "1", { expirationTtl: 10 * 60 });
+  ctx.waitUntil(runHistoryPipeline(env, ctx, "self-heal on GET /history"));
+}
+
 // GET /history — the three cards. Plain KV read, not gated.
-async function handleHistory(url, env) {
+async function handleHistory(url, env, ctx) {
   if (!env.BILLS_KV) return jsonResponse({ error: "BILLS_KV not bound" }, 500);
   const history = {};
   for (const cfg of HISTORY_TABS) {
     try { const raw = await env.BILLS_KV.get("history:data:" + cfg.key); if (raw) history[cfg.key] = JSON.parse(raw); } catch {}
   }
+  try { await ensureHistoryToday(env, ctx); } catch (err) { console.warn("[history] self-heal: " + err.message); }
   return jsonResponse({ history, fetched_at: new Date().toISOString() });
 }
 
@@ -2262,8 +2300,8 @@ export default {
     if (url.pathname === "/reps-refresh")           return handleRepsRefresh(env);
     if (url.pathname === "/site-stats")             return handleSiteStats(url, env);
     // ── This-day-in-history cards + weather history (2026-09-17) ──
-    if (url.pathname === "/history")                return handleHistory(url, env);
-    if (url.pathname === "/history-refresh")        return jsonResponse(await runHistoryScheduled(env, ctx, url.searchParams.get("force") === "1"));
+    if (url.pathname === "/history")                return handleHistory(url, env, ctx);
+    if (url.pathname === "/history-refresh")        return jsonResponse(await runHistoryPipeline(env, ctx, "manual /history-refresh", url.searchParams.get("force") === "1"));
     if (url.pathname === "/wx-history")             return handleWxHistory(url, env, ctx);
     if (url.pathname === "/wx-history-refresh")     return jsonResponse(await runWxHistoryScheduled(env, ctx, url.searchParams.get("force") === "1"));
     return handleRssProxy(url);
@@ -2309,7 +2347,7 @@ export default {
     // no-op when today's copy already exists, so riding both daily crons gives
     // a same-day retry if the 13:00 run hits an upstream outage.
     if (cron === "0 13 * * *" || cron === "0 1 * * *") {
-      run("wx-history+history", runWxHistoryScheduled(env, ctx).then(() => runHistoryScheduled(env, ctx)));
+      run("wx-history+history", runHistoryPipeline(env, ctx, "cron " + cron));
     }
     ctx.waitUntil(recordCronEvent(env, cron, jobs));
   }

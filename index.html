@@ -3295,6 +3295,33 @@ const DATA_MODULES = {
         '<div class="wxh-cell"><span class="wxh-lbl">Wettest</span>' + rec(t.recPcpn, '"') + '</div>' +
         '<div class="wxh-cell"><span class="wxh-lbl">' + (t.recSnow ? 'Snowiest' : 'Coolest high') + '</span>' + (t.recSnow ? rec(t.recSnow, '"') : rec(t.coolHigh)) + '</div>' +
         '</div>';
+      // Record watch (2026-09-17): today's forecast high/low vs the records.
+      // Uses the same NWS-first numbers as the header strip, so the two agree.
+      try {
+        const cw = getCachedWeather(), dd = cw && cw.daily;
+        const ti = dd && dd.time ? findTodayIndex(dd.time, WEATHER_LOCATION.tz) : -1;
+        if (ti >= 0 && asOfToday) {
+          const fv = forecastDayValues(dd.time[ti], (dd.temperature_2m_max || [])[ti], (dd.temperature_2m_min || [])[ti], null, null, null);
+          const watch = [];
+          if (isNum(fv.hi) && t.recHigh && isNum(t.recHigh.v)) {
+            const gap = t.recHigh.v - fv.hi;
+            if (gap < 0) watch.push('🔥 <b>Forecast high ' + fv.hi + '° would break the record</b> of ' + Math.round(t.recHigh.v) + '° (' + escapeHtml(yrs(t.recHigh)) + ')');
+            else if (gap === 0) watch.push('🔥 <b>Forecast high ' + fv.hi + '° ties the record</b> set in ' + escapeHtml(yrs(t.recHigh)));
+            else if (gap <= 3) watch.push('🌡️ Forecast high ' + fv.hi + '° is <b>' + gap + '° shy</b> of the record ' + Math.round(t.recHigh.v) + '° (' + escapeHtml(yrs(t.recHigh)) + ')');
+          }
+          if (isNum(fv.lo) && t.recLow && isNum(t.recLow.v)) {
+            const gap = fv.lo - t.recLow.v;
+            if (gap < 0) watch.push('🧊 <b>Forecast low ' + fv.lo + '° would break the record</b> of ' + Math.round(t.recLow.v) + '° (' + escapeHtml(yrs(t.recLow)) + ')');
+            else if (gap === 0) watch.push('🧊 <b>Forecast low ' + fv.lo + '° ties the record</b> set in ' + escapeHtml(yrs(t.recLow)));
+            else if (gap <= 3) watch.push('🧊 Forecast low ' + fv.lo + '° is <b>' + gap + '° from</b> the record ' + Math.round(t.recLow.v) + '° (' + escapeHtml(yrs(t.recLow)) + ')');
+          }
+          if (isNum(fv.hi) && t.warmLow && isNum(t.warmLow.v) && isNum(fv.lo) && fv.lo > t.warmLow.v) watch.push('🌙 Forecast low ' + fv.lo + '° would be the <b>warmest low</b> ever for this date (' + Math.round(t.warmLow.v) + '°, ' + escapeHtml(yrs(t.warmLow)) + ')');
+          if (isNum(fv.hi) && t.coolHigh && isNum(t.coolHigh.v) && fv.hi < t.coolHigh.v) watch.push('🍂 Forecast high ' + fv.hi + '° would be the <b>coolest high</b> ever for this date (' + Math.round(t.coolHigh.v) + '°, ' + escapeHtml(yrs(t.coolHigh)) + ')');
+          html += '<div class="wxh-callout" style="margin-top:0">' + (watch.length ? watch.join('<br>') :
+            'Record watch: forecast ' + (isNum(fv.hi) ? fv.hi + '°' : '—') + ' / ' + (isNum(fv.lo) ? fv.lo + '°' : '—') + ' — ' +
+            (isNum(fv.hi) && t.recHigh ? (t.recHigh.v - fv.hi) + '° below the record high' : '') + (isNum(fv.lo) && t.recLow ? ', ' + (fv.lo - t.recLow.v) + '° above the record low' : '') + '. Nothing historic today.') + '</div>';
+        }
+      } catch {}
       // 35-day strip
       const strip = (wx.last35 || []).filter(r => isNum(r.hi) && isNum(r.lo));
       if (strip.length >= 5) {

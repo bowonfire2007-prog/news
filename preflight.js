@@ -118,7 +118,7 @@ async function live() {
   } catch (e) { fail("/trackers: " + e.message); }
 
   // Cheap data endpoints the rail calls
-  for (const p of ["/local-bills", "/reps", "/weeklydata?limit=5", "/cattlehistory", "/lake-history"]) {
+  for (const p of ["/local-bills", "/reps", "/weeklydata?limit=5", "/cattlehistory", "/lake-history", "/history", "/wx-history"]) {
     try { const r = await get(p); (r.status === 200 && r.json ? ok : fail)(p + " → HTTP " + r.status); }
     catch (e) { fail(p + ": " + e.message); }
   }

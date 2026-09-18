@@ -298,6 +298,23 @@
   .wxh-bar.now { background:var(--tc, var(--sage)); }
   .wxh-bars-lbl { display:flex; gap:3px; font-size:8.5px; color:var(--text-soft); }
   .wxh-bars-lbl span { flex:1; text-align:center; }
+  /* Season countdown (Outdoor rail) */
+  .sc-row { display:grid; grid-template-columns:1fr auto; gap:2px 10px; padding:6px 0; border-top:1px solid var(--border); font-size:12px; line-height:1.35; align-items:center; }
+  .sc-row:first-child { border-top:none; }
+  .sc-name { font-weight:700; color:var(--text); }
+  .sc-dates { font-size:10.5px; color:var(--text-soft); grid-column:1; }
+  .sc-when { font-size:11px; font-weight:800; text-align:right; white-space:nowrap; grid-row:1 / span 2; align-self:center; }
+  .sc-when.open { color:#2e8b57; } .sc-when.soon { color:#c2851a; } .sc-when.later { color:var(--text-soft); font-weight:600; }
+  .sc-when.ends { color:#c2531a; }
+  .sc-more { font-size:11px; color:var(--accent); cursor:pointer; margin-top:8px; display:inline-block; }
+  /* Weekly cattle look-back strip */
+  .wlb { padding:10px 14px 4px; border-bottom:1px solid var(--border); }
+  .wlb-row { display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr; gap:8px; padding:5px 0; border-top:1px solid var(--border); }
+  .wlb-row:first-of-type { border-top:none; }
+  .wlb-cell { display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .wlb-lbl { font-size:9.5px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-soft); }
+  .wlb-val { font-size:12.5px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .wlb-now .wlb-val { font-size:14px; }
   @media (max-width:860px) {
     .main-cols { flex-direction:column; gap:18px; }
     .tracker-col { width:100%; position:static; order:-1; max-height:none; overflow:visible; }
@@ -1788,7 +1805,9 @@
     /* Forecast tab (2026-09-17): its rail is history/records, not the reason
        you opened the tab. On phones the rail normally jumps ABOVE the list
        (order:-1 at 860px); keep it below the forecast here. */
-    .tracker-col:has(#railModules[data-cat="forecast"]) { order:1; }
+    .tracker-col:has(#railModules[data-cat="forecast"]),
+    .tracker-col:has(#railModules[data-cat="outdoor"]),
+    .tracker-col:has(#railModules[data-cat="garden"]) { order:1; }
     /* Sticky section nav: align its gutter with main's. */
     .section-nav { padding:0 14px; }
     .section-nav .section-bar { margin-top:8px; }
@@ -2915,7 +2934,11 @@ const TAB_RAIL = {
   military: [ { type:"brief", key:"military" } ],
   // Forecast tab had no rail before 2026-09-17; these two are read-only cards
   // fed by /wx-history (NOAA records + SPC tornado database).
-  forecast: [ { type:"data", id:"wxHistory" }, { type:"data", id:"tornadoHistory" } ]
+  forecast: [ { type:"data", id:"almanac" }, { type:"data", id:"wxHistory" }, { type:"data", id:"tornadoHistory" } ],
+  // Outdoor and Garden had no rail either; these read static data/*.json plus
+  // /lake and /wx-history.
+  outdoor:  [ { type:"data", id:"seasonCountdown" }, { type:"data", id:"lakeThisDate" } ],
+  garden:   [ { type:"data", id:"growingSeason" }, { type:"reference", id:"plantingGuide" } ]
 };
 
 function railModulesFor(cat) {
@@ -3001,6 +3024,78 @@ function historyModuleDef(key, title, icon, color) {
         '<div class="tc-srcline">Written each morning by Claude from its own knowledge — verify before you quote it' + (card.updated ? ' · ' + escapeHtml(card.updated) : '') + '</div>';
     }
   };
+}
+
+// Static reference data built by tools/build-climate-data.js and
+// tools/build-mdc-seasons.js, served next to index.html. Memoised per load.
+function fetchStaticJson(rel) {
+  const key = "static:" + rel;
+  const m = _railMemo[key];
+  if (m && Date.now() - m.at < 6 * 3600000) return m.p;
+  const p = fetch(rel, { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .catch(err => { delete _railMemo[key]; throw err; });
+  _railMemo[key] = { at: Date.now(), p };
+  return p;
+}
+function fetchClimate()    { return fetchStaticJson("data/climate.json"); }
+function fetchMdcSeasons() { return fetchStaticJson("data/mdc-seasons.json"); }
+
+// ── SUN / DAYLIGHT (no API) ────────────────────────────────────────────────
+// NOAA sunrise equation with the standard -0.833° refraction. Accurate to a
+// minute or two, which is all the almanac needs. Returns Date objects (UTC
+// instants) for the given calendar date, or nulls above the polar circles.
+function sunTimes(ymd, lat, lon) {
+  const rad = Math.PI / 180;
+  const day0 = Date.parse(ymd + "T00:00:00Z") / 86400000;          // days since epoch (UTC midnight)
+  const n = day0 - 10957;                                           // Julian day number relative to J2000.0
+  const J = n - lon / 360;                                          // mean solar time (lon east-positive, so west adds)
+  const M = (357.5291 + 0.98560028 * J) % 360;                      // solar mean anomaly
+  const C = 1.9148 * Math.sin(M * rad) + 0.02 * Math.sin(2 * M * rad) + 0.0003 * Math.sin(3 * M * rad);
+  const L = (M + C + 180 + 102.9372) % 360;                         // ecliptic longitude
+  const Jt = 2451545 + J + 0.0053 * Math.sin(M * rad) - 0.0069 * Math.sin(2 * L * rad); // solar transit (JD)
+  const dec = Math.asin(Math.sin(L * rad) * Math.sin(23.4397 * rad));
+  const cosH = (Math.sin(-0.833 * rad) - Math.sin(lat * rad) * Math.sin(dec)) / (Math.cos(lat * rad) * Math.cos(dec));
+  if (cosH < -1 || cosH > 1) return { sunrise: null, sunset: null, transit: new Date((Jt - 2440587.5) * 86400000) };
+  const H = Math.acos(cosH) / rad / 360;                             // half day length in days
+  const toDate = jd => new Date((jd - 2440587.5) * 86400000);
+  return { sunrise: toDate(Jt - H), sunset: toDate(Jt + H), transit: toDate(Jt) };
+}
+// Next equinox/solstice after today (approximate civil dates; good to ±1 day).
+function nextSolarEvent(ymd) {
+  const y = parseInt(ymd.slice(0, 4), 10);
+  const evs = [];
+  for (const yy of [y, y + 1]) evs.push([yy + "-03-20", "spring equinox"], [yy + "-06-21", "summer solstice"], [yy + "-09-22", "fall equinox"], [yy + "-12-21", "winter solstice"]);
+  return evs.find(([d]) => d >= ymd) || null;
+}
+function daysBetweenYmd(a, b) { return Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000); }
+function fmtClock(d) { return d ? d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: WEATHER_LOCATION.tz }) : "—"; }
+function fmtHM(mins) { const s = mins < 0 ? "−" : ""; mins = Math.abs(Math.round(mins)); return s + Math.floor(mins / 60) + "h " + String(mins % 60).padStart(2, "0") + "m"; }
+function fmtMmdd(mmdd, yr) { try { return new Date(Date.parse((yr || "2025") + "-" + mmdd + "T12:00:00Z")).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }); } catch { return mmdd; } }
+function fmtYmd(ymd, withYear) { try { return new Date(Date.parse(ymd + "T12:00:00Z")).toLocaleDateString("en-US", { month: "short", day: "numeric", ...(withYear ? { year: "numeric" } : {}), timeZone: "UTC" }); } catch { return ymd; } }
+
+// Freeze countdown text from climate.json → { line, sub } or null.
+// Aug–Dec looks ahead to the first fall freeze; Jan–May to the last spring one.
+function freezeOutlook(freeze, ymd) {
+  if (!freeze) return null;
+  const y = ymd.slice(0, 4), mm = ymd.slice(5, 7);
+  const upto = (mmdd, yr) => daysBetweenYmd(ymd, yr + "-" + mmdd);
+  if (mm >= "08") {
+    const f = freeze.firstFall; if (!f || !f.median) return null;
+    const dMed = upto(f.medianRecent30 || f.median, y);
+    const dEarly = f.earliest ? upto(String(f.earliest.date).slice(5), y) : null;
+    const line = dMed >= 0 ? "First fall freeze: typically ~" + fmtMmdd(f.medianRecent30 || f.median) + " (" + dMed + " day" + (dMed === 1 ? "" : "s") + ")" : "Past the typical first-freeze date (" + fmtMmdd(f.medianRecent30 || f.median) + ")";
+    const sub = (f.earliest ? "Earliest on record " + fmtYmd(f.earliest.date, true) + (isNum(dEarly) && dEarly >= 0 ? " — " + dEarly + " days out" : "") : "") + (f.latest ? " · latest " + fmtYmd(f.latest.date, true) : "") + " · median since " + (freeze.station ? "1906" : "") + " " + fmtMmdd(f.median);
+    return { line, sub };
+  }
+  if (mm <= "05") {
+    const s = freeze.lastSpring; if (!s || !s.median) return null;
+    const dMed = upto(s.medianRecent30 || s.median, y);
+    const dLate = s.latest ? upto(String(s.latest.date).slice(5), y) : null;
+    const line = dMed >= 0 ? "Last spring freeze: typically ~" + fmtMmdd(s.medianRecent30 || s.median) + " (" + dMed + " day" + (dMed === 1 ? "" : "s") + ")" : "Past the typical last-freeze date (" + fmtMmdd(s.medianRecent30 || s.median) + ")";
+    const sub = (s.latest ? "Latest on record " + fmtYmd(s.latest.date, true) + (isNum(dLate) && dLate >= 0 ? " — " + dLate + " days out" : "") : "") + (s.earliest ? " · earliest " + fmtYmd(s.earliest.date, true) : "");
+    return { line, sub };
+  }
+  return null;
 }
 
 // Inline SVG: daily highs and lows over the strip with the 1991-2020 normal
@@ -3231,16 +3326,176 @@ const DATA_MODULES = {
       const at = wx.alltime || {};
       const fmtD = s => { try { return new Date(Date.parse(s + "T12:00:00Z")).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }); } catch { return s; } };
       const row = (lbl, r, unit) => r && isNum(r.v) ? '<div class="tc-statrow"><span class="tc-statlbl">' + lbl + '</span><span class="tc-statval">' + (unit === '"' ? r.v.toFixed(2) + '"' : unit === 'snow' ? r.v.toFixed(1) + '"' : Math.round(r.v) + '°') + ' <span style="color:var(--text-soft);font-weight:400">' + escapeHtml(fmtD(r.date)) + '</span></span></div>' : '';
+      const one = x => Array.isArray(x) ? x[0] : x;   // worker sends a single {v,date}; tolerate a list too
       html += '<div class="tc-heads-label" style="margin-top:4px">All-time · Clinton</div>' +
-        row('Hottest', (at.hottest || [])[0]) + row('Coldest', (at.coldest || [])[0]) + row('Wettest day', (at.wettest || [])[0], '"') + row('Snowiest day', (at.snowiest || [])[0], 'snow');
+        row('Hottest', one(at.hottest)) + row('Coldest', one(at.coldest)) + row('Wettest day', one(at.wettest), '"') + row('Snowiest day', one(at.snowiest), 'snow');
       html += '<div class="tc-srcline">NOAA ACIS · Clinton COOP records + PRISM grid · normals 1991–2020</div>';
       return html;
     }
   },
-  // Tornadoes since 1950 that touched Henry County or a neighbour (SPC database).
+  // ── ALMANAC (2026-09-17): sun, daylight trend, moon, next solar event, freeze
+  // outlook. Sun/moon are computed on the page (no fetch); the freeze dates come
+  // from data/climate.json.
+  almanac: {
+    title: "Almanac", icon: "🌅", color: "#c49b3f",
+    load: () => fetchClimate().catch(() => null),
+    render: (climate) => {
+      const today = localDateStr();
+      const wk = new Date(Date.parse(today + "T12:00:00Z") - 7 * 86400000).toISOString().slice(0, 10);
+      const s = sunTimes(today, WEATHER_LOCATION.lat, WEATHER_LOCATION.lon);
+      const s7 = sunTimes(wk, WEATHER_LOCATION.lat, WEATHER_LOCATION.lon);
+      const dayMin = s.sunrise && s.sunset ? (s.sunset - s.sunrise) / 60000 : null;
+      const dayMin7 = s7.sunrise && s7.sunset ? (s7.sunset - s7.sunrise) / 60000 : null;
+      const delta = isNum(dayMin) && isNum(dayMin7) ? dayMin - dayMin7 : null;
+      let html = '<div class="wxh-grid">' +
+        '<div class="wxh-cell"><span class="wxh-lbl">Sunrise</span><span class="wxh-val">' + escapeHtml(fmtClock(s.sunrise)) + '</span></div>' +
+        '<div class="wxh-cell"><span class="wxh-lbl">Sunset</span><span class="wxh-val">' + escapeHtml(fmtClock(s.sunset)) + '</span></div>' +
+        '<div class="wxh-cell"><span class="wxh-lbl">Daylight</span><span class="wxh-val">' + (isNum(dayMin) ? fmtHM(dayMin) : '—') + '</span></div>' +
+        '<div class="wxh-cell"><span class="wxh-lbl">vs. a week ago</span><span class="wxh-val ' + (isNum(delta) ? (delta < 0 ? 'tc-down' : 'tc-up') : '') + '">' + (isNum(delta) ? (delta > 0 ? '+' : '−') + Math.abs(Math.round(delta)) + ' min' : '—') + '</span></div>' +
+        '</div>';
+      const ev = nextSolarEvent(today);
+      if (ev) {
+        const d = daysBetweenYmd(today, ev[0]);
+        html += '<div class="tc-statrow"><span class="tc-statlbl">Next: ' + escapeHtml(ev[1]) + '</span><span class="tc-statval">' + escapeHtml(fmtYmd(ev[0])) + ' · ' + (d === 0 ? 'today' : d + ' day' + (d === 1 ? '' : 's')) + '</span></div>';
+      }
+      try {
+        const m = getMoonPhase(new Date());
+        html += '<div class="tc-statrow"><span class="tc-statlbl">Moon</span><span class="tc-statval">' + m.emoji + ' ' + escapeHtml(m.phaseName) + ' · ' + m.illumination + '%</span></div>';
+      } catch {}
+      const fz = freezeOutlook(climate && climate.freeze, today);
+      if (fz) html += '<div class="wxh-callout" style="margin-top:10px">❄ ' + escapeHtml(fz.line) + '<div style="font-size:10.5px;color:var(--text-soft);margin-top:3px">' + escapeHtml(fz.sub) + '</div></div>';
+      html += '<div class="tc-srcline">Sun times computed for ' + escapeHtml(WEATHER_LOCATION.name) + ' (±2 min) · freeze dates: Clinton COOP records</div>';
+      return html;
+    }
+  },
+  // ── GROWING SEASON (2026-09-17): GDD + rain since Apr 1 vs normal, freeze outlook.
+  growingSeason: {
+    title: "Growing Season", icon: "🌱", color: "#3d9e4e",
+    load: () => Promise.all([fetchWxHistory().catch(() => null), fetchClimate().catch(() => null)]).then(([w, c]) => ({ wx: w && w.wx, climate: c })),
+    isLive: (d) => !!(d && d.wx && d.wx.date === localDateStr()),
+    render: (d) => {
+      const wx = d && d.wx, se = wx && wx.season;
+      const today = localDateStr();
+      let html = '';
+      if (se && (isNum(se.gdd) || isNum(se.pcpn))) {
+        const pct = (a, n) => isNum(a) && isNum(n) && n > 0 ? Math.round(a / n * 100) : null;
+        const gp = pct(se.gdd, se.gddNormal), pp = pct(se.pcpn, se.pcpnNormal);
+        html += '<div class="tc-big-sub" style="margin-bottom:8px">Since Apr 1 · through ' + escapeHtml(fmtYmd(se.through)) + '</div><div class="wxh-grid">' +
+          '<div class="wxh-cell"><span class="wxh-lbl">Growing degree days</span><span class="wxh-val">' + (isNum(se.gdd) ? Math.round(se.gdd).toLocaleString() : '—') + (isNum(gp) ? '<small>' + gp + '% of normal</small>' : '') + '</span></div>' +
+          '<div class="wxh-cell"><span class="wxh-lbl">Normal GDD</span><span class="wxh-val">' + (isNum(se.gddNormal) ? Math.round(se.gddNormal).toLocaleString() : '—') + '</span></div>' +
+          '<div class="wxh-cell"><span class="wxh-lbl">Rain</span><span class="wxh-val">' + (isNum(se.pcpn) ? se.pcpn.toFixed(2) + '"' : '—') + (isNum(pp) ? '<small>' + pp + '% of normal</small>' : '') + '</span></div>' +
+          '<div class="wxh-cell"><span class="wxh-lbl">Normal rain</span><span class="wxh-val">' + (isNum(se.pcpnNormal) ? se.pcpnNormal.toFixed(2) + '"' : '—') + '</span></div></div>';
+        if (isNum(gp) || isNum(pp)) {
+          const bits = [];
+          if (isNum(gp)) bits.push(gp >= 110 ? 'running well ahead on heat units' : gp >= 103 ? 'a little ahead on heat units' : gp <= 90 ? 'behind on heat units' : 'near-normal heat units');
+          if (isNum(pp)) bits.push(pp >= 130 ? 'a wet year' : pp >= 110 ? 'wetter than normal' : pp <= 70 ? 'a dry year' : pp <= 90 ? 'drier than normal' : 'near-normal rain');
+          html += '<div class="wxh-callout">' + escapeHtml(bits.join(' · ')) + '</div>';
+        }
+      } else {
+        html += '<div class="tc-note" style="margin-bottom:8px">Season totals run April 1 – November 30; they\'ll appear when the season starts.</div>';
+      }
+      const fz = freezeOutlook(d && d.climate && d.climate.freeze, today);
+      if (fz) html += '<div class="tc-statrow"><span class="tc-statlbl">❄</span><span class="tc-statval" style="text-align:right">' + escapeHtml(fz.line) + '</span></div><div class="tc-note" style="font-size:10.5px;margin:2px 0 0">' + escapeHtml(fz.sub) + '</div>';
+      html += '<div class="tc-srcline">GDD base 50°F · NOAA ACIS PRISM grid vs 1991–2020 normals</div>';
+      return html;
+    }
+  },
+  // ── TRUMAN LAKE ON THIS DATE (2026-09-17): pool today vs every year since 1986.
+  lakeThisDate: {
+    title: "Truman Lake · This Date", icon: "🌊", color: "#2f9fd0",
+    load: () => Promise.all([fetchClimate(), railFetchJson("/lake").catch(() => null)]).then(([c, lake]) => ({ lake, hist: c && c.lake })),
+    render: ({ lake, hist }) => {
+      if (!hist || !hist.byDay) return '<div class="rail-err">Lake history not available.</div>';
+      const today = localDateStr(), mmdd = today.slice(5), yr = today.slice(0, 4);
+      const byYear = hist.byDay[mmdd] || {};
+      const rows = Object.keys(byYear).filter(y => y !== yr && isNum(byYear[y])).map(y => ({ y, v: byYear[y] })).sort((a, b) => a.v - b.v);
+      if (rows.length < 5) return '<div class="rail-err">Not enough history for this date.</div>';
+      const avg = rows.reduce((s, r) => s + r.v, 0) / rows.length;
+      const med = rows[Math.floor(rows.length / 2)].v;
+      const lo = rows[0], hi = rows[rows.length - 1];
+      const ly = byYear[String(parseInt(yr, 10) - 1)];
+      const now = lake && isNum(lake.elevation) ? lake.elevation : (isNum(byYear[yr]) ? byYear[yr] : null);
+      const rank = isNum(now) ? rows.filter(r => r.v > now).length + 1 : null;
+      const ft = v => isNum(v) ? v.toFixed(2) + ' ft' : '—';
+      const dv = isNum(now) ? now - avg : null;
+      let html = '<div class="tc-big">' + ft(now) + '</div>' +
+        '<div class="tc-big-sub ' + (isNum(dv) ? (dv > 0 ? 'tc-up' : dv < 0 ? 'tc-down' : '') : '') + '">' + (isNum(dv) ? (dv > 0 ? '▲ ' : dv < 0 ? '▼ ' : '') + Math.abs(dv).toFixed(2) + ' ft vs. the ' + escapeHtml(fmtMmdd(mmdd)) + ' average' : 'today') + '</div>' +
+        '<div class="tc-statrow"><span class="tc-statlbl">Average this date</span><span class="tc-statval">' + ft(avg) + ' <span style="color:var(--text-soft);font-weight:400">(' + rows.length + ' yrs)</span></span></div>' +
+        (isNum(ly) ? '<div class="tc-statrow"><span class="tc-statlbl">Last year</span><span class="tc-statval">' + ft(ly) + '</span></div>' : '') +
+        '<div class="tc-statrow"><span class="tc-statlbl">Highest this date</span><span class="tc-statval">' + ft(hi.v) + ' <span style="color:var(--text-soft);font-weight:400">' + hi.y + '</span></span></div>' +
+        '<div class="tc-statrow"><span class="tc-statlbl">Lowest this date</span><span class="tc-statval">' + ft(lo.v) + ' <span style="color:var(--text-soft);font-weight:400">' + lo.y + '</span></span></div>' +
+        (isNum(rank) ? '<div class="tc-statrow"><span class="tc-statlbl">Today ranks</span><span class="tc-statval">' + rank + (['th','st','nd','rd'][(rank % 100 > 10 && rank % 100 < 14) ? 0 : Math.min(rank % 10, 4) % 4] || 'th') + ' highest of ' + (rows.length + 1) + '</span></div>' : '');
+      // this-date sparkline of years
+      const yrs = Object.keys(byYear).filter(y => isNum(byYear[y])).sort();
+      if (yrs.length >= 10) {
+        const vMin = Math.min(...yrs.map(y => byYear[y])), vMax = Math.max(...yrs.map(y => byYear[y]));
+        const W = 300, H = 46, span = Math.max(1, vMax - vMin);
+        html += '<div class="wxh-bars" style="height:46px">' + yrs.map(y => '<div class="wxh-bar' + (y === yr ? ' now' : '') + '" style="height:' + Math.max(4, Math.round((byYear[y] - vMin) / span * 100)) + '%" title="' + y + ': ' + byYear[y].toFixed(2) + ' ft"></div>').join('') + '</div>' +
+          '<div class="wxh-bars-lbl" style="justify-content:space-between"><span style="text-align:left">' + yrs[0] + '</span><span style="text-align:right">' + yrs[yrs.length - 1] + '</span></div>';
+      }
+      if (hist.alltime && hist.alltime.max) html += '<div class="tc-srcline">Record pool ' + hist.alltime.max.v + ' ft (' + escapeHtml(fmtYmd(hist.alltime.max.date, true)) + ') · low ' + (hist.alltime.min ? hist.alltime.min.v + ' ft (' + escapeHtml(fmtYmd(hist.alltime.min.date, true)) + ')' : '') + ' · conservation pool 706 · USACE</div>';
+      return html;
+    }
+  },
+  // ── MDC SEASON COUNTDOWN (2026-09-17): every season on MDC's tables, open /
+  // opening soon / later. Data: data/mdc-seasons.json (tools/build-mdc-seasons.js).
+  seasonCountdown: {
+    title: "MDC Season Countdown", icon: "🦌", color: "#5f6b3a",
+    load: () => fetchMdcSeasons(),
+    render: (d) => {
+      if (!d || !Array.isArray(d.hunting)) return '<div class="rail-err">Season table not loaded.</div>';
+      const today = localDateStr();
+      const all = [...d.hunting.map(s => ({ ...s, kind: 'hunt' })), ...d.fishing.map(s => ({ ...s, kind: 'fish' }))];
+      const yearRound = [], items = [];
+      for (const s of all) {
+        const ps = (s.periods || []).filter(p => p[1] >= today);
+        if (!ps.length) { items.push({ ...s, status: 'past' }); continue; }
+        if (ps.some(p => p[0].slice(5) === '01-01' && p[1].slice(5) === '12-31')) { yearRound.push(s.name); continue; }
+        const open = ps.find(p => p[0] <= today && p[1] >= today);
+        if (open) items.push({ ...s, status: 'open', ends: open[1], days: daysBetweenYmd(today, open[1]) });
+        else { const nxt = ps.sort((a, b) => a[0] < b[0] ? -1 : 1)[0]; items.push({ ...s, status: 'future', starts: nxt[0], ends: nxt[1], days: daysBetweenYmd(today, nxt[0]) }); }
+      }
+      const order = { open: 0, future: 1, past: 2 };
+      items.sort((a, b) => order[a.status] - order[b.status] || (a.days ?? 9e9) - (b.days ?? 9e9) || a.name.localeCompare(b.name));
+      const ico = s => s.kind === 'fish' ? '🎣 ' : (/deer/i.test(s.name) ? '🦌 ' : /turkey/i.test(s.name) ? '🦃 ' : /duck|teal|goose|coot|merganser|waterfowl/i.test(s.name) ? '🦆 ' : /dove|quail|pheasant|woodcock|snipe|rail|crow/i.test(s.name) ? '🐦 ' : /squirrel|rabbit|groundhog/i.test(s.name) ? '🐿️ ' : /bear/i.test(s.name) ? '🐻 ' : /elk/i.test(s.name) ? '🫎 ' : /trap|fox|coyote|bobcat|beaver|otter|mink|muskrat|raccoon|opossum|skunk|badger/i.test(s.name) ? '🪤 ' : /frog/i.test(s.name) ? '🐸 ' : '');
+      const row = s => {
+        let when, cls;
+        if (s.status === 'open') { when = s.days === 0 ? 'last day' : 'open · ' + s.days + 'd left'; cls = s.days <= 3 ? 'ends' : 'open'; }
+        else if (s.status === 'future') { when = s.days === 0 ? 'opens today' : 'in ' + s.days + 'd'; cls = s.days <= 14 ? 'soon' : 'later'; }
+        else { when = 'closed'; cls = 'later'; }
+        const dates = s.status === 'past' ? 'next dates not yet posted' : fmtYmd(s.starts || today) + ' – ' + fmtYmd(s.ends, s.ends.slice(0, 4) !== today.slice(0, 4));
+        return '<div class="sc-row"><span class="sc-name">' + ico(s) + escapeHtml(s.name) + '</span><span class="sc-when ' + cls + '">' + escapeHtml(when) + '</span><span class="sc-dates">' + escapeHtml(s.status === 'open' ? 'through ' + fmtYmd(s.ends, s.ends.slice(0, 4) !== today.slice(0, 4)) : dates) + '</span></div>';
+      };
+      const openNow = items.filter(s => s.status === 'open'), soon = items.filter(s => s.status === 'future' && s.days <= 60), later = items.filter(s => (s.status === 'future' && s.days > 60) || s.status === 'past');
+      let html = '';
+      if (openNow.length) html += '<div class="tc-heads-label">Open now · ' + openNow.length + '</div>' + openNow.map(row).join('');
+      if (soon.length) html += '<div class="tc-heads-label" style="margin-top:10px">Opening within 60 days</div>' + soon.map(row).join('');
+      if (later.length) html += '<div class="tc-heads-label" style="margin-top:10px">Later</div><div class="sc-later" style="display:none">' + later.map(row).join('') + '</div>' +
+        '<span class="sc-more" onclick="var b=this.previousElementSibling,o=b.style.display===\'block\';b.style.display=o?\'none\':\'block\';this.textContent=o?\'show ' + later.length + ' more ▾\':\'hide ▴\'">show ' + later.length + ' more ▾</span>';
+      if (yearRound.length) html += '<div class="tc-note" style="margin-top:10px;font-size:11px"><b>Open all year:</b> ' + escapeHtml(yearRound.map(n => n.replace(/:.*$/, '')).filter((n, i, a) => a.indexOf(n) === i).join(', ')) + '</div>';
+      html += '<div class="tc-srcline">MDC seasons tables' + (d.built ? ' · pulled ' + escapeHtml(String(d.built).slice(0, 10)) : '') + ' · not a legal document — check the Wildlife Code</div>';
+      return html;
+    }
+  },
+  // Tornadoes since 1950 that touched Henry County or a neighbour (SPC database
+  // via data/climate.json; the this-date / this-month slices are computed here).
   tornadoHistory: {
     title: "Tornado History", icon: "🌪️", color: "#5f6b8a",
-    load: () => fetchWxHistory(),
+    load: () => fetchClimate().then(c => {
+      const tor = c && c.tornado;
+      if (!tor || !Array.isArray(tor.events)) return { tornado: null };
+      const ev = tor.events, today = localDateStr(), mmdd = today.slice(5), mm = today.slice(5, 7);
+      const henry = ev.filter(e => e.counties.includes("Henry"));
+      return { tornado: {
+        source: tor.source, throughYear: tor.throughYear, total: ev.length, henryTotal: henry.length,
+        ef3plus: ev.filter(e => isNum(e.mag) && e.mag >= 3).length,
+        strongest: ev.slice().sort((a, b) => (b.mag ?? -1) - (a.mag ?? -1) || b.inj - a.inj).slice(0, 5),
+        lastHenry: henry.length ? henry[henry.length - 1] : null,
+        thisDate: ev.filter(e => e.date.slice(5) === mmdd),
+        thisMonth: ev.filter(e => e.date.slice(5, 7) === mm),
+        byMonth: Array.from({ length: 12 }, (_, i) => ev.filter(e => parseInt(e.date.slice(5, 7), 10) === i + 1).length)
+      } };
+    }),
     render: (d) => {
       const t = d && d.tornado;
       if (!t || !isNum(t.total)) return '<div class="rail-err">Tornado history not loaded yet.</div>';
@@ -7321,6 +7576,45 @@ function wireWeeklyMarket() {
 // ──────────────────────────────────────────────────────────────────────────────
 const WEEKLY_HISTORY_WEEKS = 26; // ~6 months
 
+// "This week vs. 4 weeks / 8 weeks / a year ago" strip above the history list
+// (2026-09-17). Picks the report nearest each look-back date, within a ±10 day
+// window so a skipped holiday week doesn't silently compare the wrong report.
+// The year-ago column appears on its own once the store reaches 12 months
+// (records start 2026-02); until then it says so instead of showing a dash.
+function renderWeeklyLookback(records) {
+  const sorted = (records || []).filter(r => r && r.report_date).slice().sort((a, b) => a.report_date < b.report_date ? -1 : 1);
+  if (sorted.length < 2) return "";
+  const latest = sorted[sorted.length - 1];
+  const t0 = Date.parse(latest.report_date + "T12:00:00Z");
+  const nearest = (daysBack) => {
+    const target = t0 - daysBack * 86400000;
+    let best = null, bestGap = Infinity;
+    for (const r of sorted) {
+      const gap = Math.abs(Date.parse(r.report_date + "T12:00:00Z") - target) / 86400000;
+      if (gap < bestGap) { bestGap = gap; best = r; }
+    }
+    return best && bestGap <= 10 && best !== latest ? best : null;
+  };
+  const cols = [["4 wks ago", nearest(28)], ["8 wks ago", nearest(56)], ["Year ago", nearest(365)]];
+  const metric = (lbl, key, dec, prefix) => {
+    const now = latest[key];
+    if (!isNum(now)) return "";
+    const cells = cols.map(([name, r]) => {
+      if (!r || !isNum(r[key])) {
+        return '<div class="wlb-cell"><span class="wlb-lbl">' + name + '</span><span class="wlb-val" style="color:var(--text-soft);font-weight:500">' + (name === "Year ago" ? "from Feb 2027" : "—") + '</span></div>';
+      }
+      const d = now - r[key], pct = r[key] ? d / r[key] * 100 : null;
+      const cls = d > 0 ? "tc-up" : d < 0 ? "tc-down" : "";
+      return '<div class="wlb-cell"><span class="wlb-lbl">' + name + '</span><span class="wlb-val">' + prefix + Number(r[key]).toFixed(dec) +
+        ' <span class="' + cls + '">' + (d > 0 ? "▲" : d < 0 ? "▼" : "→") + (isNum(pct) ? Math.abs(pct).toFixed(1) + "%" : "") + '</span></span></div>';
+    }).join("");
+    return '<div class="wlb-row"><div class="wlb-cell wlb-now"><span class="wlb-lbl">' + lbl + '</span><span class="wlb-val">' + prefix + Number(now).toFixed(dec) + '</span></div>' + cells + '</div>';
+  };
+  const body = metric("Stocker $/cwt", "stocker_formula_cwt", 2, "$") + metric("Corn KC $/bu", "corn_kc_fri", 2, "$") + metric("Choice boxed", "boxed_beef_choice_5day", 2, "$");
+  if (!body) return "";
+  return '<div class="wlb"><div class="tc-heads-label">Look-back · vs. the report nearest each date</div>' + body + '</div>';
+}
+
 function renderWeeklyHistoryCard(records) {
   if (!records || records.length === 0) {
     return ""; // nothing to show — the upload card already covers the empty state
@@ -7372,6 +7666,7 @@ function renderWeeklyHistoryCard(records) {
         <div class="weekly-card-meta">${slice.length} week${slice.length !== 1 ? "s" : ""} · ${escapeHtml(oldestDate || "")} → ${escapeHtml(newestDate || "")}</div>
       </div>
     </div>
+    ${renderWeeklyLookback(records)}
     <div class="hist-list">${rows}</div>
   </div>`;
 }

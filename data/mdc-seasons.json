@@ -1,0 +1,922 @@
+{
+ "built": "2026-09-18T01:47:36.139Z",
+ "source": "mdc.mo.gov seasons tables (not a legal document — check the Wildlife Code)",
+ "hunting": [
+  {
+   "name": "Badger: Hunting and Trapping",
+   "periods": [
+    [
+     "2026-11-15",
+     "2027-01-31"
+    ]
+   ],
+   "limits": "Daily limit : Any number Possession limit: Any number"
+  },
+  {
+   "name": "Bear: Season",
+   "periods": [
+    [
+     "2026-10-17",
+     "2026-10-30"
+    ]
+   ],
+   "limits": "One black bear of either sex with the following restrictions: You are required to call 800-668-4045 to determine the daily season quota/closure status prior to "
+  },
+  {
+   "name": "Beaver and Nutria: Trapping",
+   "periods": [
+    [
+     "2025-11-15",
+     "2026-03-31"
+    ],
+    [
+     "2026-11-15",
+     "2027-03-31"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number"
+  },
+  {
+   "name": "Bobcat: Hunting and Trapping",
+   "periods": [
+    [
+     "2026-11-15",
+     "2027-02-28"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number Bobcat pelts must be registered or tagged. Tagged bobcats and otters or their pelts may be possessed by the"
+  },
+  {
+   "name": "Bullfrog and Green Frog: Hunting",
+   "periods": [
+    [
+     "2026-06-30",
+     "2026-10-31"
+    ]
+   ],
+   "limits": "Daily limit: 8 (combined total of both species) Possession limit: 16 Only the daily limit may be possessed on waters and banks of waters being fished or hunted."
+  },
+  {
+   "name": "Common Snipe: Hunting",
+   "periods": [
+    [
+     "2026-09-01",
+     "2026-12-16"
+    ]
+   ],
+   "limits": "Daily limit: 8 Possession limit: 24"
+  },
+  {
+   "name": "Coyote: Hunting",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number Coyotes, except as otherwise provided in this section, may be taken by hunting, and pelts and carcasses may"
+  },
+  {
+   "name": "Coyote: Trapping",
+   "periods": [
+    [
+     "2026-11-15",
+     "2027-02-28"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number Extended trapping season on private land from March 1 to April 14. Only foot-hold traps, foot-enclosing tra"
+  },
+  {
+   "name": "Crow: Hunting",
+   "periods": [
+    [
+     "2026-11-01",
+     "2027-03-03"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number"
+  },
+  {
+   "name": "Deer: Archery",
+   "periods": [
+    [
+     "2026-09-15",
+     "2026-11-13"
+    ],
+    [
+     "2026-11-25",
+     "2027-01-15"
+    ]
+   ],
+   "limits": "Missouri Residents You may take two antlered deer during the archery and firearms deer seasons combined. Only one antlered deer may be taken during archery deer"
+  },
+  {
+   "name": "Deer: Firearms: Alternative Methods",
+   "periods": [
+    [
+     "2026-12-26",
+     "2027-01-05"
+    ]
+   ],
+   "limits": "You may take only one antlered deer during the entire firearms season (all portions combined). You may take only two antlered deer during the archery and firear"
+  },
+  {
+   "name": "Deer: Firearms: Antlerless Portions",
+   "periods": [
+    [
+     "2026-10-09",
+     "2026-10-11"
+    ],
+    [
+     "2026-12-05",
+     "2026-12-13"
+    ]
+   ],
+   "limits": "Only antlerless deer may be harvested during the antlerless portions. Each county limits the number of firearms antlerless deer hunting permits you can fill dur"
+  },
+  {
+   "name": "Deer: Firearms: November Portion",
+   "periods": [
+    [
+     "2026-11-14",
+     "2026-11-24"
+    ]
+   ],
+   "limits": "Missouri Residents You may take two antlered deer during the archery and firearms deer seasons combined. Only one antlered deer may be taken during firearms dee"
+  },
+  {
+   "name": "Deer: Firearms: Youth Portions",
+   "periods": [
+    [
+     "2026-10-24",
+     "2026-10-25"
+    ],
+    [
+     "2026-11-27",
+     "2026-11-29"
+    ]
+   ],
+   "limits": "Only one antlered deer may be taken during the entire firearms season (all portions combined). You may take only two antlered deer during the archery and firear"
+  },
+  {
+   "name": "Dove: Falconry",
+   "periods": [
+    [
+     "2026-11-30",
+     "2026-12-16"
+    ]
+   ],
+   "limits": "Daily limit: 3 Possession limit: 9 Any ducks, coots, or mergansers taken by falconers must be included in these limits."
+  },
+  {
+   "name": "Dove: Hunting",
+   "periods": [
+    [
+     "2026-09-01",
+     "2026-11-29"
+    ]
+   ],
+   "limits": "Daily limit: 15 Possession limit: 45 Combined total of all dove species"
+  },
+  {
+   "name": "Ducks and Coots Hunting: Middle Zone",
+   "periods": [
+    [
+     "2026-11-07",
+     "2026-12-13"
+    ],
+    [
+     "2026-12-19",
+     "2027-01-10"
+    ]
+   ],
+   "limits": "Ducks: Daily limit of 6 with species restrictions below, possession limit of 18 Mallards: 4 (no more than 2 females) Scaup: 2 scaup for first 45 days and 1 scau"
+  },
+  {
+   "name": "Ducks and Coots Hunting: North Zone",
+   "periods": [
+    [
+     "2026-10-31",
+     "2026-12-29"
+    ]
+   ],
+   "limits": "Ducks: Daily limit of 6 with species restrictions below, possession limit of 18 Mallards: 4 (no more than 2 females) Scaup: 2 scaup for first 45 days and 1 scau"
+  },
+  {
+   "name": "Ducks and Coots Hunting: South Zone",
+   "periods": [
+    [
+     "2026-11-26",
+     "2026-11-29"
+    ],
+    [
+     "2026-12-07",
+     "2027-01-31"
+    ]
+   ],
+   "limits": "Ducks: Daily limit of 6 with species restrictions below, possession limit of 18 Mallards: 4 (no more than 2 females) Scaup: 2 scaup for first 45 days and 1 scau"
+  },
+  {
+   "name": "Ducks, Coots, and Geese Hunting: Youth: Middle Zone",
+   "periods": [
+    [
+     "2026-10-31",
+     "2026-11-01"
+    ]
+   ],
+   "limits": "Ducks : Daily limit of 6 with species restrictions below, possession limit of 18 Mallards: 4 (no more than 2 females) Scaup: 2 Wood ducks: 3 Hooded mergansers: "
+  },
+  {
+   "name": "Ducks, Coots, and Geese Hunting: Youth: North Zone",
+   "periods": [
+    [
+     "2026-10-24",
+     "2026-10-25"
+    ]
+   ],
+   "limits": "Ducks : Daily limit of 6 with species restrictions below, possession limit of 18 Mallards: 4 (no more than 2 females) Scaup: 2 Wood ducks: 3 Hooded mergansers: "
+  },
+  {
+   "name": "Ducks, Coots, and Geese Hunting: Youth: South Zone",
+   "periods": [
+    [
+     "2026-11-21",
+     "2026-11-22"
+    ]
+   ],
+   "limits": "Ducks : Daily limit of 6 with species restrictions below, possession limit of 18 Mallards: 4 (no more than 2 females) Scaup: 2 Wood ducks: 3 Hooded mergansers: "
+  },
+  {
+   "name": "Ducks, Coots, and Mergansers: Falconry",
+   "periods": [
+    [
+     "2027-02-11",
+     "2027-03-10"
+    ]
+   ],
+   "limits": "Daily limit: 3 birds, combined total of doves, ducks, and coots. Possession limit: 9 birds, combined total of doves, ducks, and coots. Season is also open durin"
+  },
+  {
+   "name": "Early Canada Goose and Brant: Hunting",
+   "periods": [
+    [
+     "2026-10-03",
+     "2026-10-11"
+    ]
+   ],
+   "limits": "Daily limit: 3 Possession limit: 9 Daily and possession limits are brant and Canada geese combined."
+  },
+  {
+   "name": "Elk Hunting: Archery",
+   "periods": [
+    [
+     "2026-10-17",
+     "2026-10-25"
+    ]
+   ],
+   "limits": "Those selected to receive a permit may take one (1) elk with at least one (1) antler no less than 6” in length. Antlered Elk Hunting permits can be used during "
+  },
+  {
+   "name": "Elk Hunting: Firearms",
+   "periods": [
+    [
+     "2026-12-12",
+     "2026-12-20"
+    ]
+   ],
+   "limits": "Those selected to receive a permit may take one (1) elk with at least one (1) antler no less than 6” in length. Antlered Elk Hunting Permits can be used during "
+  },
+  {
+   "name": "Fox (Red or Gray): Hunting and Trapping",
+   "periods": [
+    [
+     "2026-11-15",
+     "2027-01-31"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number"
+  },
+  {
+   "name": "Goose (Canada, Brant, White-Fronted, Snow, Ross's): Hunting",
+   "periods": [
+    [
+     "2026-11-11",
+     "2027-02-06"
+    ]
+   ],
+   "limits": "Canada geese and brant Daily limit: 3 Possession limit: 9 Combined total of both species White-fronted geese Daily limit: 2 Possession limit: 6 Light geese Dail"
+  },
+  {
+   "name": "Groundhog: Hunting",
+   "periods": [
+    [
+     "2026-05-11",
+     "2026-12-15"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number Groundhog pelts may be possessed and sold throughout the year."
+  },
+  {
+   "name": "Light Goose Conservation Order",
+   "periods": [
+    [
+     "2026-02-07",
+     "2026-04-30"
+    ],
+    [
+     "2027-02-07",
+     "2027-04-30"
+    ]
+   ],
+   "limits": "None Hunting is limited to snow geese, blue geese, and Ross's geese."
+  },
+  {
+   "name": "Mink: Trapping",
+   "periods": [
+    [
+     "2026-11-15",
+     "2027-02-28"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number"
+  },
+  {
+   "name": "Opossum: Hunting and Trapping",
+   "periods": [
+    [
+     "2026-08-01",
+     "2026-10-15"
+    ],
+    [
+     "2026-11-15",
+     "2027-02-28"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number Extended trapping season on private land from March 1 to April 14."
+  },
+  {
+   "name": "Otter and Muskrat: Trapping",
+   "periods": [
+    [
+     "2026-11-15",
+     "2027-02-28"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number"
+  },
+  {
+   "name": "Pheasant: Hunting",
+   "periods": [
+    [
+     "2026-11-01",
+     "2027-01-15"
+    ]
+   ],
+   "limits": "Daily limit: 2 male pheasants Possession limit: 4 male pheasants Only male pheasants may be taken. A foot or fully-feathered head must be left attached during t"
+  },
+  {
+   "name": "Pheasant: Hunting: Youth",
+   "periods": [
+    [
+     "2026-10-24",
+     "2026-10-25"
+    ]
+   ],
+   "limits": "Daily limit: 2 male pheasants Possession limit: 4 male pheasants Open to youths age 6 through 15. Youths who are not hunter-education certified must hunt in the"
+  },
+  {
+   "name": "Quail: Hunting",
+   "periods": [
+    [
+     "2026-11-01",
+     "2027-01-15"
+    ]
+   ],
+   "limits": "Daily limit: 8 Possession limit: 16"
+  },
+  {
+   "name": "Quail: Hunting: Youth",
+   "periods": [
+    [
+     "2026-10-24",
+     "2026-10-25"
+    ]
+   ],
+   "limits": "Daily limit: 8 Possession limit: 16 Open to youths age 6 through 15. Youth who are not hunter-education certified must hunt in the immediate presence of a prope"
+  },
+  {
+   "name": "Rabbit: Hunting",
+   "periods": [
+    [
+     "2026-10-01",
+     "2027-02-15"
+    ]
+   ],
+   "limits": "Daily limit : 6, only 2 may be swamp rabbits Possession limit: 12, only 4 may be swamp rabbits Only cottontail and swamp rabbits may be hunted. Jackrabbits are "
+  },
+  {
+   "name": "Rabbit: Trapping",
+   "periods": [
+    [
+     "2026-11-15",
+     "2027-01-31"
+    ]
+   ],
+   "limits": "Daily limit: 6, only 2 may be swamp rabbits Possession limit: 12, only 4 may be swamp rabbits Jackrabbits may not be taken at any time. Carcasses may not be sol"
+  },
+  {
+   "name": "Raccoon: Hunting and Trapping",
+   "periods": [
+    [
+     "2026-08-01",
+     "2026-10-15"
+    ],
+    [
+     "2026-11-15",
+     "2027-02-28"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number Artificial lights are allowed when hunting raccoons if raccoons are treed with the aid of dogs. From August"
+  },
+  {
+   "name": "Sora and Virginia Rails: Hunting",
+   "periods": [
+    [
+     "2026-09-01",
+     "2026-11-09"
+    ]
+   ],
+   "limits": "Daily limit: 25 Possession limit: 75 Combine total of all rail species"
+  },
+  {
+   "name": "Squirrel: Hunting",
+   "periods": [
+    [
+     "2026-05-23",
+     "2027-02-15"
+    ]
+   ],
+   "limits": "Daily limit: 10 Possession limit: 20"
+  },
+  {
+   "name": "Striped Skunk: Hunting and Trapping",
+   "periods": [
+    [
+     "2026-08-01",
+     "2026-10-15"
+    ],
+    [
+     "2026-11-15",
+     "2027-02-28"
+    ]
+   ],
+   "limits": "Daily limit: Any number Possession limit: Any number Extended trapping season on private land from March 1 to April 14."
+  },
+  {
+   "name": "Teal: Hunting",
+   "periods": [
+    [
+     "2026-09-12",
+     "2026-09-20"
+    ]
+   ],
+   "limits": "Daily bag limit: 6 Possession limit: 18 Limits are a combined total of all teal species. You may hunt blue-winged teal, green-winged teal, and cinnamon teal. No"
+  },
+  {
+   "name": "Turkey: Archery",
+   "periods": [
+    [
+     "2025-11-26",
+     "2026-01-15"
+    ],
+    [
+     "2026-09-15",
+     "2026-11-13"
+    ],
+    [
+     "2026-11-25",
+     "2027-01-15"
+    ]
+   ],
+   "limits": "Two turkeys of either sex (archery and firearms portions combined), both may be taken on the same day"
+  },
+  {
+   "name": "Turkey: Fall Firearms",
+   "periods": [
+    [
+     "2026-10-01",
+     "2026-10-31"
+    ]
+   ],
+   "limits": "Two turkeys of either sex (archery and firearms portions combined), both may be taken on the same day Fall firearms turkey hunting is not permitted in Dunklin, "
+  },
+  {
+   "name": "Turkey: Spring",
+   "periods": [
+    [
+     "2026-04-20",
+     "2026-05-10"
+    ]
+   ],
+   "limits": "Missouri residents and nonresident landowners may harvest two male turkeys or turkeys with visible beard during the season, with the following restrictions: You"
+  },
+  {
+   "name": "Turkey: Spring: Youth (ages 6-15)",
+   "periods": [
+    [
+     "2026-04-11",
+     "2026-04-12"
+    ]
+   ],
+   "limits": "During the spring youth season, one male turkey or turkey with visible beard Resident youth hunters who are successful during the youth season can now harvest t"
+  },
+  {
+   "name": "Woodcock: Hunting",
+   "periods": [
+    [
+     "2026-10-18",
+     "2026-12-01"
+    ]
+   ],
+   "limits": "Daily limit: 3 Possession limit: 9"
+  }
+ ],
+ "fishing": [
+  {
+   "name": "Bass: White, Yellow, Striped & Hybrids",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 15 Possession limit: 30 Size limit: You may keep up to four fish longer than 18” per day. + see more - show less Daily and possession limits are co"
+  },
+  {
+   "name": "Black Bass: From Impoundments",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 6 Possession limit: 12 Size limit: none Daily and possession limits are combination of largemouth, smallmouth and spotted bass. These regulations a"
+  },
+  {
+   "name": "Black Bass: Non-Ozark Streams",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 6 Possession limit: 12 Size limit: minimum 12 inches Daily and possession limits are combination of largemouth, smallmouth and spotted bass. Limits"
+  },
+  {
+   "name": "Black Bass: Ozark Streams",
+   "periods": [
+    [
+     "2026-05-23",
+     "2027-02-28"
+    ]
+   ],
+   "limits": "Daily limit: 6 Possession limit: 12 Size limit: minimum 12\" + see more - show less Limits apply on all Ozark streams, except those with more specific regulation"
+  },
+  {
+   "name": "Bullfrog and Green Frog: Fishing",
+   "periods": [
+    [
+     "2026-06-30",
+     "2026-10-31"
+    ]
+   ],
+   "limits": "Daily limit: 8 (combined total of both species) Possession limit: 16 + see more - show less Only the daily limit may be possessed on waters and banks of waters "
+  },
+  {
+   "name": "Catfish (Blue)",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 5 Possession limit: 10 Size limit: none + see more - show less Limits apply on all waters except on areas with special regulations. Check area regu"
+  },
+  {
+   "name": "Catfish (Channel)",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 10 Possession limit: 20 Size limit: none + see more - show less Limits apply on all waters except on areas with special regulations. Check area reg"
+  },
+  {
+   "name": "Catfish (Flathead)",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 5 Possession limit: 10 Size limit: none + see more - show less Limits apply on all waters except on areas with special regulations. Check area regu"
+  },
+  {
+   "name": "Crappie (Black and White)",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 30 Possession limit: 60 Size limit: None + see more - show less Limits apply on all waters except on areas with special regulations. Check area reg"
+  },
+  {
+   "name": "Goggle-Eye (Rock Bass) and Warmouth",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 15 Possession limit: 30 Size limit: minimum 7\" + see more - show less Limits apply on all waters except on areas with special regulations. Check ar"
+  },
+  {
+   "name": "Muskellunge",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 1 muskellunge or 1 northern pike Possession limit: 2 Size limit: minimum 36\" + see more - show less Limits apply on all waters except on areas with"
+  },
+  {
+   "name": "Mussels and Clams",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 5, combined total of all species (except Asian clams, which may be taken and possessed in any number). This limit applies to live and dead animals."
+  },
+  {
+   "name": "Nongame Fish: Bowfishing: Impounded Waters",
+   "periods": [
+    [
+     "2026-02-01",
+     "2026-03-31"
+    ],
+    [
+     "2026-04-01",
+     "2027-01-31"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100. The daily limit is the combined total of al"
+  },
+  {
+   "name": "Nongame Fish: Bowfishing: Mississippi, Missouri, St Francis Rivers",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100. The daily limit is the combined total of al"
+  },
+  {
+   "name": "Nongame Fish: Bowfishing: Streams",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100 The daily limit is the combined total of all"
+  },
+  {
+   "name": "Nongame Fish: Bowfishing: Temporary Overflow",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100. The daily limit is the combined total of al"
+  },
+  {
+   "name": "Nongame Fish: Crossbow: Impounded Waters and Temporary Overflow",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100. The daily limit is the combined total of al"
+  },
+  {
+   "name": "Nongame Fish: Gig/Atlatl: Impounded Waters",
+   "periods": [
+    [
+     "2026-02-16",
+     "2026-09-14"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100. The daily limit is the combined total of al"
+  },
+  {
+   "name": "Nongame Fish: Gig/Atlatl: Streams and Impounded Waters",
+   "periods": [
+    [
+     "2026-09-15",
+     "2027-02-15"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100. The daily limit is the combined total of al"
+  },
+  {
+   "name": "Nongame Fish: Gig/Atlatl: Temporary Overflow",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100. The daily limit is the combined total of al"
+  },
+  {
+   "name": "Nongame Fish: Line Methods",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 50, except on the Mississippi River which has a daily and possession limit of 100 Possession limit: 100 The daily limit is the combined total of al"
+  },
+  {
+   "name": "Nongame Fish: Snagging/Grabbing: Streams and Impounded Waters",
+   "periods": [
+    [
+     "2025-03-15",
+     "2025-05-15"
+    ],
+    [
+     "2025-09-15",
+     "2026-02-15"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100. The daily limit is the combined total of al"
+  },
+  {
+   "name": "Nongame Fish: Snagging/Grabbing: Temporary Overflow",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100. The daily limit is the combined total of al"
+  },
+  {
+   "name": "Nongame Fish: Snaring: Streams and Impounded Waters",
+   "periods": [
+    [
+     "2026-03-15",
+     "2026-05-15"
+    ],
+    [
+     "2026-09-15",
+     "2027-02-15"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100. The daily limit is the combined total of al"
+  },
+  {
+   "name": "Nongame Fish: Underwater Spear: Impounded Waters and Temporary Overflow",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 20 Possession limit: 40, except on the Mississippi River which has a daily and possession limit of 100. The daily limit is the combined total of al"
+  },
+  {
+   "name": "Northern Pike",
+   "periods": [
+    [
+     "2025-01-01",
+     "2025-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 1 muskellunge or 1 northern pike Possession limit: 2 Size limit: None + see more - show less"
+  },
+  {
+   "name": "Paddlefish",
+   "periods": [
+    [
+     "2026-03-15",
+     "2026-04-30"
+    ]
+   ],
+   "limits": "Daily limit: 2 Possession limit: 4 Size limit: 32-inch minimum in most areas; 34-inch minimum on Lake of the Ozarks, Table Rock Lake, Truman Lake, and their tri"
+  },
+  {
+   "name": "Paddlefish: Mississippi River",
+   "periods": [
+    [
+     "2026-03-15",
+     "2026-05-15"
+    ],
+    [
+     "2026-09-15",
+     "2026-12-15"
+    ]
+   ],
+   "limits": "Daily limit: 2 Possession limit: 4 Size limit: minimum 32\" + see more - show less These regulations apply to paddlefishing on the Mississippi River."
+  },
+  {
+   "name": "Pickerel",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 6 Possession limit: 12 Length limit: None + see more - show less"
+  },
+  {
+   "name": "Shovelnose Sturgeon",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 10 Possession limit: 20 Length limit: 30 inch maximum + see more - show less Limits apply on all waters except on areas with special regulations."
+  },
+  {
+   "name": "Trout Areas",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 4 Possession limit: 8 Length limit: No size limit on rainbow trout; 15 inch minimum for brown trout in streams Limits apply on all waters except on"
+  },
+  {
+   "name": "Trout Parks",
+   "periods": [
+    [
+     "2026-03-01",
+     "2026-10-31"
+    ]
+   ],
+   "limits": "Daily limit: 4 Possession limit: 8 Length limit: minimum 15 inches for brown trout, no limit for rainbow + see more - show less This season is open only in the "
+  },
+  {
+   "name": "Trout: Catch-and-Release",
+   "periods": [
+    [
+     "2026-11-13",
+     "2027-02-08"
+    ]
+   ],
+   "limits": "You may not keep trout during this season. Fishing is catch-and-release only. + see more - show less This season is open only in the following trout parks: Mara"
+  },
+  {
+   "name": "Turtles (Common Snapping)",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 2 Possession limit: 4 Limits are combined total of all species + see more - show less Alligator snapping turtles are an endangered species, and it "
+  },
+  {
+   "name": "Turtles (Soft-shelled)",
+   "periods": [
+    [
+     "2026-07-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 2 Possession limit: 4 Combined total of all species. + see more - show less Alligator snapping turtles are an endangered species, and it is illegal"
+  },
+  {
+   "name": "Walleye and Sauger",
+   "periods": [
+    [
+     "2026-01-01",
+     "2026-12-31"
+    ]
+   ],
+   "limits": "Daily limit: 4 Possession limit: 8 Length limit: minimum 15\" + see more - show less Limits apply on all waters except on areas with special regulations ."
+  }
+ ]
+}

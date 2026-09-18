@@ -3461,6 +3461,52 @@ const DATA_MODULES = {
       return html;
     }
   },
+  // ── STATE RECORDS (2026-09-18): MDC state record fish (all species, pole &
+  // line + alternative methods) with the local-water ones up top, records set
+  // this week in past years, and the two Missouri whitetail benchmarks.
+  // Data: data/records.json (tools/build-records.js).
+  stateRecords: {
+    title: "Missouri Records", icon: "🏆", color: "#c49b3f",
+    load: () => fetchStaticJson("data/records.json"),
+    render: (d) => {
+      if (!d || !Array.isArray(d.fish)) return '<div class="rail-err">Records not loaded.</div>';
+      const today = localDateStr(), mmdd = today.slice(5);
+      const held = d.fish.filter(f => isNum(f.weightLb) && !f.open);
+      const wt = f => isNum(f.lbs) ? (f.lbs ? f.lbs + ' lb' + (isNum(f.oz) && f.oz ? ' ' + f.oz + ' oz' : '') : (isNum(f.oz) ? f.oz + ' oz' : '—')) : (isNum(f.weightLb) ? f.weightLb.toFixed(2) + ' lb' : '—');
+      const meth = f => f.method === 'Pole and line' ? 'pole & line' : (f.method || '').replace(/^Alt:\s*/, '').toLowerCase() || 'alt. method';
+      const row = (f, showWater) => '<li class="tc-head"><b>' + escapeHtml(f.species) + '</b> · ' + escapeHtml(wt(f)) +
+        '<span class="tc-head-src">' + escapeHtml(meth(f)) + (showWater && f.water ? ' · ' + escapeHtml(f.water) : '') +
+        (f.date ? ' · ' + escapeHtml(fmtYmd(f.date, true)) : '') + (f.angler ? ' · ' + escapeHtml(f.angler) : '') + '</span></li>';
+      let html = '';
+      // Local waters: Truman, the Osage, and the Henry County lakes.
+      const LOCAL = /truman|osage river|montrose|south grand|tebo|deepwater|pomme de terre/i;
+      const local = held.filter(f => LOCAL.test(f.water || '')).sort((a, b) => b.weightLb - a.weightLb);
+      if (local.length) html += '<div class="tc-heads-label">Set on local waters · ' + local.length + '</div><ul class="hx-list" style="margin-bottom:10px">' + local.map(f => row(f, true)).join('') + '</ul>';
+      // This week in record history (±3 days, any year).
+      const doy = s => { const t = Date.parse('2001-' + s.slice(5) + 'T12:00:00Z'); return Number.isFinite(t) ? Math.round((t - Date.parse('2001-01-01T12:00:00Z')) / 86400000) : null; };
+      const td = doy(today);
+      const week = held.filter(f => f.date && td !== null && Math.abs(((doy(f.date) - td + 548) % 365) - 183) <= 3).sort((a, b) => a.date.slice(5) < b.date.slice(5) ? -1 : 1);
+      if (week.length) html += '<div class="tc-heads-label">This week in record history</div><ul class="hx-list" style="margin-bottom:10px">' + week.map(f => row(f, true)).join('') + '</ul>';
+      // Headline species, pole & line.
+      const HEAD = ['Bass: Largemouth', 'Bass: Smallmouth', 'Bass: Spotted', 'Bass: White', 'Bass: Hybrid Striped', 'Crappie: White', 'Crappie: Black', 'Catfish: Blue', 'Catfish: Channel', 'Catfish: Flathead', 'Walleye', 'Bluegill'];
+      const heads = HEAD.map(s => held.find(f => f.species === s && f.method === 'Pole and line')).filter(Boolean);
+      const paddle = held.find(f => f.species === 'Paddlefish');
+      if (paddle) heads.push(paddle);
+      html += '<div class="tc-heads-label">State records · the ones you\'d brag about</div><ul class="hx-list">' + heads.map(f => row(f, true)).join('') + '</ul>';
+      // Everything else, collapsed.
+      const rest = held.filter(f => !heads.includes(f)).sort((a, b) => a.species.localeCompare(b.species) || a.method.localeCompare(b.method));
+      if (rest.length) html += '<div class="sc-later" style="display:none"><div class="tc-heads-label" style="margin-top:10px">All other records</div><ul class="hx-list">' + rest.map(f => row(f, true)).join('') + '</ul></div>' +
+        '<span class="sc-more" onclick="var b=this.previousElementSibling,o=b.style.display===\'block\';b.style.display=o?\'none\':\'block\';this.textContent=o?\'show all ' + held.length + ' records ▾\':\'hide ▴\'">show all ' + held.length + ' records ▾</span>';
+      const open = d.fish.filter(f => f.open);
+      if (open.length) html += '<div class="tc-note" style="margin-top:10px;font-size:11px"><b>' + open.length + ' records are open</b> — nobody has claimed them: ' + escapeHtml(open.map(f => f.species + ' (' + meth(f) + ')').join(', ')) + '</div>';
+      if (Array.isArray(d.hunting) && d.hunting.length) {
+        html += '<div class="tc-heads-label" style="margin-top:12px">Big game</div><ul class="hx-list">' + d.hunting.map(h => '<li class="tc-head"><b>' + escapeHtml(h.species) + '</b> · ' + escapeHtml(h.score) +
+          '<span class="tc-head-src">' + escapeHtml([h.holder, h.where, h.year].filter(Boolean).join(' · ')) + (h.note ? ' — ' + escapeHtml(h.note) : '') + '</span></li>').join('') + '</ul>';
+      }
+      html += '<div class="tc-srcline">MDC State Record Fish Program' + (d.built ? ' · pulled ' + escapeHtml(String(d.built).slice(0, 10)) : '') + ' · deer: Boone &amp; Crockett / Show-Me Big Bucks Club</div>';
+      return html;
+    }
+  },
   // ── MDC SEASON COUNTDOWN (2026-09-17): every season on MDC's tables, open /
   // opening soon / later. Data: data/mdc-seasons.json (tools/build-mdc-seasons.js).
   seasonCountdown: {
@@ -9628,7 +9674,7 @@ async function loadOutdoor(force) {
   const histDiv = document.createElement("div");
   histDiv.style.margin = "16px 0 4px";
   listEl.appendChild(histDiv);
-  renderInlineCards(histDiv, ["lakeThisDate", "seasonCountdown"]);
+  renderInlineCards(histDiv, ["lakeThisDate", "seasonCountdown", "stateRecords"]);
 
   const newsDiv = document.createElement("div");
   newsDiv.innerHTML = Array.from({length:5}, ()=>

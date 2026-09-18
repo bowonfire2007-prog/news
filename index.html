@@ -298,7 +298,11 @@
   .wxh-bar.now { background:var(--tc, var(--sage)); }
   .wxh-bars-lbl { display:flex; gap:3px; font-size:8.5px; color:var(--text-soft); }
   .wxh-bars-lbl span { flex:1; text-align:center; }
-  /* Season countdown (Outdoor rail) */
+  /* In-flow card grid for the single-purpose tabs (Forecast/Outdoor/Garden):
+     two-up on desktop, one column on phones. Cards are the rail shell. */
+  .inline-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px; align-items:start; margin:10px 0 4px; }
+  .inline-card { min-width:0; }
+  /* Season countdown (Outdoor) */
   .sc-row { display:grid; grid-template-columns:1fr auto; gap:2px 10px; padding:6px 0; border-top:1px solid var(--border); font-size:12px; line-height:1.35; align-items:center; }
   .sc-row:first-child { border-top:none; }
   .sc-name { font-weight:700; color:var(--text); }
@@ -1802,12 +1806,6 @@
 
   /* ---- Tablet and phone ---- */
   @media (max-width:760px) {
-    /* Forecast tab (2026-09-17): its rail is history/records, not the reason
-       you opened the tab. On phones the rail normally jumps ABOVE the list
-       (order:-1 at 860px); keep it below the forecast here. */
-    .tracker-col:has(#railModules[data-cat="forecast"]),
-    .tracker-col:has(#railModules[data-cat="outdoor"]),
-    .tracker-col:has(#railModules[data-cat="garden"]) { order:1; }
     /* Sticky section nav: align its gutter with main's. */
     .section-nav { padding:0 14px; }
     .section-nav .section-bar { margin-top:8px; }
@@ -2934,11 +2932,10 @@ const TAB_RAIL = {
   military: [ { type:"brief", key:"military" } ],
   // Forecast tab had no rail before 2026-09-17; these two are read-only cards
   // fed by /wx-history (NOAA records + SPC tornado database).
-  forecast: [ { type:"data", id:"almanac" }, { type:"data", id:"wxHistory" }, { type:"data", id:"tornadoHistory" } ],
-  // Outdoor and Garden had no rail either; these read static data/*.json plus
-  // /lake and /wx-history.
-  outdoor:  [ { type:"data", id:"seasonCountdown" }, { type:"data", id:"lakeThisDate" } ],
-  garden:   [ { type:"data", id:"growingSeason" }, { type:"reference", id:"plantingGuide" } ]
+  // Forecast / Outdoor / Garden deliberately have NO rail: their history and
+  // almanac cards render in-flow via renderInlineCards() inside loadForecast,
+  // loadOutdoor and loadGarden, so those single-purpose pages keep full width.
+  military: [ { type:"brief", key:"military" } ]
 };
 
 function railModulesFor(cat) {
@@ -3580,6 +3577,24 @@ const REFERENCE_MODULES = {
     }
   }
 };
+
+// Renders DATA_MODULES cards in-flow (2026-09-17) — for the single-purpose
+// tabs (Forecast, Outdoor, Garden) that have their own page layout and no
+// rail. Same shell, same load/render/isLive contract as the rail path; the
+// container gets a responsive grid via .inline-cards.
+function renderInlineCards(container, ids) {
+  if (!container) return;
+  container.classList.add("inline-cards");
+  container.innerHTML = ids.map(id => '<div class="inline-card" data-id="' + escapeHtml(id) + '"></div>').join("");
+  ids.forEach(id => {
+    const def = DATA_MODULES[id], slot = container.querySelector('.inline-card[data-id="' + id + '"]');
+    if (!def || !slot) return;
+    slot.innerHTML = railCardShell(def, '<div class="rail-loading"><span class="spinner"></span>Loading…</div>');
+    def.load()
+      .then(data => { if (slot.isConnected) slot.innerHTML = railCardShell(typeof def.isLive === "function" ? { ...def, live: !!def.isLive(data) } : def, def.render(data)); })
+      .catch(() => { if (slot.isConnected) slot.innerHTML = railCardShell(def, '<div class="rail-err">Couldn\'t load right now.</div>'); });
+  });
+}
 
 function renderRailModule(slot, mod, firstTime) {
   switch (mod.type) {
@@ -4850,9 +4865,12 @@ async function loadForecast() {
     '<div class="fc-sec">Next 24 Hours <span class="fc-src" id="fcHourlySrc">· model</span></div>'+
     '<div id="fcHourly">'+hourly+'</div>'+
     '<div class="fc-sec">'+FORECAST_DAYS+'-Day <span class="fc-src">'+(_nwsDaily&&Object.keys(_nwsDaily).length?'· official NWS':'· model (NWS unavailable)')+'</span></div>'+tenday+
+    '<div class="fc-sec" style="margin-top:14px">📜 History &amp; Almanac <span class="fc-src">· records since 1906</span></div>'+
+    '<div id="fcHistoryCards"></div>'+
     '<div class="farm-news" style="margin-top:18px;padding:0"><div class="farm-news-inner"><div class="farm-news-head"><span class="farm-news-title">🌩️ Local Weather News</span></div><div id="fcNewsList"><div class="status" style="padding:10px 0"><span class="spinner"></span> Loading…</div></div></div></div>';
 
   initForecastRadar();
+  renderInlineCards(document.getElementById("fcHistoryCards"), ["almanac", "wxHistory", "tornadoHistory"]);
   // Active NWS alerts banner (was in the old right-hand rail card).
   fetch("https://api.weather.gov/alerts/active?point="+WEATHER_LOCATION.lat+","+WEATHER_LOCATION.lon,{headers:{"Accept":"application/geo+json"}})
     .then(r=>r.ok?r.json():null)
@@ -5002,6 +5020,10 @@ function renderWeather(data, lake) {
         '<span>💧 '+hum+'%</span>'+
         '<span>🌂 '+precipText+'</span>'+
         lakeHtml+
+        // Sun + record hi/lo for the date (2026-09-17). Sun is computed here;
+        // the records fill in async from /wx-history so the strip never waits.
+        (function(){ const s=sunTimes(localDateStr(), WEATHER_LOCATION.lat, WEATHER_LOCATION.lon); return s.sunrise&&s.sunset ? '<span title="Sunrise · sunset">☀ '+escapeHtml(fmtClock(s.sunrise).replace(" AM","a").replace(" PM","p"))+' · '+escapeHtml(fmtClock(s.sunset).replace(" AM","a").replace(" PM","p"))+'</span>' : ''; })()+
+        '<span id="wRecords" style="display:none"></span>'+
       '</span>'+
     '</div>'+
     // Hourly section (collapsed by default)
@@ -5018,6 +5040,18 @@ function renderWeather(data, lake) {
       '</div>'+
       '<div class="w-day-detail" id="wDayDetail"></div>'+
     '</div>';
+
+  // Record high/low for today's date, filled in when /wx-history answers.
+  fetchWxHistory().then(d => {
+    const el = document.getElementById("wRecords"), t = d && d.wx && d.wx.today;
+    if (!el || !t) return;
+    const rh = t.recHigh && isNum(t.recHigh.v) ? Math.round(t.recHigh.v) + '° (' + escapeHtml(t.recHigh.year) + ')' : null;
+    const rl = t.recLow && isNum(t.recLow.v) ? Math.round(t.recLow.v) + '° (' + escapeHtml(t.recLow.year) + ')' : null;
+    if (!rh && !rl) return;
+    el.title = "Record high / low for this date in Clinton, since " + String(d.wx.porStart || "1906").slice(0, 4);
+    el.innerHTML = '📜 Rec ' + (rh || '—') + ' / ' + (rl || '—');
+    el.style.display = "";
+  }).catch(() => {});
 
   // ── Toggle handlers ──
   const hourlyToggle   = document.getElementById('wHourlyToggle');
@@ -9562,6 +9596,13 @@ async function loadOutdoor(force) {
   advisorDiv.innerHTML = '<div class="fish-advisor"><div class="fish-header"><div class="fish-title">🎣 Truman Lake Fishing Report</div></div><div class="fish-loading"><span class="spinner"></span> Loading live conditions…</div></div>' + '<div class="outdoor-news-header">🗞️ MO Outdoor News</div>';
   listEl.appendChild(advisorDiv);
 
+  // Lake-on-this-date + MDC season countdown (2026-09-17), between the
+  // advisor and the news. Independent of the advisor's own loads.
+  const histDiv = document.createElement("div");
+  histDiv.style.margin = "16px 0 4px";
+  listEl.appendChild(histDiv);
+  renderInlineCards(histDiv, ["lakeThisDate", "seasonCountdown"]);
+
   const newsDiv = document.createElement("div");
   newsDiv.innerHTML = Array.from({length:5}, ()=>
     '<div class="skel"><div class="skel-body"><div class="skel-line s1"></div><div class="skel-line s2"></div><div class="skel-line s3"></div><div class="skel-line s4"></div></div><div class="skel-img"></div></div>'
@@ -9660,6 +9701,12 @@ async function loadGarden(force) {
   };
   render(getCachedWeather());
   listEl.appendChild(wrap);
+
+  // Growing-season totals + freeze outlook (2026-09-17).
+  const seasonDiv = document.createElement("div");
+  seasonDiv.style.margin = "16px 0 4px";
+  listEl.appendChild(seasonDiv);
+  renderInlineCards(seasonDiv, ["growingSeason"]);
 
   if (!getCachedWeather() || force) {
     try { await loadWeather(force); render(getCachedWeather()); } catch {}

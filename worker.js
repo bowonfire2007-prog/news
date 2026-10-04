@@ -1212,7 +1212,12 @@ async function fetchRSSItems(url, max) {
         return { items: parseNewsItems(xml, max, url), error: null };
       }
       lastErr = "HTTP " + r.status;
-      if (r.status !== 503 && r.status !== 429) break; // not transient — don't retry
+      // 403 counts as transient: missourinet.com sits behind a WAF that answers a
+      // burst with 403 rather than 429 (verified 2026-10-04 — the same URL and UA
+      // returned 403, then 200 with 20 items moments later). Breaking on the first
+      // 403 dropped that source for the whole run with no retry. A genuinely
+      // forbidden feed just costs two extra requests 1.5s and 4s apart.
+      if (r.status !== 503 && r.status !== 429 && r.status !== 403) break; // not transient — don't retry
     } catch (err) {
       lastErr = err.message;
       if (err.name !== "AbortError") break; // only timeouts are treated as transient here
@@ -2334,7 +2339,15 @@ export default {
     if (cron === "0 18 * * 1") run("mo-weekly", runMissouriScheduled(env, ctx));
     if (cron === "0 18 * * 2") run("mo-weekly", runMissouriScheduled(env, ctx));
     if (cron === "0 13 * * *" || cron === "0 1 * * *") run("bills", runBillsScheduled(env, ctx));
-    if (cron === "0 13 * * *") run("trackers", runTrackersScheduled(env, ctx));
+    // Trackers ride BOTH daily crons. Until 2026-10-04 this was 13:00-only and
+    // was the single job with no second trigger: briefs are rescued by
+    // briefs-repair at 01:00, mo-weekly by runMissouriIfStale, the history
+    // pipeline by its own both-cron line. So when 13:00 stopped firing the
+    // tracker cards silently froze for 17 days (2026-09-17 to 10-04) while
+    // every other card stayed current. processOneTracker is hash-gated and
+    // honours minAgeDays, so a second run costs a KV read per topic on a day
+    // with no new headlines.
+    if (cron === "0 13 * * *" || cron === "0 1 * * *") run("trackers", runTrackersScheduled(env, ctx));
     if (cron === "0 13 * * *") run("briefs", runBriefsScheduled(env, ctx));
     // Self-heal now rides BOTH daily crons. The 01:00 UTC trigger is the one
     // with direct evidence of firing reliably (briefs-repair output is always

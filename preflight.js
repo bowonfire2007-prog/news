@@ -60,6 +60,7 @@ cfConst && cfConst.startsWith(WORKER) ? ok("CF_WORKER points at " + WORKER) : fa
 const toml = read("wrangler.toml");
 const tomlCrons = ((toml.match(/crons\s*=\s*\[([^\]]*)\]/) || [])[1] || "").match(/"[^"]+"/g) || [];
 const codeCrons = [...new Set([...workerSrc.matchAll(/cron === "([^"]+)"/g)].map(m => '"' + m[1] + '"'))];
+(tomlCrons.length <= 5 ? ok : fail)("wrangler.toml schedules " + tomlCrons.length + " cron(s) — Workers Free cap is 5 per account");
 codeCrons.forEach(c => tomlCrons.includes(c) ? ok("cron " + c + " in wrangler.toml") : fail("worker.js checks cron " + c + " but wrangler.toml doesn't schedule it"));
 tomlCrons.forEach(c => codeCrons.includes(c) ? null : warn("wrangler.toml schedules " + c + " but worker.js never handles it"));
 

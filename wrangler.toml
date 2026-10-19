@@ -37,6 +37,19 @@ id = "0f86e3f7503f41279b0af5e8f132cacd"
 #                    old. This is the real safety net: if the Mon/Tue triggers are
 #                    ever wrong again, this catches it within a day.
 #
+#   "10 13 * * *" →  daily at 13:10 UTC  — tab briefs, alone in their own invocation
+#   (01:10 briefs-repair slot dropped 2026-10-19 — Free plan 5-cron cap; repair stays on 01:00)
+#                    ADDED 2026-10-14. A Worker invocation may hold only 6
+#                    connections waiting on response headers at once, on any
+#                    plan. Sharing 13:00 with bills + trackers + self-heal +
+#                    history put 60+ concurrent feed fetches through those 6
+#                    slots, and the briefs fetches aged out in the queue: five
+#                    of six topics served a card dated 2026-10-04 for ten days
+#                    while world stayed current, because world's fetches were
+#                    first in line. Ten minutes later, alone, the same code
+#                    regenerated all six on the first try. Keep these two on a
+#                    minute nothing else uses.
+#
 # IMPORTANT: these strings must match the === comparisons in worker.js
 # scheduled(). Change one without the other and that job silently stops running.
 #
@@ -49,7 +62,10 @@ binding = "BILLS_KV"
 id = "77445f232f1e4bc6a3dd1cf86c888979"
 
 [triggers]
-crons = ["0 21 * * 5", "0 18 * * 1", "0 18 * * 2", "0 13 * * *", "0 1 * * *"]
+# Workers Free: MAX 5 cron triggers per ACCOUNT (deploy fails with code 10072
+# above that — the script uploads but the trigger list does NOT update).
+# Mon+Tue weekly pulls share "0 18 * * 1,2"; briefs-repair rides 01:00 only.
+crons = ["0 21 * * 5", "0 18 * * 1,2", "0 13 * * *", "0 1 * * *", "10 13 * * *"]
 
 # ── Secrets (set in Cloudflare dashboard or via wrangler secret put) ──────────
 # ANTHROPIC_API_KEY  — Claude API key for PDF parsing and cattle price OCR

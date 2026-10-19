@@ -436,7 +436,13 @@ Use null for any field you cannot find. For the 500-600 lb ranges, average ONLY 
 // the silent failure mode the wrangler.toml comment warns about — and (b) the
 // weekly pipeline's last run outcome, plus current staleness.
 const CRON_EVENTS_KEY = "cron:events";
-const CRON_KNOWN = ["0 21 * * 5", "0 18 * * 1", "0 18 * * 2", "0 13 * * *", "0 1 * * *"];
+// Workers Free allows only 5 cron triggers per ACCOUNT. Keep this list at 5.
+// Mon+Tue weekly pulls share one trigger ("0 18 * * 1,2") to make room for
+// the 13:10 briefs slot; briefs-repair stays on 01:00 (no 01:10 slot).
+const CRON_KNOWN = ["0 21 * * 5", "0 18 * * 1,2", "0 13 * * *", "0 1 * * *", "10 13 * * *",
+                    // legacy strings: an old trigger list still firing shows up as
+                    // recognized-but-jobless in /cron-status rather than unknown
+                    "0 18 * * 1", "0 18 * * 2", "10 1 * * *"];
 
 async function recordCronEvent(env, cron, jobs) {
   try {
@@ -448,6 +454,59 @@ async function recordCronEvent(env, cron, jobs) {
     await env.WEEKLY_KV.put(CRON_EVENTS_KEY, JSON.stringify(events), { expirationTtl: 90 * 24 * 3600 });
   } catch (err) {
     console.warn("[cron-heartbeat] write failed: " + String(err));
+  }
+}
+
+// The heartbeat above records which jobs were DISPATCHED, never what they
+// returned — cron jobs are fire-and-forget, so their results were discarded.
+// That is why five of six tab briefs sat frozen at 2026-10-04 for ten days
+// while /cron-status showed five green job names twice a day: the per-topic
+// errors existed, in a return value nobody read. These two write the settled
+// outcome of every job to its own KV key, so the next silent failure is one
+// GET away instead of invisible.
+const CRON_OUTCOMES_KEY = "cron:outcomes";
+
+// Compacts a run*Scheduled() return value into something small enough to keep
+// 10 of in KV. Per-topic shapes ({results:[...]} / {repaired:[...]}) collapse
+// to key -> changed | held | ERROR, which is the view that matters.
+function summarizeJobOutcome(r) {
+  if (r == null) return null;
+  if (typeof r !== "object") return String(r).slice(0, 160);
+  const perTopic = Array.isArray(r.results) ? r.results
+                 : Array.isArray(r.repaired) ? r.repaired : null;
+  if (perTopic) {
+    const o = {};
+    for (const t of perTopic) {
+      if (!t || !t.key) continue;
+      o[t.key] = t.error   ? "ERROR: " + String(t.error).slice(0, 120)
+               : t.changed ? "changed"
+               : "held" + (t.note ? ": " + String(t.note).slice(0, 60) : "");
+    }
+    if (r.note) o._note = String(r.note).slice(0, 120);
+    return o;
+  }
+  if (r.error) return "ERROR: " + String(r.error).slice(0, 160);
+  if (r.note)  return "held: " + String(r.note).slice(0, 120);
+  return Object.keys(r).length ? JSON.stringify(r).slice(0, 200) : "ok";
+}
+
+// Waits for every job this invocation dispatched, then records what each one
+// did. Capped by a timeout so a job that never settles can't cost us the
+// record entirely — a hung job is itself worth seeing.
+async function recordCronOutcomes(env, cron, pending, outcomes) {
+  try {
+    if (!env.WEEKLY_KV) return;
+    const verdict = await Promise.race([
+      Promise.allSettled(pending).then(() => "settled"),
+      sleep(120000).then(() => "timed-out-waiting")
+    ]);
+    const raw = await env.WEEKLY_KV.get(CRON_OUTCOMES_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    list.push({ at: new Date().toISOString(), cron, verdict, jobs: outcomes });
+    while (list.length > 10) list.shift();
+    await env.WEEKLY_KV.put(CRON_OUTCOMES_KEY, JSON.stringify(list), { expirationTtl: 90 * 24 * 3600 });
+  } catch (err) {
+    console.warn("[cron-outcomes] write failed: " + String(err));
   }
 }
 
@@ -683,6 +742,11 @@ async function handleCronStatus(env) {
   try {
     out.recent_cron_events = JSON.parse(await env.WEEKLY_KV.get(CRON_EVENTS_KEY) || "[]").reverse();
   } catch (err) { out.recent_cron_events_error = String(err); }
+  try {
+    // What each dispatched job actually RETURNED, newest first. Read this
+    // before the events list above: a job can fire every day and still fail.
+    out.recent_cron_outcomes = JSON.parse(await env.WEEKLY_KV.get(CRON_OUTCOMES_KEY) || "[]").reverse();
+  } catch (err) { out.recent_cron_outcomes_error = String(err); }
   try {
     out.weekly_last_run = JSON.parse(await env.WEEKLY_KV.get("weekly:last_run") || "null");
   } catch (err) { out.weekly_last_run_error = String(err); }
@@ -1591,19 +1655,17 @@ const BRIEFS_CONFIG = [
 // brief for 18 days without a single error anywhere.
 async function fetchBriefHeadlines(feeds, max) {
   const stats = [];
-  const lists = await Promise.all((feeds || []).map(u =>
-    fetchWithTimeout(u, { headers: BTS_UA, cf: { cacheTtl: 300 } }, 12000)
-      .then(async r => {
-        if (!r.ok) { stats.push({ feed: u, n: 0, err: "HTTP " + r.status }); return []; }
-        const items = parseNewsItems(await r.text(), max || 10, u);
-        stats.push({ feed: u, n: items.length, err: items.length ? null : "parsed 0 items" });
-        return items;
-      })
-      .catch(err => { // a single dead/slow feed shouldn't blank out the whole brief
-        stats.push({ feed: u, n: 0, err: (err && err.message) || String(err) });
-        return [];
-      })
-  ));
+  // Routed through fetchRSSItems so the briefs path finally gets the hardening
+  // the tracker path got on 2026-10-04: 15s per attempt instead of 12s, and
+  // three attempts 0/1.5s/4s apart on 403, 429, 503 and timeout. One bare shot
+  // per feed was what turned a queued connection or a WAF burst-403 into a
+  // whole topic with zero headlines. fetchRSSItems never throws — a dead feed
+  // contributes zero items and names itself in stats.
+  const lists = await Promise.all((feeds || []).map(async u => {
+    const { items, error } = await fetchRSSItems(u, max || 10);
+    stats.push({ feed: u, n: items.length, err: items.length ? null : (error || "parsed 0 items") });
+    return items;
+  }));
   // Round-robin across feeds so one chatty feed doesn't crowd out the rest.
   const seen = new Set(), out = [];
   const cap = max || 10;
@@ -2334,10 +2396,23 @@ export default {
     // nothing records jobs: [] — the "deployed triggers don't match this code"
     // failure made visible instead of silent.
     const jobs = [];
-    const run = (name, promise) => { jobs.push(name); ctx.waitUntil(promise); };
+    const pending = [];
+    const outcomes = {};
+    // `tracked` can never reject, so a throwing job records an ERROR instead
+    // of surfacing as an unhandled rejection that takes the invocation down.
+    const run = (name, promise) => {
+      jobs.push(name);
+      const tracked = promise.then(
+        r => { outcomes[name] = summarizeJobOutcome(r); },
+        e => { outcomes[name] = "ERROR: " + String((e && e.message) || e).slice(0, 160); }
+      );
+      pending.push(tracked);
+      ctx.waitUntil(tracked);
+    };
     if (cron === "0 21 * * 5") { run("wheeler", runWheelerScheduled(env, ctx)); run("kingsville", runKingsvilleScheduled(env, ctx)); }
-    if (cron === "0 18 * * 1") run("mo-weekly", runMissouriScheduled(env, ctx));
-    if (cron === "0 18 * * 2") run("mo-weekly", runMissouriScheduled(env, ctx));
+    // Mon (primary) + Tue (holiday-week backup) share ONE trigger — Workers
+    // Free caps cron triggers at 5 per account.
+    if (cron === "0 18 * * 1,2") run("mo-weekly", runMissouriScheduled(env, ctx));
     if (cron === "0 13 * * *" || cron === "0 1 * * *") run("bills", runBillsScheduled(env, ctx));
     // Trackers ride BOTH daily crons. Until 2026-10-04 this was 13:00-only and
     // was the single job with no second trigger: briefs are rescued by
@@ -2348,13 +2423,28 @@ export default {
     // honours minAgeDays, so a second run costs a KV read per topic on a day
     // with no new headlines.
     if (cron === "0 13 * * *" || cron === "0 1 * * *") run("trackers", runTrackersScheduled(env, ctx));
-    if (cron === "0 13 * * *") run("briefs", runBriefsScheduled(env, ctx));
+    // Briefs run in their OWN invocation (13:10) rather than sharing 13:00.
+    // A Worker invocation may hold only 6 connections waiting for response
+    // headers at once (Cloudflare limit, every plan). The 13:00 invocation
+    // dispatched bills + trackers + briefs + mo-weekly-selfheal + history
+    // together — 60+ concurrent fetches through 6 slots — and the briefs feed
+    // fetches, staggered 400ms behind each other and holding the shortest
+    // timeout in this file, aged out in the queue before they ever got a slot.
+    // World (0ms stagger) got slots and stayed current; the five topics behind
+    // it timed out to zero headlines, so processOneBrief correctly declined to
+    // write a card and their dates froze. Alone in an invocation, the same code
+    // regenerated all six on the first try (verified by hand 2026-10-14).
+    if (cron === "10 13 * * *") run("briefs", runBriefsScheduled(env, ctx));
     // Self-heal now rides BOTH daily crons. The 01:00 UTC trigger is the one
     // with direct evidence of firing reliably (briefs-repair output is always
     // current), so even if 13:00/18:00 go missing again, a stale weekly report
     // gets repaired within a day. On a fresh week it costs one KV read.
     if (cron === "0 13 * * *" || cron === "0 1 * * *") run("mo-weekly-selfheal", runMissouriIfStale(env, ctx));
-    if (cron === "0 1 * * *")  run("briefs-repair", runBriefsRepair(env, ctx));
+    // Repair stays on 01:00 only. A separate 01:10 slot was planned 2026-10-14
+    // but the Workers Free plan caps cron triggers at 5 per account, and the
+    // 13:10 briefs slot was the one that mattered. Repair no-ops on a current
+    // card, so it's cheap here.
+    if (cron === "0 1 * * *") run("briefs-repair", runBriefsRepair(env, ctx));
     // Weather history first (cheap, no Claude), then the history cards — the
     // Local card reads today's records/tornado facts out of the wx store. Both
     // no-op when today's copy already exists, so riding both daily crons gives
@@ -2363,6 +2453,7 @@ export default {
       run("wx-history+history", runHistoryPipeline(env, ctx, "cron " + cron));
     }
     ctx.waitUntil(recordCronEvent(env, cron, jobs));
+    ctx.waitUntil(recordCronOutcomes(env, cron, pending, outcomes));
   }
 };
 

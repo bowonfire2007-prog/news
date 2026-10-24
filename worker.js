@@ -1264,13 +1264,13 @@ const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 // on this Worker's Cloudflare egress IP specifically, not a general outage).
 // Never throws: a source that's down just contributes zero items, so one dead
 // feed can't blank out an entire tracker (see fetchTopicHeadlines below).
-async function fetchRSSItems(url, max) {
+async function fetchRSSItems(url, max, timeoutMs = 15000) {
   const delays = [0, 1500, 4000];
   let lastErr;
   for (const delay of delays) {
     if (delay) await sleep(delay);
     try {
-      const r = await fetchWithTimeout(url, { headers: BTS_UA, cf: { cacheTtl: 300 } }, 15000);
+      const r = await fetchWithTimeout(url, { headers: BTS_UA, cf: { cacheTtl: 300 } }, timeoutMs);
       if (r.ok) {
         const xml = await r.text();
         return { items: parseNewsItems(xml, max, url), error: null };
@@ -1653,6 +1653,11 @@ const BRIEFS_CONFIG = [
 // to zero is visible in /tabbriefs-refresh output instead of just thinning the
 // pool. Two Google News feeds silently returning 0 is what blacked out the tech
 // brief for 18 days without a single error anywhere.
+// 2026-10-24: 8s per attempt for briefs (trackers keep 15s). columbiamissourian.com
+// and komu.com were hanging 11s+ with no response; at 15s x 3 attempts each one
+// held a connection slot ~50s and starved every topic queued behind it.
+const BRIEF_FEED_TIMEOUT_MS = 8000;
+
 async function fetchBriefHeadlines(feeds, max) {
   const stats = [];
   // Routed through fetchRSSItems so the briefs path finally gets the hardening
@@ -1662,7 +1667,7 @@ async function fetchBriefHeadlines(feeds, max) {
   // whole topic with zero headlines. fetchRSSItems never throws — a dead feed
   // contributes zero items and names itself in stats.
   const lists = await Promise.all((feeds || []).map(async u => {
-    const { items, error } = await fetchRSSItems(u, max || 10);
+    const { items, error } = await fetchRSSItems(u, max || 10, BRIEF_FEED_TIMEOUT_MS);
     stats.push({ feed: u, n: items.length, err: items.length ? null : (error || "parsed 0 items") });
     return items;
   }));
@@ -1815,6 +1820,22 @@ async function processOneBrief(cfg, env, force, staggerMs = 0) {
 // topics whose stored card is already 2+ days old, i.e. the ones that actually
 // failed. On a normal night every card is 1 day old and this does nothing and
 // costs nothing (no Claude call, no KV write).
+// One topic at a time (2026-10-24). A Worker invocation can wait on only 6
+// connections at once. Starting all six topics 400ms apart put ~36 feed fetches
+// in that queue; world and usa (first in line) stayed current while tech,
+// military, local and mostate timed out to zero headlines and froze for up to
+// 10 days. Sequential: each topic gets the 6 slots to itself. A scheduled run
+// may last 15 min; six topics take a few minutes. processOneBrief never
+// throws, but the try/catch keeps one bad topic from stopping the rest.
+async function runBriefsSequential(configs, env, force) {
+  const results = [];
+  for (const cfg of configs) {
+    try { results.push(await processOneBrief(cfg, env, force, 0)); }
+    catch (err) { results.push({ key: cfg.key, error: String((err && err.message) || err) }); }
+  }
+  return results;
+}
+
 async function runBriefsRepair(env, ctx) {
   if (!env.BILLS_KV || !env.ANTHROPIC_API_KEY) return { error: "not configured" };
   const today = Date.parse(new Date().toISOString().slice(0, 10) + "T12:00:00Z");
@@ -1827,20 +1848,14 @@ async function runBriefsRepair(env, ctx) {
     if (ageDays >= 2) needed.push(cfg);
   }
   if (!needed.length) return { repaired: [], note: "all briefs current" };
-  const settled = await Promise.allSettled(needed.map((cfg, i) => processOneBrief(cfg, env, false, i * 400)));
-  return { repaired: settled.map((r, i) =>
-    r.status === "fulfilled" ? r.value : { key: needed[i].key, error: String(r.reason) }), ran_at: new Date().toISOString() };
+  const repaired = await runBriefsSequential(needed, env, false);
+  return { repaired, ran_at: new Date().toISOString() };
 }
 
 async function runBriefsScheduled(env, ctx, force = false) {
   if (!env.BILLS_KV) return { error: "BILLS_KV not bound" };
   if (!env.ANTHROPIC_API_KEY) return { error: "ANTHROPIC_API_KEY not set" };
-  const settled = await Promise.allSettled(
-    BRIEFS_CONFIG.map((cfg, i) => processOneBrief(cfg, env, force, i * 400))
-  );
-  const results = settled.map((r, i) =>
-    r.status === "fulfilled" ? r.value : { key: BRIEFS_CONFIG[i].key, error: r.reason?.message || String(r.reason) }
-  );
+  const results = await runBriefsSequential(BRIEFS_CONFIG, env, force);
   return { results, ran_at: new Date().toISOString() };
 }
 

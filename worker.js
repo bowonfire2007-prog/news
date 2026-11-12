@@ -3084,7 +3084,7 @@ async function handleLakeHistory(url, env, ctx) {
 // HOW TO UPDATE: after an election, edit STATIC_REPS and run push.bat, then /reps-refresh.
 // Update names/phones after elections. upNext = when this seat is next on the ballot.
 const STATIC_REPS = {
-  fetched_at: "2026-06-21",
+  fetched_at: "2026-11-04",
   groups: [
     // ── FEDERAL ──────────────────────────────────────────────────────────────
     { level:"country", levelLabel:"Federal",
@@ -3110,7 +3110,7 @@ const STATIC_REPS = {
     { level:"country", levelLabel:"Federal",
       office:"U.S. Representative, MO-4", name:"Mark Alford", party:"Republican",
       phone:"202-225-2876", phone2:"816-380-0021", url:"https://alford.house.gov/contact", email:null,
-      upNext:"Nov 2026",
+      upNext:"Nov 2028 (re-elected Nov 3, 2026)",
       forWhat:"Your most responsive federal contact. VA benefits, Social Security, Medicare, federal grants for local projects, military academy nominations, federal agency problems. House reps cover fewer people than senators so they tend to respond faster — call the Harrisonville local office." },
     // ── MISSOURI STATE ───────────────────────────────────────────────────────
     { level:"administrativeArea1", levelLabel:"Missouri State",
@@ -3126,12 +3126,12 @@ const STATIC_REPS = {
     { level:"administrativeArea1", levelLabel:"Missouri State",
       office:"MO Senate District 28", name:"Sandy Crawford", party:"Republican",
       phone:"573-751-2108", phone2:null, url:"https://www.senate.mo.gov/mem28/", email:null,
-      upNext:"Nov 2026 — TERM LIMITED, new senator takes office Jan 2027",
+      upNext:"Senator-elect Sam Alexander (R, unofficial Nov 3, 2026 result) takes office Jan 2027 — swap name/phone/URL then",
       forWhat:"State laws and bills — want something changed or funded at the state level? This is your person. Also good for MoDOT road issues, MO Medicaid problems, state prison concerns, and state agency complaints." },
     { level:"administrativeArea1", levelLabel:"Missouri State",
       office:"MO House District 126", name:"Jim Kalberloh", party:"Republican",
       phone:"573-751-2205", phone2:null, url:"https://www.house.mo.gov/memberdetails.aspx?district=126", email:null,
-      upNext:"Nov 2026",
+      upNext:"Nov 2028 (re-elected Nov 3, 2026, unofficial)",
       forWhat:"Same as your state senator but on the House side. State funding for local projects, state road issues, MO Medicaid, state laws you want changed. Good to contact both your rep and senator on important issues." },
     // ── HENRY COUNTY ─────────────────────────────────────────────────────────
     { level:"administrativeArea2", levelLabel:"Henry County",
